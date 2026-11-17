@@ -1,8 +1,8 @@
-# QFisher
+# QFisher (Queenfisher)
 
 Free media downloader for Windows, macOS and Linux. Paste a link, pick a quality, done.
 
-QFisher is a window around [yt-dlp](https://github.com/yt-dlp/yt-dlp), which does the actual downloading.
+QFisher (Queenfisher) is a window around [yt-dlp](https://github.com/yt-dlp/yt-dlp), which does the actual downloading.
 
 - Free and open source (GPLv3)
 - No ads, no tracking, no account, nothing bundled

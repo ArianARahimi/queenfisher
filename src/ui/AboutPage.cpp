@@ -9,7 +9,7 @@ AboutPage::AboutPage(QWidget *parent) : QWidget(parent)
 {
     setObjectName("page");
 
-    auto *name = new QLabel("QFisher " + QApplication::applicationVersion());
+    auto *name = new QLabel("QFisher (Queenfisher) " + QApplication::applicationVersion());
     name->setObjectName("wordmark");
 
     auto *text = new QLabel(
