@@ -153,6 +153,10 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           v=${TAG#v}
+          # Fixed names too, for the website's download buttons (releases/latest/download/<name>).
+          cp "dist/Queenfisher-$v-x86_64.AppImage" dist/Queenfisher-Linux.AppImage
+          cp "dist/Queenfisher-$v-windows.zip" dist/Queenfisher-Windows.zip
+          cp "dist/Queenfisher-$v-macos.zip" dist/Queenfisher-macOS.zip
           cd dist
           sha256sum -- * > "$RUNNER_TEMP/SHA256SUMS"
           mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
