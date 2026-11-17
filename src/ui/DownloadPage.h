@@ -55,6 +55,8 @@ private:
 
     void linkChanged(const QString &text);
     void startPreview();
+    void quickPreview(const QString &link);
+    void quickPicture(const QString &id, QStringList sizes);
     void showPreview(const PreviewInfo &info);
     void engineChanged();
     void showNotice();
@@ -109,6 +111,8 @@ private:
     QPointer<PreviewJob> preview_;
     QNetworkAccessManager *net_ = nullptr;
     QString previewTitle_;
+    QString quickId_;          // YouTube video whose picture and title were fetched directly
+    QString quickPictureId_;   // ...and whose picture is showing
     PreviewInfo lastPreview_;   // the current link's, for the quality line
     QString signInUrl_, signInCookies_;   // a preview needed a sign-in: reuse it for that link
 

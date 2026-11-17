@@ -27,6 +27,8 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QPlainTextEdit>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QPushButton>
 #include <QSettings>
 #include <QSplitter>
@@ -112,7 +114,7 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg
     layout->addWidget(split, 1);
 
     previewDelay_.setSingleShot(true);
-    previewDelay_.setInterval(500);
+    previewDelay_.setInterval(250);
     connect(&previewDelay_, &QTimer::timeout, this, &DownloadPage::startPreview);
     engineRetry_.setSingleShot(true);
     engineRetry_.setInterval(65000);   // safely past the engine's own minute between automatic checks
@@ -451,16 +453,91 @@ void DownloadPage::linkChanged(const QString &text)
     previewTitle_.clear();
     previewDelay_.stop();
     if (ok) {
-        title_->setText(QUrl(text.trimmed()).host());
-        meta_->setText("Loading preview...");
-        thumbnail_->setHint("Loading preview...");
+        const QString id = youTubeId(text);
+        if (id != quickPictureId_) {   // keep the picture when only the link's extras changed
+            if (id != quickId_)
+                quickId_.clear();       // not this video's request in flight: fetch again
+            quickPictureId_.clear();
+            title_->setText(QUrl(text.trimmed()).host());
+            meta_->setText("Loading preview...");
+            thumbnail_->setHint("Loading preview...");
+        }
+        quickPreview(text);
         previewDelay_.start();
     } else {
+        quickId_.clear();
+        quickPictureId_.clear();
         title_->setText("No video yet");
         meta_->setText(text.trimmed().isEmpty() ? "Paste a link above, then choose a format on the left."
                                                 : "That doesn't look like a web link.");
         thumbnail_->setHint("Paste a link to see a preview");
     }
+}
+
+// YouTube: picture, title and channel straight from YouTube in a fraction of a second, while
+// yt-dlp (a few seconds) works out the length, qualities and size.
+void DownloadPage::quickPreview(const QString &link)
+{
+    const QString id = youTubeId(link);
+    if (id.isEmpty() || id == quickId_)
+        return;
+    quickId_ = id;
+    const auto request = [](const QUrl &url, int timeout) {
+        QNetworkRequest req(url);
+        req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+        req.setTransferTimeout(timeout);
+        return req;
+    };
+    const auto capped = [](QNetworkReply *reply, qint64 limit) {
+        connect(reply, &QNetworkReply::downloadProgress, reply, [reply, limit](qint64 got, qint64 total) {
+            if (got > limit || total > limit)
+                reply->abort();
+        });
+    };
+
+    const QUrl oembed("https://www.youtube.com/oembed?format=json&url="
+                      + QUrl::toPercentEncoding("https://www.youtube.com/watch?v=" + id));
+    QNetworkReply *meta = net_->get(request(oembed, 10000));
+    capped(meta, 64 << 10);
+    connect(meta, &QNetworkReply::finished, this, [this, meta, id] {
+        meta->deleteLater();
+        if (meta->error() || youTubeId(link_->text()) != id || !previewTitle_.isEmpty())
+            return;   // failed, the link changed, or yt-dlp's fuller answer is already in
+        const QJsonObject o = QJsonDocument::fromJson(meta->readAll()).object();
+        if (o.value("title").toString().isEmpty())
+            return;
+        title_->setText(o.value("title").toString());
+        meta_->setText(o.value("author_name").toString() + "  ·  youtube.com");
+    });
+
+    // The biggest picture YouTube makes, or the smaller one every video has.
+    quickPicture(id, {"maxresdefault", "hqdefault"});
+}
+
+void DownloadPage::quickPicture(const QString &id, QStringList sizes)
+{
+    if (sizes.isEmpty())
+        return;
+    QNetworkRequest req(QUrl("https://i.ytimg.com/vi/" + id + "/" + sizes.takeFirst() + ".jpg"));
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    req.setTransferTimeout(10000);
+    QNetworkReply *reply = net_->get(req);
+    connect(reply, &QNetworkReply::downloadProgress, reply, [reply](qint64 got, qint64 total) {
+        if (got > (8 << 20) || total > (8 << 20))
+            reply->abort();   // a thumbnail is never this big
+    });
+    connect(reply, &QNetworkReply::finished, this, [this, reply, id, sizes] {
+        reply->deleteLater();
+        if (youTubeId(link_->text()) != id || thumbnail_->hasPicture())
+            return;   // the link changed, or a picture is already up
+        QPixmap pixmap;
+        if (!reply->error() && pixmap.loadFromData(reply->readAll())) {
+            thumbnail_->setPicture(pixmap);
+            quickPictureId_ = id;
+        } else {
+            quickPicture(id, sizes);   // next size down
+        }
+    });
 }
 
 void DownloadPage::startPreview()
@@ -487,7 +564,8 @@ void DownloadPage::startPreview()
     connect(preview_, &PreviewJob::failed, this, [this, job = preview_.data()](const QString &message) {
         job->deleteLater();
         meta_->setText(message);
-        thumbnail_->setHint("No preview");
+        if (quickPictureId_.isEmpty())   // a picture straight from YouTube still beats nothing
+            thumbnail_->setHint("No preview");
         banner_->setNotice(message);
     });
     preview_->start();
@@ -514,6 +592,10 @@ void DownloadPage::showPreview(const PreviewInfo &info)
 
     const QString badge = info.playlistCount >= 0 ? QString("%1 videos").arg(info.playlistCount)
                         : info.live ? QString("LIVE") : info.seconds >= 0 ? clock(info.seconds) : QString();
+    if (!quickPictureId_.isEmpty() && quickPictureId_ == youTubeId(link_->text()) && thumbnail_->hasPicture()) {
+        thumbnail_->setBadge(badge);   // the picture came straight from YouTube already
+        return;
+    }
     if (info.thumbnail.isEmpty()) {
         thumbnail_->setHint("No picture");
         return;

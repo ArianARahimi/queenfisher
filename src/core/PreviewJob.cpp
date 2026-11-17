@@ -6,7 +6,9 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
 #include <QUrl>
+#include <QUrlQuery>
 
 namespace {
 
@@ -34,6 +36,26 @@ QString pickThumbnail(const QJsonObject &o)
     return best;
 }
 
+}
+
+QString youTubeId(const QString &link)
+{
+    const QUrl url(link.trimmed());
+    const QString host = url.host().toLower();
+    static const QRegularExpression valid("^[A-Za-z0-9_-]{11}$");
+    QString id;
+    if (url.scheme() != "https" && url.scheme() != "http")
+        return {};
+    if (host == "youtu.be") {
+        id = url.path().section('/', 1, 1);
+    } else if (host == "youtube.com" || host.endsWith(".youtube.com")) {
+        const QString path = url.path();
+        if (path == "/watch")
+            id = QUrlQuery(url).queryItemValue("v");
+        else if (path.startsWith("/shorts/") || path.startsWith("/embed/") || path.startsWith("/live/") || path.startsWith("/v/"))
+            id = path.section('/', 2, 2);
+    }
+    return valid.match(id).hasMatch() ? id : QString();
 }
 
 PreviewInfo parsePreview(const QByteArray &json)

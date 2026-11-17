@@ -13,6 +13,8 @@ public:
     explicit Thumbnail(QWidget *parent = nullptr);
     void setPicture(const QPixmap &picture, const QString &badge = {});
     void setHint(const QString &hint);   // shown when there's no picture
+    void setBadge(const QString &badge);   // the length, once it's known
+    bool hasPicture() const { return !original_.isNull(); }
     QSize sizeHint() const override { return {384, 216}; }
     QSize minimumSizeHint() const override { return {192, 108}; }
 

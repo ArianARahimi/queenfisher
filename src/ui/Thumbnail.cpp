@@ -24,6 +24,12 @@ void Thumbnail::setHint(const QString &hint)
     update();
 }
 
+void Thumbnail::setBadge(const QString &badge)
+{
+    badge_ = badge;
+    update();
+}
+
 void Thumbnail::resizeEvent(QResizeEvent *)
 {
     rescale();

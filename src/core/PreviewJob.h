@@ -48,6 +48,11 @@ QString originalAudioName(const PreviewInfo &info);
 // does for them (H.264 and AAC for MP4, WebM for WebM); -1 if the sizes aren't known.
 qint64 estimateSize(const PreviewInfo &info, Options::Format format, int maxHeight);
 
+// The 11-character video ID in a YouTube link (watch, youtu.be, shorts, embed, live, music);
+// empty for anything else. Lets the picture and title come straight from YouTube while yt-dlp
+// works out the rest.
+QString youTubeId(const QString &link);
+
 // Reads yt-dlp's JSON for one video or playlist; empty title means it couldn't.
 PreviewInfo parsePreview(const QByteArray &json);
 
