@@ -19,7 +19,9 @@ class QLabel;
 class QLineEdit;
 class QListWidget;
 class QNetworkAccessManager;
+class QFrame;
 class QPlainTextEdit;
+class QPushButton;
 class QToolButton;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -66,6 +68,8 @@ private:
     void stopSelected();
     void launchSelected();
     void clearFinished();
+    void clearAll();
+    void removeRow(QTreeWidgetItem *item);
     void refreshButtons();
     void reportActivity();
 
@@ -74,6 +78,7 @@ private:
 
     QListWidget *format_ = nullptr;
     QListWidget *quality_ = nullptr;
+    QFrame *qualityBox_ = nullptr;
     QLineEdit *folder_ = nullptr;
     QCheckBox *subtitles_ = nullptr;
     QCheckBox *playlist_ = nullptr;
@@ -84,12 +89,13 @@ private:
     Thumbnail *thumbnail_ = nullptr;
     QLabel *title_ = nullptr;
     QLabel *meta_ = nullptr;
-    QToolButton *download_ = nullptr;
-    QToolButton *play_ = nullptr;
-    QToolButton *openPage_ = nullptr;
+    QPushButton *download_ = nullptr;
+    QPushButton *play_ = nullptr;
+    QPushButton *openPage_ = nullptr;
 
     QTreeWidget *list_ = nullptr;
-    QToolButton *remove_ = nullptr, *retry_ = nullptr, *stop_ = nullptr, *launch_ = nullptr, *clear_ = nullptr;
+    QToolButton *remove_ = nullptr, *retry_ = nullptr, *stop_ = nullptr, *launch_ = nullptr;
+    QToolButton *clearAll_ = nullptr, *clear_ = nullptr;
     QAction *logAction_ = nullptr;
     QPlainTextEdit *log_ = nullptr;
 

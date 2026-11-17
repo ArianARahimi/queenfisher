@@ -29,11 +29,12 @@ public:
         QLinearGradient g(r.topLeft(), r.bottomLeft());
         g.setColorAt(0, QColor(0x2a, 0x2d, 0x34));
         g.setColorAt(1, Theme::field);
-        p->setBrush(g);
-        p->setPen(opt->state & State_MouseOver ? Theme::accent : Theme::outline);
+        const bool enabled = opt->state & State_Enabled;
+        p->setBrush(enabled ? QBrush(g) : QBrush(Theme::panel));
+        p->setPen(enabled && (opt->state & State_MouseOver) ? Theme::accent : Theme::outline);
         p->drawRoundedRect(r, 2, 2);
         if (opt->state & State_On) {   // a tick, like Vista
-            QPen pen(QColor(0x9c, 0xd0, 0xff), 2);
+            QPen pen(enabled ? QColor(0x9c, 0xd0, 0xff) : QColor(0x4c, 0x50, 0x58), 2);
             pen.setCapStyle(Qt::RoundCap);
             p->setPen(pen);
             const QPointF a = r.topLeft();
@@ -125,6 +126,21 @@ QPushButton:pressed {
 }
 QPushButton:disabled { color: #6c707a; }
 
+/* Download: the one button that matters, lime green so it's found at a glance */
+QPushButton#primary {
+    color: #0f1d05; font-weight: bold; padding: 4px 16px; border-color: #2f5208;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #c4f25e, stop:0.49 #a8e03a, stop:0.5 #92cc1e, stop:1 #82b818);
+}
+QPushButton#primary:hover {
+    border-color: #d8ff8a;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #d4ff74, stop:0.49 #b8ee4a, stop:0.5 #a2dc2c, stop:1 #92c824);
+}
+QPushButton#primary:pressed { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #78a814, stop:1 #92cc1e); }
+QPushButton#primary:disabled {
+    color: #6c707a; border-color: @outline;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3a3d45, stop:0.49 #33363d, stop:0.5 #2c2e34, stop:1 #282a2f);
+}
+
 QToolButton#action {
     color: @text; border: 1px solid transparent; border-radius: 3px; padding: 3px 8px;
     background: transparent;
@@ -148,6 +164,7 @@ QComboBox QAbstractItemView {
     selection-background-color: @accent; selection-color: #ffffff;
 }
 QCheckBox { color: @text; spacing: 6px; }
+QCheckBox:disabled { color: #4c5058; }
 
 QTreeWidget, QListWidget {
     color: @text; background: @field; alternate-background-color: @fieldAlt;
@@ -166,16 +183,23 @@ QHeaderView::section {
 
 QFrame#box { background: @field; border: 1px solid @outline; }
 QLabel#boxHeader {
-    color: #1b1406; font-weight: bold; padding: 2px 6px; qproperty-alignment: AlignCenter;
-    border-bottom: 1px solid #6b4f0c;
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f0c45a, stop:0.5 #dcae3c, stop:0.51 #c9981f, stop:1 #b88a16);
+    color: #0f1d05; font-weight: bold; padding: 2px 6px; qproperty-alignment: AlignCenter;
+    border-bottom: 1px solid #3f6b0c;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #c4f25e, stop:0.5 #a8e03a, stop:0.51 #92cc1e, stop:1 #82b818);
 }
+/* a box that doesn't apply (Quality for audio) greys out completely */
+QLabel#boxHeader:disabled {
+    color: #6c707a; border-bottom-color: @outline;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3a3d45, stop:0.5 #33363d, stop:0.51 #2c2e34, stop:1 #282a2f);
+}
+QListWidget:disabled { color: #4c5058; background: @panel; }
+QListWidget::item:selected:disabled { color: #6c707a; background: #2c2e34; }
 QLabel#sideTitle, QLabel#paneTitle { color: @dim; }
 QFrame#banner {
-    border: 1px solid #7a4d05; border-radius: 2px;
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f2b445, stop:0.5 #e5a02a, stop:0.51 #d68d14, stop:1 #c98210);
+    border: 1px solid #3d6505; border-radius: 2px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #b8ec4e, stop:0.5 #9cd830, stop:0.51 #88c418, stop:1 #7bb214);
 }
-QFrame#banner QLabel { color: #1d1306; font-weight: bold; }
+QFrame#banner QLabel { color: #0f1d05; font-weight: bold; }
 QLabel#chip {
     color: #ffffff; padding: 3px 10px; border: 1px solid @outline; border-bottom: none;
     border-top-left-radius: 3px; border-top-right-radius: 3px;
@@ -196,7 +220,6 @@ QLabel#cell {
     color: @text; padding: 1px 8px; border: 1px solid; border-radius: 2px;
     border-color: @outline @edge @edge @outline; background: #1c1d22;
 }
-QLabel#motto { color: @running; }
 
 QScrollBar:vertical { background: @fieldAlt; width: 15px; margin: 0; }
 QScrollBar:horizontal { background: @fieldAlt; height: 15px; margin: 0; }

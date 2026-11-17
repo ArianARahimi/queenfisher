@@ -182,16 +182,17 @@ QWidget *DownloadPage::buildSidebar()
     auto *title = new QLabel("Download Options:");
     title->setObjectName("sideTitle");
     layout->addWidget(title);
+    qualityBox_ = Widgets::sideBox("Quality", qualityBox);
     layout->addWidget(Widgets::sideBox("Format", formatBox));
-    layout->addWidget(Widgets::sideBox("Quality", qualityBox));
+    layout->addWidget(qualityBox_);
     layout->addWidget(Widgets::sideBox("Save To", folderBox));
     layout->addWidget(Widgets::sideBox("Extras", extrasBox));
     layout->addStretch(1);
     layout->addWidget(openFolder);
 
-    // Audio has no picture size to choose, and no subtitles.
+    // Audio has no picture size to choose, and no subtitles: the whole Quality box greys out.
     connect(format_, &QListWidget::currentRowChanged, this, [this](int row) {
-        quality_->setEnabled(row < Options::Mp3);
+        qualityBox_->setEnabled(row < Options::Mp3);
         subtitles_->setEnabled(row < Options::Mp3);
     });
     connect(change, &QPushButton::clicked, this, &DownloadPage::chooseFolder);
@@ -224,10 +225,23 @@ QWidget *DownloadPage::buildTop()
     meta_->setObjectName("meta");
     meta_->setWordWrap(true);
 
+    // Play Clip and Open Page sit with the video they act on.
+    play_ = new QPushButton(QIcon(":/icons/play.png"), "Play Clip");
+    play_->setToolTip("Play a short clip with sound in the preview");
+    openPage_ = new QPushButton(QIcon(":/icons/browser.png"), "Open Page");
+    openPage_->setToolTip("Open the link in your web browser");
+    auto *videoActions = new QHBoxLayout;
+    videoActions->setSpacing(6);
+    videoActions->addWidget(play_);
+    videoActions->addWidget(openPage_);
+    videoActions->addStretch(1);
+
     auto *info = new QVBoxLayout;
     info->setSpacing(6);
     info->addWidget(title_);
     info->addWidget(meta_);
+    info->addSpacing(4);
+    info->addLayout(videoActions);
     info->addStretch(1);
     auto *previewRow = new QHBoxLayout;
     previewRow->setSpacing(12);
@@ -242,19 +256,16 @@ QWidget *DownloadPage::buildTop()
     paneLayout->addWidget(banner_);
     paneLayout->addLayout(previewRow, 1);
 
-    download_ = Widgets::action("download", "Download", "Download this link with the options on the left");
-    play_ = Widgets::action("play", "Play Clip", "Play a short clip with sound in the preview");
-    openPage_ = Widgets::action("browser", "Open Page", "Open the link in your web browser");
-    auto *junk = Widgets::action("trash", "Clear", "Clear the link");
-
-    auto *actions = actionRow({download_, play_, openPage_});
-    actions->insertSpacing(0, 80);   // balances the Clear button on the right
-    actions->addWidget(junk);
+    // Download right next to Paste: paste, then one short move to download.
+    download_ = new QPushButton(QIcon(":/icons/download.png"), "Download");
+    download_->setObjectName("primary");
+    download_->setToolTip("Download this link with the options on the left");
 
     auto *linkRow = new QHBoxLayout;
     linkRow->setSpacing(6);
     linkRow->addWidget(link_, 1);
     linkRow->addWidget(paste);
+    linkRow->addWidget(download_);
 
     auto *top = new QWidget;
     auto *layout = new QVBoxLayout(top);
@@ -266,16 +277,14 @@ QWidget *DownloadPage::buildTop()
     tabbed->addWidget(pane, 1);
     layout->addLayout(linkRow);
     layout->addLayout(tabbed, 1);
-    layout->addLayout(actions);
 
     connect(link_, &QLineEdit::textChanged, this, &DownloadPage::linkChanged);
     connect(link_, &QLineEdit::returnPressed, this, [this] { if (download_->isEnabled()) download(); });
     connect(paste, &QPushButton::clicked, this, &DownloadPage::pasteLink);
-    connect(download_, &QToolButton::clicked, this, &DownloadPage::download);
-    connect(play_, &QToolButton::clicked, this, &DownloadPage::toggleClip);
+    connect(download_, &QPushButton::clicked, this, &DownloadPage::download);
+    connect(play_, &QPushButton::clicked, this, &DownloadPage::toggleClip);
     connect(thumbnail_, &Thumbnail::clicked, this, &DownloadPage::toggleClip);
-    connect(openPage_, &QToolButton::clicked, this, [this] { QDesktopServices::openUrl(QUrl(link_->text().trimmed())); });
-    connect(junk, &QToolButton::clicked, link_, &QLineEdit::clear);
+    connect(openPage_, &QPushButton::clicked, this, [this] { QDesktopServices::openUrl(QUrl(link_->text().trimmed())); });
     return top;
 }
 
@@ -304,6 +313,7 @@ QWidget *DownloadPage::buildDownloads()
     launch_ = Widgets::action("launch", "Launch", "Open the selected finished file");
     auto *logButton = Widgets::action("log", "Log", "Show what yt-dlp is doing");
     auto *explore = Widgets::action("explore", "Explore", "Show the downloaded files");
+    clearAll_ = Widgets::action("trash", "Clear", "Take everything that isn't downloading or waiting off the list");
     clear_ = Widgets::action("clear", "Clear Finished", "Take finished downloads off the list");
 
     logAction_ = new QAction(QIcon(":/icons/log.png"), "Log", this);
@@ -328,7 +338,7 @@ QWidget *DownloadPage::buildDownloads()
     layout->addWidget(title);
     layout->addWidget(list_, 1);
     layout->addSpacing(3);
-    layout->addLayout(actionRow({remove_, retry_, stop_, launch_, logButton, explore, clear_}));
+    layout->addLayout(actionRow({remove_, retry_, stop_, launch_, logButton, explore, clearAll_, clear_}));
     layout->addWidget(log_);
 
     connect(list_, &QTreeWidget::itemSelectionChanged, this, &DownloadPage::refreshButtons);
@@ -338,6 +348,7 @@ QWidget *DownloadPage::buildDownloads()
     connect(stop_, &QToolButton::clicked, this, &DownloadPage::stopSelected);
     connect(launch_, &QToolButton::clicked, this, &DownloadPage::launchSelected);
     connect(explore, &QToolButton::clicked, this, &DownloadPage::openFolder);
+    connect(clearAll_, &QToolButton::clicked, this, &DownloadPage::clearAll);
     connect(clear_, &QToolButton::clicked, this, &DownloadPage::clearFinished);
     connect(logAction_, &QAction::toggled, log_, &QWidget::setVisible);
     refreshButtons();
@@ -631,17 +642,21 @@ void DownloadPage::startNext()
     reportActivity();
 }
 
+void DownloadPage::removeRow(QTreeWidgetItem *item)
+{
+    DownloadJob *job = jobs_.take(item);
+    if (job == running_)
+        running_ = nullptr;
+    if (job && (stateOf(item) == State::Failed || stateOf(item) == State::Stopped))
+        job->discardPartial();   // a stopped or failed download leaves nothing behind
+    delete job;                  // a running one is stopped first, then cleans up after itself
+    delete item;
+}
+
 void DownloadPage::removeSelected()
 {
-    for (QTreeWidgetItem *item : list_->selectedItems()) {
-        DownloadJob *job = jobs_.take(item);
-        if (job == running_)
-            running_ = nullptr;
-        if (job && (stateOf(item) == State::Failed || stateOf(item) == State::Stopped))
-            job->discardPartial();   // a stopped or failed download leaves nothing behind
-        delete job;                  // a running one is stopped first, then cleans up after itself
-        delete item;
-    }
+    for (QTreeWidgetItem *item : list_->selectedItems())
+        removeRow(item);
     startNext();
 }
 
@@ -675,10 +690,19 @@ void DownloadPage::clearFinished()
 {
     for (int i = list_->topLevelItemCount() - 1; i >= 0; --i) {
         QTreeWidgetItem *item = list_->topLevelItem(i);
-        if (stateOf(item) == State::Done) {
-            delete jobs_.take(item);
-            delete item;
-        }
+        if (stateOf(item) == State::Done)
+            removeRow(item);
+    }
+    refreshButtons();
+}
+
+// Finished, failed and stopped rows go; downloads still running or waiting stay.
+void DownloadPage::clearAll()
+{
+    for (int i = list_->topLevelItemCount() - 1; i >= 0; --i) {
+        QTreeWidgetItem *item = list_->topLevelItem(i);
+        if (const State s = stateOf(item); s != State::Running && s != State::Waiting)
+            removeRow(item);
     }
     refreshButtons();
 }
@@ -686,7 +710,7 @@ void DownloadPage::clearFinished()
 // Buttons only light up when they'd do something for the selected rows.
 void DownloadPage::refreshButtons()
 {
-    bool any = false, failed = false, active = false, done = false, finishedAny = false;
+    bool any = false, failed = false, active = false, done = false, finishedAny = false, idleAny = false;
     for (QTreeWidgetItem *item : list_->selectedItems()) {
         const State s = stateOf(item);
         any = true;
@@ -694,9 +718,13 @@ void DownloadPage::refreshButtons()
         active |= s == State::Running || s == State::Waiting;
         done |= s == State::Done;
     }
-    for (int i = 0; i < list_->topLevelItemCount(); ++i)
-        finishedAny |= stateOf(list_->topLevelItem(i)) == State::Done;
+    for (int i = 0; i < list_->topLevelItemCount(); ++i) {
+        const State s = stateOf(list_->topLevelItem(i));
+        finishedAny |= s == State::Done;
+        idleAny |= s != State::Running && s != State::Waiting;
+    }
     remove_->setEnabled(any);
+    clearAll_->setEnabled(idleAny);
     retry_->setEnabled(failed);
     stop_->setEnabled(active);
     launch_->setEnabled(done);

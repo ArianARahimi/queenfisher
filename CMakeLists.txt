@@ -24,7 +24,7 @@ qt_add_executable(qfisher
     src/core/YtDlpEngine.cpp src/core/YtDlpEngine.h
     src/core/Library.cpp src/core/Library.h
     src/ui/DownloadPage.cpp src/ui/DownloadPage.h
-    src/ui/EnginePage.cpp src/ui/EnginePage.h
+    src/ui/AboutPage.cpp src/ui/AboutPage.h
     src/ui/LibraryPage.cpp src/ui/LibraryPage.h
     src/ui/MainWindow.cpp src/ui/MainWindow.h
     src/ui/Widgets.cpp src/ui/Widgets.h

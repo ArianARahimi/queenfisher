@@ -8,7 +8,7 @@ class QLabel;
 class QTabWidget;
 class YtDlpEngine;
 
-// Menu bar, the Download / Library / yt-dlp tabs, and the status bar.
+// Menu bar, the Download / Library / About tabs, and the status bar.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -21,7 +21,6 @@ private:
     void buildStatusBar();
     void showActivity(int downloading, int waiting, double bytesPerSecond);
     void showEngine();
-    void about();
 
     YtDlpEngine *engine_ = nullptr;
     Library *library_ = nullptr;

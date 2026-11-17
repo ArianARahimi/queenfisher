@@ -1,6 +1,6 @@
 #include "MainWindow.h"
+#include "AboutPage.h"
 #include "DownloadPage.h"
-#include "EnginePage.h"
 #include "LibraryPage.h"
 #include "core/Library.h"
 #include "core/YtDlpEngine.h"
@@ -8,7 +8,6 @@
 #include <QApplication>
 #include <QLabel>
 #include <QMenuBar>
-#include <QMessageBox>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QTabWidget>
@@ -29,7 +28,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     tabs_->setIconSize({22, 22});
     tabs_->addTab(downloads_, QIcon(":/icons/tab-download.png"), "Download");
     tabs_->addTab(new LibraryPage(library_), QIcon(":/icons/tab-library.png"), "Library");
-    tabs_->addTab(new EnginePage(engine_), QIcon(":/icons/tab-engine.png"), "yt-dlp");
+    tabs_->addTab(new AboutPage, QIcon(":/icons/info.png"), "About");
     auto *wordmark = new QLabel("QFisher");
     wordmark->setObjectName("wordmark");
     tabs_->setCornerWidget(wordmark, Qt::TopRightCorner);
@@ -57,7 +56,7 @@ void MainWindow::buildMenus()
     file->addAction("E&xit", QKeySequence::Quit, qApp, &QApplication::quit);
 
     QMenu *view = menuBar()->addMenu("&View");
-    const char *names[] = {"&Download", "&Library", "&yt-dlp"};
+    const char *names[] = {"&Download", "&Library", "&About"};
     for (int i = 0; i < 3; ++i)
         view->addAction(names[i], QKeySequence(QString("Ctrl+%1").arg(i + 1)), this, [this, i] { tabs_->setCurrentIndex(i); });
     view->addSeparator();
@@ -69,26 +68,22 @@ void MainWindow::buildMenus()
     tools->addAction("Use &Regular yt-dlp", this, [this] { engine_->switchChannel(YtDlpEngine::Stable); });
 
     QMenu *help = menuBar()->addMenu("&Help");
-    help->addAction("&About QFisher", this, &MainWindow::about);
+    help->addAction("&About QFisher", this, [this] { tabs_->setCurrentIndex(2); });
 }
 
-// Sunken cells left and right, the motto in the middle, like the status bars of the time.
+// Sunken cells left and right, like the status bars of the time.
 void MainWindow::buildStatusBar()
 {
     engineLight_ = new QLabel;
     engineLight_->setObjectName("cell");
     activity_ = new QLabel;
     activity_->setObjectName("cell");
-    auto *motto = new QLabel("Free and open source. No ads, no tracking, no account.");
-    motto->setObjectName("motto");
-    motto->setAlignment(Qt::AlignCenter);
     engineCell_ = new QLabel;
     engineCell_->setObjectName("cell");
 
     statusBar()->setSizeGripEnabled(true);
     statusBar()->addWidget(engineLight_);
     statusBar()->addWidget(activity_);
-    statusBar()->addWidget(motto, 1);
     statusBar()->addPermanentWidget(engineCell_);
 }
 
@@ -110,13 +105,4 @@ void MainWindow::showEngine()
     engineLight_->setText(QString("<span style='color:%1'>●</span> %2")
                               .arg(colour, busy ? "Updating" : ready ? "Ready" : "No yt-dlp"));
     engineCell_->setText(ready ? "yt-dlp " + engine_->version() : QString("yt-dlp not installed"));
-}
-
-void MainWindow::about()
-{
-    QMessageBox::about(this, "About QFisher", QString(
-        "<b>QFisher %1</b><br>Free media downloader.<br><br>"
-        "Licensed under the GNU GPL, version 3 or later.<br>"
-        "Downloads are done by <a href='https://github.com/yt-dlp/yt-dlp'>yt-dlp</a> (public domain).<br>"
-        "Icons from the Tango Desktop Project (public domain).").arg(QApplication::applicationVersion()));
 }

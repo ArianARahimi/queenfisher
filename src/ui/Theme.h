@@ -6,7 +6,7 @@ class QApplication;
 class QPainter;
 class QRect;
 
-// Windows Vista era look (glossy gradients, rounded tabs, blue selection, gold section
+// Windows Vista era look (glossy gradients, rounded tabs, blue selection, lime green section
 // headers) in night colours. Every colour lives here; the style sheet refers to them by name.
 namespace Theme {
 
