@@ -27,6 +27,7 @@ inline const QColor accentDim{0x55, 0x73, 0x30}; // quiet lime outline (the link
 inline const QColor surface{0x34, 0x37, 0x3e};   // dark grey gloss: headers, selection, Download
 inline const QColor onSelect{0x1c, 0x1d, 0x20};  // dark text on lime (text selection, bar label)
 inline const QColor hover{0x3a, 0x3e, 0x46};     // grey wash behind hovered buttons and tabs
+inline const QColor rowHover{0x22, 0x24, 0x29};  // faint tint on a list row under the mouse
 inline const QColor running{0x7d, 0xb3, 0x3c};   // progress bar fill, a muted lime
 inline const QColor done = running;              // finished
 inline const QColor failed{0xe0, 0x4a, 0x4a};   // something went wrong

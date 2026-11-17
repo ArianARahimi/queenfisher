@@ -159,7 +159,7 @@ QTreeWidget, QListWidget {
 }
 QTreeWidget::item, QListWidget::item { padding: 2px 3px; }
 QTreeWidget::item:selected, QListWidget::item:selected { color: @accent; background: @gloss; }
-QListWidget::item:hover:!selected { background: @wash; }   /* shows what a click would pick */
+QListWidget::item:hover:!selected { background: @rowHover; }   /* a quiet hint; the selection stays strongest */
 QHeaderView::section {
     color: @label; padding: 3px 6px;
     border: none; border-right: 1px solid #1a1b1f; border-bottom: 1px solid @outline;
@@ -229,7 +229,7 @@ QString themedStyleSheet()
         {"@field", Theme::field.name()}, {"@panel", Theme::panel.name()}, {"@hover", Theme::hover.name()},
         {"@edge", Theme::edge.name()}, {"@text", Theme::text.name()},
         {"@dim", Theme::dim.name()}, {"@label", Theme::label.name()}, {"@muted", Theme::muted.name()},
-        {"@faint", Theme::faint.name()},
+        {"@faint", Theme::faint.name()}, {"@rowHover", Theme::rowHover.name()},
         // grey header strip: list column headers and the notice bar
         {"@bar", "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #373a42, stop:0.5 #30333a, stop:0.51 #2b2d33, stop:1 #27292e)"},
     };
