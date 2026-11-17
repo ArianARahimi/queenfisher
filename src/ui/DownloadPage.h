@@ -36,6 +36,7 @@ class DownloadPage : public QWidget
 
 public:
     DownloadPage(YtDlpEngine *engine, Library *library, QWidget *parent = nullptr);
+    ~DownloadPage() override;
 
     QAction *logAction() const { return logAction_; }
     QString folder() const;

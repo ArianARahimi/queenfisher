@@ -126,6 +126,16 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, QWidget *paren
     engineChanged();
 }
 
+// Closing with downloads running: they stop and clean up first, while the log their last
+// lines go to still exists (Qt would otherwise delete them after the widgets).
+DownloadPage::~DownloadPage()
+{
+    for (DownloadJob *job : std::as_const(jobs_)) {
+        disconnect(job, nullptr, this, nullptr);
+        delete job;
+    }
+}
+
 // Option boxes on the left: what to save and where.
 QWidget *DownloadPage::buildSidebar()
 {
