@@ -7,7 +7,7 @@
 struct Options
 {
     // Video formats first, then sound only; the order is the order of the Format list.
-    enum Format { Mp4, Mkv, Webm, Mov, Avi, Flv, Gif, Mp3, M4a, Wav, Flac, Alac, Vorbis, AudioOriginal, FormatCount };
+    enum Format { Mp4, Mkv, Webm, Mov, Avi, Flv, Gif, Mp3, Wav, Flac, Vorbis, M4a, Alac, AudioOriginal, FormatCount };
     static bool isAudio(Format f) { return f >= Mp3; }
     static bool hasQuality(Format f) { return !isAudio(f) && f != Gif; }   // GIF has its own fixed size
     static bool takesSubtitles(Format f) { return f == Mp4 || f == Mkv || f == Webm; }   // what yt-dlp can embed into

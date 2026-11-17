@@ -5,8 +5,8 @@ namespace {
 struct FormatInfo { const char *name, *key; };
 constexpr FormatInfo formats[Options::FormatCount] = {
     {"MP4", "mp4"}, {"MKV", "mkv"}, {"WebM", "webm"}, {"MOV", "mov"}, {"AVI", "avi"}, {"FLV", "flv"}, {"GIF", "gif"},
-    {"MP3", "mp3"}, {"M4A", "m4a"}, {"WAV", "wav"}, {"FLAC", "flac"}, {"ALAC", "alac"},
-    {"OGG", "vorbis"}, {"Original audio", "original"}};   // OGG holds Vorbis sound; the key stays as saved
+    {"MP3", "mp3"}, {"WAV", "wav"}, {"FLAC", "flac"}, {"OGG", "vorbis"}, {"M4A", "m4a"}, {"ALAC", "alac"},
+    {"Original audio", "original"}};   // OGG holds Vorbis sound; the key stays as saved
 
 // The GIF recipe: at most 480 px wide, 10 frames a second, one palette for the whole clip and
 // only the changed parts of each frame stored. Still big: GIF is an old, wasteful format.
