@@ -38,7 +38,7 @@ cmake --build build
 - When a site asks for a sign-in, QFisher retries once with your default browser's cookies. That only works on Linux so far.
 - Before the sound part of a video starts, its size is guessed, so the bar can pause briefly when it starts.
 - Only checked on Linux (KDE); the look on Windows and macOS is untested. The window frame and title bar are the system's own.
-- Previews and preview clips take a few seconds, since yt-dlp has to ask the site. Clips need a site that allows downloading part of a video.
+- Previews take a few seconds, since yt-dlp has to ask the site. The preview clip is fetched in the background right after, so clicking within the first few seconds may still show "Loading clip...". Clips need a site that allows downloading part of a video.
 
 ## Credits
 

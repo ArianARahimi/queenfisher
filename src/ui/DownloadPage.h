@@ -54,6 +54,7 @@ private:
     void startPreview();
     void showPreview(const PreviewInfo &info);
     void toggleClip();
+    void fetchClip(bool play);
     void engineChanged();
 
     Options currentOptions() const;
@@ -105,4 +106,5 @@ private:
     QPointer<ClipJob> clip_;
     QTemporaryDir clipDir_;               // preview clips, deleted when QFisher closes
     QHash<QString, QString> clips_;       // link -> clip file
+    bool playWhenReady_ = false;          // clicked while the clip was still loading
 };

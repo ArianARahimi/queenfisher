@@ -6,7 +6,7 @@
 
 class Engine;
 
-// Downloads a short, silent, low-resolution piece of a video for the preview to play.
+// Downloads a short, low-resolution piece of a video, with sound, for the preview to play.
 // Going through yt-dlp (not a direct stream link) keeps sign-ins and site quirks working.
 class ClipJob : public QObject
 {

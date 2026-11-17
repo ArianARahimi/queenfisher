@@ -32,9 +32,10 @@ QStringList ClipJob::args(const QString &url, int startSeconds, const QString &f
 {
     QStringList a = {
         "--ignore-config", "--color", "never", "--no-playlist", "--no-part",
-        // Small: the best stream at or under 360p. Any sound in it is never played.
-        "-f", "bv*[height<=360]/b[height<=360]/wv*/w",
-        "-S", "vcodec:h264",   // H.264 plays everywhere; AV1 and VP9 need decoders some systems lack
+        // Small, with sound: one combined stream at or under 360p is quickest; otherwise
+        // picture and sound are fetched and joined. H.264 and AAC play everywhere.
+        "-f", "b[height<=360]/bv*[height<=360]+ba/w",
+        "-S", "vcodec:h264,acodec:aac", "--merge-output-format", "mp4",
         "--download-sections", QString("*%1-%2").arg(startSeconds).arg(startSeconds + lengthSeconds),
         "-P", folder, "-o", "clip-%(id)s.%(ext)s",
         "--print", "after_move:filepath",   // the finished file's path, nothing else on stdout

@@ -4,11 +4,12 @@
 #include <QPixmap>
 #include <QWidget>
 
+class QAudioOutput;
 class QMediaPlayer;
 class QVideoSink;
 
-// 16:9 preview picture in a sunken frame. When a clip is available, clicking plays it
-// silently on a loop inside the same frame; clicking again goes back to the picture.
+// 16:9 preview picture. When a clip is available, clicking plays it once with sound inside
+// the same frame; clicking again, or the clip ending, goes back to the picture.
 class Thumbnail : public QWidget
 {
     Q_OBJECT
@@ -40,5 +41,6 @@ private:
     QString overlay_;       // loading or error text over the picture
     bool clipAvailable_ = false;
     QMediaPlayer *player_ = nullptr;
+    QAudioOutput *audio_ = nullptr;
     QVideoSink *sink_ = nullptr;
 };

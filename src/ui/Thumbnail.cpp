@@ -1,6 +1,7 @@
 #include "Thumbnail.h"
 #include "Theme.h"
 
+#include <QAudioOutput>
 #include <QMediaPlayer>
 #include <QMouseEvent>
 #include <QPainter>
@@ -13,11 +14,16 @@ Thumbnail::Thumbnail(QWidget *parent) : QWidget(parent)
 {
     setFixedSize(386, 218);  // 384x216 picture + frame
 
-    // No audio output is attached, so clips always play silently.
     player_ = new QMediaPlayer(this);
     sink_ = new QVideoSink(this);
+    audio_ = new QAudioOutput(this);
+    audio_->setVolume(0.7f);
     player_->setVideoSink(sink_);
-    player_->setLoops(QMediaPlayer::Infinite);
+    player_->setAudioOutput(audio_);
+    connect(player_, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus s) {
+        if (s == QMediaPlayer::EndOfMedia)   // played once: back to the picture, after the player is done
+            QMetaObject::invokeMethod(this, &Thumbnail::stopClip, Qt::QueuedConnection);
+    });
     connect(sink_, &QVideoSink::videoFrameChanged, this, [this](const QVideoFrame &f) {
         frame_ = f.toImage();
         update();
@@ -50,7 +56,7 @@ void Thumbnail::setClipAvailable(bool available)
 {
     clipAvailable_ = available;
     setCursor(available ? Qt::PointingHandCursor : Qt::ArrowCursor);
-    setToolTip(available ? "Click to play a short silent clip" : QString());
+    setToolTip(available ? "Click to play a short clip with sound" : QString());
     update();
 }
 
@@ -76,7 +82,7 @@ void Thumbnail::stopClip()
     }
     frame_ = {};
     if (clipAvailable_)
-        setToolTip("Click to play a short silent clip");
+        setToolTip("Click to play a short clip with sound");
     update();
 }
 

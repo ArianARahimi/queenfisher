@@ -243,7 +243,7 @@ QWidget *DownloadPage::buildTop()
     paneLayout->addLayout(previewRow, 1);
 
     download_ = Widgets::action("download", "Download", "Download this link with the options on the left");
-    play_ = Widgets::action("play", "Play Clip", "Play a short silent clip in the preview");
+    play_ = Widgets::action("play", "Play Clip", "Play a short clip with sound in the preview");
     openPage_ = Widgets::action("browser", "Open Page", "Open the link in your web browser");
     auto *junk = Widgets::action("trash", "Clear", "Clear the link");
 
@@ -396,6 +396,7 @@ void DownloadPage::linkChanged(const QString &text)
     play_->setEnabled(false);
     delete preview_;   // a new link makes the old answer useless
     delete clip_;
+    playWhenReady_ = false;
     previewTitle_.clear();
     previewSeconds_ = -1;
     previewDelay_.stop();
@@ -470,6 +471,8 @@ void DownloadPage::showPreview(const PreviewInfo &info)
     if (info.thumbnail.isEmpty()) {
         thumbnail_->setHint("No picture");
         thumbnail_->setClipAvailable(clipOk);
+        if (clipOk)
+            fetchClip(false);
         return;
     }
     thumbnail_->setHint("Loading picture...");
@@ -493,35 +496,50 @@ void DownloadPage::showPreview(const PreviewInfo &info)
             thumbnail_->setPicture(picture, badge);
         thumbnail_->setClipAvailable(clipOk);
     });
+    if (clipOk)
+        fetchClip(false);   // in the background, so a click can play it straight away
 }
 
-// Play a short silent clip in the preview, or stop it.
+// Click: play the clip (or stop it). It's usually fetched already, see showPreview().
 void DownloadPage::toggleClip()
 {
     if (thumbnail_->playing()) {
         thumbnail_->stopClip();
         return;
     }
-    if (clip_ || !play_->isEnabled())
-        return;   // still loading, or nothing to play
+    if (play_->isEnabled())
+        fetchClip(true);
+}
+
+// Gets the clip for the current link; plays it once it's there if `play` (or a click while
+// loading) asks for it. Started as soon as the preview shows, so clicking rarely waits.
+void DownloadPage::fetchClip(bool play)
+{
     const QString url = link_->text().trimmed();
     if (QFile::exists(clips_.value(url))) {
-        thumbnail_->playClip(clips_.value(url));
+        if (play)
+            thumbnail_->playClip(clips_.value(url));
         return;
     }
+    playWhenReady_ = playWhenReady_ || play;
+    if (playWhenReady_)
+        thumbnail_->setLoadingClip("Loading clip...");
+    if (clip_)
+        return;   // already on its way
     // Start a little way into longer videos, past intros and black frames.
     const int start = previewSeconds_ > 60 ? qMin(previewSeconds_ / 10, 60) : 0;
     clip_ = new ClipJob(url, start, clipDir_.path(), url == signInUrl_ ? signInCookies_ : QString(), engine_, this);
-    thumbnail_->setLoadingClip("Loading clip...");
     connect(clip_, &ClipJob::logLine, this, [this](const QString &line) { log(line); });
     connect(clip_, &ClipJob::ready, this, [this, job = clip_.data()](const QString &file) {
         clips_.insert(job->url(), file);
         job->deleteLater();
-        if (link_->text().trimmed() == job->url())
+        if (link_->text().trimmed() == job->url() && std::exchange(playWhenReady_, false))
             thumbnail_->playClip(file);
     });
     connect(clip_, &ClipJob::failed, this, [this, job = clip_.data()](const QString &message) {
         job->deleteLater();
+        if (!std::exchange(playWhenReady_, false))
+            return;   // a background fetch failing isn't worth a message until someone clicks
         thumbnail_->setLoadingClip(message);
         QTimer::singleShot(3000, thumbnail_, [this] { thumbnail_->setLoadingClip({}); });
     });
