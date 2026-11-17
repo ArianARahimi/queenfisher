@@ -12,7 +12,7 @@ QString Options::label() const
 QStringList ytDlpArgs(const Options &o)
 {
     QStringList a = {
-        "--ignore-config",   // a user's own yt-dlp config must not change what QFisher does
+        "--ignore-config",   // a user's own yt-dlp config must not change what Queenfisher does
         "--newline", "--color", "never",
         "--progress", "--progress-template",
         "download:" + progressMarker

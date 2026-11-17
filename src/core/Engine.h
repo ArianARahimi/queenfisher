@@ -6,7 +6,7 @@
 #include <functional>
 
 // Whatever runs the downloads. Downloads only talk to this, so the program behind it
-// (QFisher's own yt-dlp, a system copy, a test fake) can change without touching them.
+// (Queenfisher's own yt-dlp, a system copy, a test fake) can change without touching them.
 class Engine : public QObject
 {
     Q_OBJECT

@@ -1,4 +1,4 @@
-// QFisher - free media downloader. GPL-3.0-or-later.
+// Queenfisher - free media downloader. GPL-3.0-or-later.
 #include "ui/MainWindow.h"
 #include "ui/Theme.h"
 
@@ -8,9 +8,9 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    QApplication::setApplicationName("QFisher");
-    QApplication::setOrganizationName("QFisher");
-    QApplication::setApplicationVersion(QFISHER_VERSION);
+    QApplication::setApplicationName("Queenfisher");
+    QApplication::setOrganizationName("Queenfisher");
+    QApplication::setApplicationVersion(QUEENFISHER_VERSION);
 
     QNetworkProxyFactory::setUseSystemConfiguration(true);   // honour the system or environment proxy
     Theme::apply(app);

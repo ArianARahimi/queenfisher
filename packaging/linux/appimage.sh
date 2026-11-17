@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds dist/QFisher-<version>-x86_64.AppImage with linuxdeploy and its Qt plugin.
+# Builds dist/Queenfisher-<version>-x86_64.AppImage with linuxdeploy and its Qt plugin.
 # Both tools are fixed releases, checked against their SHA-256 before they run.
 # Run from the repository root. Needs Qt 6.5+, CMake, Ninja, a C++20 compiler, OpenSSL 3.
 set -eu
@@ -19,7 +19,7 @@ fetch() {   # url sha256 file
 fetch "$LINUXDEPLOY_URL" "$LINUXDEPLOY_SHA" "$tools/linuxdeploy-x86_64.AppImage"
 fetch "$QTPLUGIN_URL" "$QTPLUGIN_SHA" "$tools/linuxdeploy-plugin-qt-x86_64.AppImage"
 
-version=$(sed -n 's/^project(QFisher VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+version=$(sed -n 's/^project(Queenfisher VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
 rm -rf build/appimage build/AppDir
 cmake -B build/appimage -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build/appimage
@@ -28,9 +28,9 @@ DESTDIR="$PWD/build/AppDir" cmake --install build/appimage
 # No FUSE needed (containers, CI): the tools unpack themselves instead.
 export APPIMAGE_EXTRACT_AND_RUN=1
 export PATH="$PWD/$tools:$PATH"
-export LDAI_OUTPUT="dist/QFisher-$version-x86_64.AppImage"
+export LDAI_OUTPUT="dist/Queenfisher-$version-x86_64.AppImage"
 export EXTRA_PLATFORM_PLUGINS="libqwayland-generic.so"
 "$tools/linuxdeploy-x86_64.AppImage" --appdir build/AppDir --plugin qt --output appimage \
-    --desktop-file build/AppDir/usr/share/applications/qfisher.desktop \
-    --icon-file build/AppDir/usr/share/icons/hicolor/32x32/apps/qfisher.png
+    --desktop-file build/AppDir/usr/share/applications/queenfisher.desktop \
+    --icon-file build/AppDir/usr/share/icons/hicolor/32x32/apps/queenfisher.png
 echo "Built $LDAI_OUTPUT"

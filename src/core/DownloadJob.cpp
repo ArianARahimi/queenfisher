@@ -218,7 +218,7 @@ void DownloadJob::recover()
             start();
             return;
         }
-        emit logLine("The site wants a sign-in, but QFisher couldn't find your default browser's cookies.");
+        emit logLine("The site wants a sign-in, but Queenfisher couldn't find your default browser's cookies.");
     }
 
     if (d.problem == Problem::Outdated && !triedRepair_) {

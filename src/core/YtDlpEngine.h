@@ -8,7 +8,7 @@
 
 class QNetworkReply;
 
-// QFisher's own copy of yt-dlp, fetched from yt-dlp's GitHub releases.
+// Queenfisher's own copy of yt-dlp, fetched from yt-dlp's GitHub releases.
 // Every file is checked against the release checksums, and the checksums against
 // the yt-dlp developers' signature, before it replaces the copy in use.
 class YtDlpEngine : public Engine

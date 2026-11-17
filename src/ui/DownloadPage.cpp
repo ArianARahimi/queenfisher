@@ -396,7 +396,7 @@ void DownloadPage::engineChanged()
     if (engine_->busy())
         return;   // statusChanged shows the progress
     banner_->setNotice(engine_->version().isEmpty()
-                       ? "yt-dlp isn't available yet. Check your connection; QFisher will try again." : QString());
+                       ? "yt-dlp isn't available yet. Check your connection; Queenfisher will try again." : QString());
     if (isWebLink(link_->text()) && previewTitle_.isEmpty() && !preview_)
         startPreview();   // a preview was waiting for yt-dlp
     startNext();
@@ -443,7 +443,7 @@ void DownloadPage::startPreview()
         if (!job->cookies().isEmpty()) {
             signInUrl_ = job->url();
             signInCookies_ = job->cookies();
-            banner_->setNotice("This site wanted a sign-in, so QFisher is using your browser's.");
+            banner_->setNotice("This site wanted a sign-in, so Queenfisher is using your browser's.");
         }
         job->deleteLater();
         showPreview(info);

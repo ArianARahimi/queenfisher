@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=QFisher
+Name=Queenfisher
 GenericName=Media Downloader
 Comment=Download videos and music from YouTube and other sites
-Exec=qfisher
-Icon=qfisher
+Exec=queenfisher
+Icon=queenfisher
 Terminal=false
 Categories=Network;AudioVideo;Qt;
 Keywords=download;video;youtube;yt-dlp;mp3;

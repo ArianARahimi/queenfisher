@@ -7,7 +7,7 @@ class QLineEdit;
 class QToolButton;
 class QTreeWidget;
 
-// The Library tab: everything QFisher has finished downloading, newest first.
+// The Library tab: everything Queenfisher has finished downloading, newest first.
 class LibraryPage : public QWidget
 {
     Q_OBJECT

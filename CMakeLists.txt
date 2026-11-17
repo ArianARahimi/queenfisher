@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(QFisher VERSION 0.1.0 LANGUAGES CXX)
+project(Queenfisher VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,7 +10,7 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets Network Multimedia)
 find_package(OpenSSL 3 REQUIRED COMPONENTS Crypto)
 qt_standard_project_setup()
 
-qt_add_executable(qfisher
+qt_add_executable(queenfisher
     src/main.cpp
     src/core/ClipJob.cpp src/core/ClipJob.h
     src/core/Cookies.cpp src/core/Cookies.h
@@ -32,19 +32,19 @@ qt_add_executable(qfisher
     src/ui/Thumbnail.cpp src/ui/Thumbnail.h
     src/ui/Theme.cpp src/ui/Theme.h
 )
-target_include_directories(qfisher PRIVATE src)
-target_compile_definitions(qfisher PRIVATE QFISHER_VERSION="${PROJECT_VERSION}")
-target_compile_options(qfisher PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>)
-target_link_libraries(qfisher PRIVATE Qt6::Widgets Qt6::Network Qt6::Multimedia OpenSSL::Crypto)
+target_include_directories(queenfisher PRIVATE src)
+target_compile_definitions(queenfisher PRIVATE QUEENFISHER_VERSION="${PROJECT_VERSION}")
+target_compile_options(queenfisher PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>)
+target_link_libraries(queenfisher PRIVATE Qt6::Widgets Qt6::Network Qt6::Multimedia OpenSSL::Crypto)
 # yt-dlp's signing key (fingerprint AC0CBBE6848D6A873464AF4E57CF65933B5A7581), same as yt-dlp's public.key.
-qt_add_resources(qfisher keys PREFIX "/" BASE resources FILES resources/ytdlp-public.key)
+qt_add_resources(queenfisher keys PREFIX "/" BASE resources FILES resources/ytdlp-public.key)
 # Tango Desktop Project icons (public domain), see resources/icons/COPYING-tango.txt.
 file(GLOB ICONS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} resources/icons/*.png)
-qt_add_resources(qfisher icons PREFIX "/" BASE resources FILES ${ICONS})
-set_target_properties(qfisher PROPERTIES WIN32_EXECUTABLE ON MACOSX_BUNDLE ON)
+qt_add_resources(queenfisher icons PREFIX "/" BASE resources FILES ${ICONS})
+set_target_properties(queenfisher PROPERTIES WIN32_EXECUTABLE ON MACOSX_BUNDLE ON)
 
-install(TARGETS qfisher BUNDLE DESTINATION . RUNTIME DESTINATION bin)
+install(TARGETS queenfisher BUNDLE DESTINATION . RUNTIME DESTINATION bin)
 if(UNIX AND NOT APPLE)
-    install(FILES packaging/linux/qfisher.desktop DESTINATION share/applications)
-    install(FILES packaging/linux/qfisher.png DESTINATION share/icons/hicolor/32x32/apps)
+    install(FILES packaging/linux/queenfisher.desktop DESTINATION share/applications)
+    install(FILES packaging/linux/queenfisher.png DESTINATION share/icons/hicolor/32x32/apps)
 endif()

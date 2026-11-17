@@ -2,7 +2,7 @@
 
 #include <QWidget>
 
-// The About tab: what QFisher is, its licence and credits.
+// The About tab: what Queenfisher is, its licence and credits.
 class AboutPage : public QWidget
 {
     Q_OBJECT

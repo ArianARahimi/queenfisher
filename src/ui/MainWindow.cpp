@@ -15,7 +15,7 @@
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
-    setWindowTitle("QFisher");
+    setWindowTitle("Queenfisher");
     resize(1100, 760);
     setMinimumSize(900, 640);
 
@@ -30,7 +30,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     tabs_->addTab(downloads_, Theme::recolour(":/icons/tab-download.png", Theme::accent, true), "Download");
     tabs_->addTab(new LibraryPage(library_), QIcon(":/icons/tab-library.png"), "Library");
     tabs_->addTab(new AboutPage, QIcon(":/icons/info.png"), "About");
-    auto *wordmark = new QLabel("QFisher");
+    auto *wordmark = new QLabel("Queenfisher");
     wordmark->setObjectName("wordmark");
     tabs_->setCornerWidget(wordmark, Qt::TopRightCorner);
     setCentralWidget(tabs_);
@@ -43,7 +43,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     showActivity(0, 0, 0);
     showEngine();
 
-    // QFisher's own yt-dlp: installed on first run, updated once a day, repaired when a site changes.
+    // Queenfisher's own yt-dlp: installed on first run, updated once a day, repaired when a site changes.
     engine_->checkDaily();
 }
 
@@ -69,7 +69,7 @@ void MainWindow::buildMenus()
     tools->addAction("Use &Regular yt-dlp", this, [this] { engine_->switchChannel(YtDlpEngine::Stable); });
 
     QMenu *help = menuBar()->addMenu("&Help");
-    help->addAction("&About QFisher", this, [this] { tabs_->setCurrentIndex(2); });
+    help->addAction("&About Queenfisher", this, [this] { tabs_->setCurrentIndex(2); });
 }
 
 // Sunken cells left and right, like the status bars of the time.

@@ -51,7 +51,7 @@ QString YtDlpEngine::managedPath() const
 #endif
 }
 
-// QFisher's own copy first; a system copy only until that exists.
+// Queenfisher's own copy first; a system copy only until that exists.
 QString YtDlpEngine::path() const
 {
     return QFile::exists(managedPath()) ? managedPath() : QStandardPaths::findExecutable("yt-dlp");
@@ -118,7 +118,7 @@ void YtDlpEngine::run(Channel channel, bool force, Done done)
         return;
     }
     if (assetName().isEmpty()) {
-        done(false, "QFisher can't fetch yt-dlp for this kind of computer");
+        done(false, "Queenfisher can't fetch yt-dlp for this kind of computer");
         return;
     }
     busy_ = true;
@@ -143,7 +143,7 @@ void YtDlpEngine::latestTag(Channel channel, std::function<void(const QString &)
     // /releases/latest redirects to /releases/tag/<tag>; no API token or JSON needed.
     QNetworkRequest req(QUrl("https://github.com/" + repo(channel) + "/releases/latest"));
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
-    req.setHeader(QNetworkRequest::UserAgentHeader, "QFisher");
+    req.setHeader(QNetworkRequest::UserAgentHeader, "Queenfisher");
     req.setTransferTimeout(30000);
     QNetworkReply *reply = net_.head(req);
     connect(reply, &QNetworkReply::finished, this, [reply, then] {
@@ -159,7 +159,7 @@ void YtDlpEngine::fetch(const QUrl &url, qint64 limit, std::function<void(QNetwo
 {
     QNetworkRequest req(url);
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
-    req.setHeader(QNetworkRequest::UserAgentHeader, "QFisher");
+    req.setHeader(QNetworkRequest::UserAgentHeader, "Queenfisher");
     req.setTransferTimeout(60000);
     QNetworkReply *reply = net_.get(req);
     connect(reply, &QNetworkReply::downloadProgress, reply, [reply, limit](qint64 got, qint64 total) {
