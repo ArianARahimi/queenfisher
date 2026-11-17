@@ -159,35 +159,17 @@ QWidget *DownloadPage::buildSidebar()
     quality_ = new QListWidget;
     quality_->addItems({"Best available", "2160p (4K)", "1440p", "1080p", "720p", "480p"});
     quality_->setCurrentRow(3);
-    for (QListWidget *l : {format_, quality_}) {   // tall enough for every row, no scroll bar
-        l->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        l->setFixedHeight(l->sizeHintForRow(0) * l->count() + 2 * l->frameWidth() + 2);
+    // Quality is exactly as tall as its rows; Format takes the rest, with room for more formats.
+    quality_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    quality_->setFixedHeight(quality_->sizeHintForRow(0) * quality_->count() + 2 * quality_->frameWidth() + 2);
+    format_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    for (QListWidget *l : {format_, quality_})
         Widgets::pickOnClick(l);
-    }
-
-    const QString movies = QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);
-    folder_ = new QLineEdit(shortPath(movies));
-    folder_->setToolTip(movies);
-    folder_->setReadOnly(true);
-    auto *change = new QPushButton("Change...");
-
-    subtitles_ = new QCheckBox("Subtitles");
-    subtitles_->setToolTip("Add English subtitles to the video when the site has them");
-    playlist_ = new QCheckBox("Whole playlist");
-    playlist_->setToolTip("When the link is part of a playlist, download every video in it");
 
     auto *formatBox = new QVBoxLayout;
     formatBox->addWidget(format_);
     auto *qualityBox = new QVBoxLayout;
     qualityBox->addWidget(quality_);
-    auto *folderBox = new QVBoxLayout;
-    folderBox->setSpacing(4);
-    folderBox->addWidget(folder_);
-    folderBox->addWidget(change, 0, Qt::AlignRight);
-    auto *extrasBox = new QVBoxLayout;
-    extrasBox->setSpacing(4);
-    extrasBox->addWidget(subtitles_);
-    extrasBox->addWidget(playlist_);
 
     auto *openFolder = new QPushButton("Open Download Folder");
     auto *side = new QWidget;
@@ -199,11 +181,8 @@ QWidget *DownloadPage::buildSidebar()
     title->setObjectName("sideTitle");
     layout->addWidget(title);
     qualityBox_ = Widgets::sideBox("Quality", qualityBox);
-    layout->addWidget(Widgets::sideBox("Format", formatBox));
+    layout->addWidget(Widgets::sideBox("Format", formatBox), 1);
     layout->addWidget(qualityBox_);
-    layout->addWidget(Widgets::sideBox("Save To", folderBox));
-    layout->addWidget(Widgets::sideBox("Extras", extrasBox));
-    layout->addStretch(1);
     layout->addWidget(openFolder);
 
     // Audio has no picture size to choose, and no subtitles: the whole Quality box greys out.
@@ -213,9 +192,7 @@ QWidget *DownloadPage::buildSidebar()
     });
     connect(format_, &QListWidget::currentRowChanged, this, &DownloadPage::showQuality);
     connect(quality_, &QListWidget::currentRowChanged, this, &DownloadPage::showQuality);
-    connect(change, &QPushButton::clicked, this, &DownloadPage::chooseFolder);
     connect(openFolder, &QPushButton::clicked, this, &DownloadPage::openFolder);
-    connect(playlist_, &QCheckBox::toggled, this, [this] { if (isWebLink(link_->text())) previewDelay_.start(); });
     return side;
 }
 
@@ -245,6 +222,30 @@ QWidget *DownloadPage::buildTop()
     meta_->setObjectName("meta");
     meta_->setWordWrap(true);
 
+    // Where it goes and the extras, above the title, in two compact lines.
+    const QString movies = QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);
+    folder_ = new QLineEdit(shortPath(movies));
+    folder_->setToolTip(movies);
+    folder_->setReadOnly(true);
+    auto *change = new QPushButton("Change...");
+    auto *saveLabel = new QLabel("Save to");
+    saveLabel->setObjectName("meta");
+    auto *saveRow = new QHBoxLayout;
+    saveRow->setSpacing(6);
+    saveRow->addWidget(saveLabel);
+    saveRow->addWidget(folder_, 1);
+    saveRow->addWidget(change);
+
+    subtitles_ = new QCheckBox("Subtitles");
+    subtitles_->setToolTip("Add English subtitles to the video when the site has them");
+    playlist_ = new QCheckBox("Whole playlist");
+    playlist_->setToolTip("When the link is part of a playlist, download every video in it");
+    auto *extrasRow = new QHBoxLayout;
+    extrasRow->setSpacing(16);
+    extrasRow->addWidget(subtitles_);
+    extrasRow->addWidget(playlist_);
+    extrasRow->addStretch(1);
+
     // What the video really offers, and roughly how big the download will be.
     qualityInfo_ = new QLabel;
     qualityInfo_->setObjectName("qualityInfo");
@@ -252,6 +253,9 @@ QWidget *DownloadPage::buildTop()
 
     auto *info = new QVBoxLayout;
     info->setSpacing(6);
+    info->addLayout(saveRow);
+    info->addLayout(extrasRow);
+    info->addSpacing(8);
     info->addWidget(title_);
     info->addWidget(meta_);
     info->addSpacing(4);
@@ -290,6 +294,8 @@ QWidget *DownloadPage::buildTop()
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(pane, 1);
 
+    connect(change, &QPushButton::clicked, this, &DownloadPage::chooseFolder);
+    connect(playlist_, &QCheckBox::toggled, this, [this] { if (isWebLink(link_->text())) previewDelay_.start(); });
     connect(link_, &QLineEdit::textChanged, this, &DownloadPage::linkChanged);
     connect(link_, &QLineEdit::returnPressed, this, [this] { if (download_->isEnabled()) download(); });
     connect(paste, &QPushButton::clicked, this, &DownloadPage::pasteLink);
