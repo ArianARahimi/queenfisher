@@ -228,19 +228,21 @@ void YtDlpEngine::smokeTest(const QString &file, const QString &tag)
     QTimer::singleShot(60000, p, [p] { p->kill(); });
     connect(p, &QProcess::finished, this, [=, this](int code, QProcess::ExitStatus status) {
         p->deleteLater();
-        const QString said = QString::fromUtf8(p->readAllStandardOutput()).trimmed();
-        if (status != QProcess::NormalExit || code != 0 || said != tag) {
+        const auto giveUp = [this, file](const QString &why) {
             QFile::remove(file);
-            loadStamp();
-            return finish(false, "The new yt-dlp " + tag + " didn't start properly, keeping the old one");
-        }
+            loadStamp();   // back to the channel of the copy still in use
+            finish(false, why);
+        };
+        const QString said = QString::fromUtf8(p->readAllStandardOutput()).trimmed();
+        if (status != QProcess::NormalExit || code != 0 || said != tag)
+            return giveUp("The new yt-dlp " + tag + " didn't start properly, keeping the old one");
         const QString current = managedPath(), previous = managedPath() + ".previous";
         QFile::remove(previous);
         if (QFile::exists(current) && !QFile::rename(current, previous))
-            return finish(false, "Couldn't replace yt-dlp (is it running?)");
+            return giveUp("Couldn't replace yt-dlp (is it running?)");
         if (!QFile::rename(file, current)) {
             QFile::rename(previous, current);
-            return finish(false, "Couldn't put the new yt-dlp in place");
+            return giveUp("Couldn't put the new yt-dlp in place");
         }
         stamp_.version = tag;
         stamp_.checked = QDateTime::currentMSecsSinceEpoch();
