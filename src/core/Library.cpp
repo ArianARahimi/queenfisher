@@ -29,6 +29,7 @@ void Library::forgetMissing()
 
 void Library::add(const Entry &entry)
 {
+    entries_.removeIf([&](const Entry &e) { return e.file == entry.file; });   // one row per file, newest on top
     entries_.prepend(entry);
     while (entries_.size() > keep)
         entries_.removeLast();

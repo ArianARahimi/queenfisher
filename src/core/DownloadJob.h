@@ -26,6 +26,7 @@ public:
     void discardPartial();   // deletes leftovers of an unfinished download (.part, pieces, subtitles)
     const Options &options() const { return options_; }
     QString file() const { return file_; }   // the finished file, once yt-dlp has named it
+    bool alreadyHad() const { return skipped_ && !downloaded_; }   // the file was there, nothing new
 
 signals:
     void logLine(const QString &line);
@@ -48,6 +49,8 @@ private:
     QByteArray partial_[2];   // unfinished line per channel
     ProgressTracker tracker_;
     double speed_ = -1, eta_ = -1;   // smoothed, so the numbers don't flicker
+    bool skipped_ = false;           // yt-dlp found a file already there
+    bool downloaded_ = false;        // ...and whether anything was downloaded anyway
     bool sidecar_ = false;           // a subtitle or thumbnail is downloading, not the video
     QString title_;
     QString file_;

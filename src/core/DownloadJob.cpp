@@ -83,7 +83,7 @@ void DownloadJob::start()
         startedAt_ = QDateTime::currentDateTime().addSecs(-2);   // a little slack for coarse file times
     tracker_.reset();
     speed_ = eta_ = -1;
-    sidecar_ = false;
+    sidecar_ = skipped_ = downloaded_ = false;
     const QStringList args = ytDlpArgs(options_);
     emit logLine(QString("> yt-dlp %1  [%2]").arg(args.join(' '), engine_->version()));
     process_.start(program, args);
@@ -184,12 +184,14 @@ void DownloadJob::trackLine(const QString &line)
         sidecar_ = sidecar.match(line).hasMatch();   // subtitles and thumbnails aren't parts of the video
         created_.append(line.mid(24));
         if (!sidecar_) {
+            downloaded_ = true;
             tracker_.startPart();
             file_ = line.mid(24);
         }
     }
     else if (line.startsWith("[download] ") && line.endsWith(" has already been downloaded")) {
         tracker_.finishPart();
+        skipped_ = true;
         file_ = line.mid(11).chopped(28);
     }
 

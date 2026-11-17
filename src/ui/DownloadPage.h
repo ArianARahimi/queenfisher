@@ -7,6 +7,7 @@
 #include <QPointer>
 #include <QTimer>
 #include <QWidget>
+#include <functional>
 
 class Banner;
 class DownloadJob;
@@ -39,6 +40,8 @@ public:
     ~DownloadPage() override;
 
     QAction *logAction() const { return logAction_; }
+    // Asked when the video is already in the folder; true replaces it. Tests swap it out.
+    std::function<bool(const QString &file)> askOverwrite;
     QString folder() const;
     void pasteLink();
     void chooseFolder();

@@ -29,6 +29,7 @@
 #include <QPlainTextEdit>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
 #include <QSignalBlocker>
@@ -138,6 +139,16 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg
 
     linkChanged({});
     restoreSettings();
+    askOverwrite = [this](const QString &file) {
+        QMessageBox box(QMessageBox::Question, "Already downloaded",
+                        QString("\"%1\" is already in %2.").arg(QFileInfo(file).fileName(), shortPath(QFileInfo(file).path())),
+                        QMessageBox::NoButton, window());
+        QPushButton *replace = box.addButton("Overwrite", QMessageBox::AcceptRole);
+        box.setDefaultButton(box.addButton("Keep", QMessageBox::RejectRole));   // Enter and Esc keep it
+        box.setEscapeButton(box.defaultButton());
+        box.exec();
+        return box.clickedButton() == replace;
+    };
     engineChanged();
 }
 
@@ -737,8 +748,9 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
     });
     connect(job, &DownloadJob::finished, this, [this, item, job, number](bool ok, const QString &message) {
         const bool stopped = message == "Stopped";
-        setState(item, ok ? State::Done : stopped ? State::Stopped : State::Failed, ok ? "Complete" : message);
-        log(ok ? "Finished: " + job->file() : "Stopped: " + message, number);
+        const QString done = job->alreadyHad() ? "Already downloaded" : "Complete";   // never a silent skip
+        setState(item, ok ? State::Done : stopped ? State::Stopped : State::Failed, ok ? done : message);
+        log(ok ? done + ": " + job->file() : "Stopped: " + message, number);
         if (ok)
             library_->add({item->text(Name), job->options().url, job->file(), job->options().label(),
                            QFileInfo(job->file()).size(), QDateTime::currentDateTime()});
@@ -746,6 +758,15 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
             running_ = nullptr;
         refreshButtons();
         startNext();
+        if (ok && job->alreadyHad() && !job->options().overwrite)   // asked once the job is done with
+            QTimer::singleShot(0, this, [this, item, job] {
+                if (jobs_.value(item) != job || !askOverwrite(job->file()))
+                    return;   // the row went or was redone meanwhile, or the user keeps the file
+                Options again = job->options();
+                again.overwrite = true;
+                addJob(item, again);
+                startNext();
+            });
     });
 }
 

@@ -20,7 +20,9 @@ QStringList ytDlpArgs(const Options &o)
               "%(progress.speed)s|%(progress.eta)s|%(progress.fragment_index)s|%(progress.fragment_count)s|"
               "%(info.title)s",
         "-P", o.folder,
-        "-o", o.playlist ? "%(playlist_index)03d - %(title)s [%(id)s].%(ext)s" : "%(title)s [%(id)s].%(ext)s",
+        // The picture's height is in the name ("... [id] 1080p.mp4"; none for sound), so another
+        // quality is another file instead of yt-dlp skipping it as already downloaded.
+        "-o", QString(o.playlist ? "%(playlist_index)03d - " : "") + "%(title)s [%(id)s]%(height& {}p|)s.%(ext)s",
         o.playlist ? "--yes-playlist" : "--no-playlist",
     };
 
@@ -51,6 +53,8 @@ QStringList ytDlpArgs(const Options &o)
     if (o.subtitles && !o.audioOnly())
         a << "--write-subs" << "--embed-subs" << "--sub-langs" << "en.*,en";
 
+    if (o.overwrite)
+        a << "--force-overwrites";
     if (!o.cookies.isEmpty())
         a << "--cookies-from-browser" << o.cookies;
     if (!o.ffmpeg.isEmpty())

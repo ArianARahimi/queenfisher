@@ -14,6 +14,7 @@ struct Options
     int maxHeight = 0;   // 0 = best available
     bool subtitles = false;
     bool playlist = false;
+    bool overwrite = false;   // replace a file that's already there instead of keeping it
     QString cookies;     // --cookies-from-browser value, only set after a site asks for a sign-in
     QString ffmpeg;      // folder with Queenfisher's own ffmpeg (Windows); empty = yt-dlp finds one
 
