@@ -28,6 +28,10 @@ DESTDIR="$PWD/build/AppDir" cmake --install build/appimage
 # No FUSE needed (containers, CI): the tools unpack themselves instead.
 export APPIMAGE_EXTRACT_AND_RUN=1
 export PATH="$PWD/$tools:$PATH"
+# Tell linuxdeploy which Qt to bundle, also when it isn't the system's (CI installs its own).
+QMAKE=$(command -v qmake6 || command -v qmake)
+export QMAKE
+export LD_LIBRARY_PATH="$("$QMAKE" -query QT_INSTALL_LIBS)${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export LDAI_OUTPUT="dist/Queenfisher-$version-x86_64.AppImage"
 export EXTRA_PLATFORM_PLUGINS="libqwayland-generic.so"
 "$tools/linuxdeploy-x86_64.AppImage" --appdir build/AppDir --plugin qt --output appimage \
