@@ -9,6 +9,7 @@
 #include "core/YtDlpEngine.h"
 
 #include <QApplication>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QMenu>
 #include <QMenuBar>
@@ -41,9 +42,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     tabs_->addTab(downloads_, Theme::recolour(":/icons/tab-download.png", Theme::accent, true), "Download");
     tabs_->addTab(new LibraryPage(library_), QIcon(":/icons/tab-library.png"), "Library");
     tabs_->addTab(new AboutPage, QIcon(":/icons/info.png"), "About");
+    // The fish and the name, top right.
+    auto *fish = new QLabel;
+    fish->setPixmap(windowIcon().pixmap(26, 26));
     auto *wordmark = new QLabel("Queenfisher");
     wordmark->setObjectName("wordmark");
-    tabs_->setCornerWidget(wordmark, Qt::TopRightCorner);
+    auto *corner = new QWidget;
+    auto *cornerLayout = new QHBoxLayout(corner);
+    cornerLayout->setContentsMargins(0, 0, 0, 0);
+    cornerLayout->setSpacing(6);
+    cornerLayout->addWidget(fish);
+    cornerLayout->addWidget(wordmark);
+    tabs_->setCornerWidget(corner, Qt::TopRightCorner);
     setCentralWidget(tabs_);
 
     buildTray();
