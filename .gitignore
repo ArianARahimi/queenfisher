@@ -5,3 +5,4 @@ compile_commands.json
 .claude/
 .mcp.json
 dist/
+__pycache__/
