@@ -35,6 +35,7 @@ cmake --build build
 - Fetching and updating yt-dlp has only been tested on Linux. Until QFisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
 - YouTube needs Deno installed to unlock most videos. QFisher tells you when it's missing but doesn't install it yet.
 - ffmpeg must be installed on Linux and macOS.
+- Stopping a download also stops the programs yt-dlp started (like ffmpeg) on Linux and macOS. On Windows only yt-dlp itself is stopped so far, so a merge already under way may finish on its own.
 - When a site asks for a sign-in, QFisher retries once with your default browser's cookies. That only works on Linux so far.
 - Before the sound part of a video starts, its size is guessed, so the bar can pause briefly when it starts.
 - Only checked on Linux (KDE); the look on Windows and macOS is untested. The window frame and title bar are the system's own.

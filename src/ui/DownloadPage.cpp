@@ -637,7 +637,9 @@ void DownloadPage::removeSelected()
         DownloadJob *job = jobs_.take(item);
         if (job == running_)
             running_ = nullptr;
-        delete job;   // stops yt-dlp if it's still running
+        if (job && (stateOf(item) == State::Failed || stateOf(item) == State::Stopped))
+            job->discardPartial();   // a stopped or failed download leaves nothing behind
+        delete job;                  // a running one is stopped first, then cleans up after itself
         delete item;
     }
     startNext();

@@ -4,6 +4,7 @@
 #include "Options.h"
 #include "ProgressTracker.h"
 
+#include <QDateTime>
 #include <QObject>
 #include <QProcess>
 
@@ -20,7 +21,8 @@ public:
     ~DownloadJob() override;
 
     void start();
-    void cancel();
+    void cancel();           // stops yt-dlp and anything it started, then deletes this download's files
+    void discardPartial();   // deletes leftovers of an unfinished download (.part, pieces, subtitles)
     const Options &options() const { return options_; }
     QString file() const { return file_; }   // the finished file, once yt-dlp has named it
 
@@ -37,6 +39,7 @@ private:
     void handleProgress(const QString &fields);
     void trackLine(const QString &line);
     void recover();
+    void stopAll(bool hard);
 
     Options options_;
     Engine *engine_;
@@ -47,6 +50,8 @@ private:
     bool sidecar_ = false;           // a subtitle or thumbnail is downloading, not the video
     QString title_;
     QString file_;
+    QStringList created_;      // every file yt-dlp named during this download
+    QDateTime startedAt_;
     QStringList problems_;   // ERROR and WARNING lines of the current attempt
     bool triedRepair_ = false;
     bool cancelled_ = false;

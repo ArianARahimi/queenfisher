@@ -2,12 +2,24 @@
 #include "Cookies.h"
 #include "Engine.h"
 
+#include <QDir>
+#include <QFileInfo>
 #include <QPointer>
 #include <QRegularExpression>
+#include <QTimer>
+
+#ifdef Q_OS_UNIX
+#include <csignal>
+#include <unistd.h>
+#endif
 
 DownloadJob::DownloadJob(Options options, Engine *engine, QObject *parent)
     : QObject(parent), options_(std::move(options)), engine_(engine)
 {
+#ifdef Q_OS_UNIX
+    // yt-dlp gets its own process group, so stopping it also stops the ffmpeg it starts.
+    process_.setChildProcessModifier([] { ::setpgid(0, 0); });
+#endif
     connect(&process_, &QProcess::readyReadStandardOutput, this, [this] { readOutput(QProcess::StandardOutput); });
     connect(&process_, &QProcess::readyReadStandardError, this, [this] { readOutput(QProcess::StandardError); });
     connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError e) {
@@ -18,8 +30,10 @@ DownloadJob::DownloadJob(Options options, Engine *engine, QObject *parent)
         for (auto channel : {QProcess::StandardOutput, QProcess::StandardError})
             if (!partial_[channel].isEmpty())
                 handleLine(QString::fromUtf8(std::exchange(partial_[channel], {})));
-        if (cancelled_)
+        if (cancelled_) {
+            discardPartial();
             emit finished(false, "Stopped");
+        }
         else if (status == QProcess::NormalExit && code == 0)
             emit finished(true, "Done");
         else
@@ -31,8 +45,9 @@ DownloadJob::~DownloadJob()
 {
     if (process_.state() != QProcess::NotRunning) {
         disconnect(&process_, nullptr, this, nullptr);   // no signals from a half-destroyed job
-        process_.kill();
-        process_.waitForFinished(2000);
+        stopAll(true);
+        process_.waitForFinished(3000);
+        discardPartial();   // removed while running: nothing of it should stay behind
     }
 }
 
@@ -45,6 +60,8 @@ void DownloadJob::start()
     }
     problems_.clear();
     file_.clear();
+    if (!startedAt_.isValid())
+        startedAt_ = QDateTime::currentDateTime().addSecs(-2);   // a little slack for coarse file times
     tracker_.reset();
     speed_ = eta_ = -1;
     sidecar_ = false;
@@ -55,8 +72,44 @@ void DownloadJob::start()
 
 void DownloadJob::cancel()
 {
+    if (process_.state() == QProcess::NotRunning)
+        return;
     cancelled_ = true;
-    process_.terminate();   // lets yt-dlp tidy up its part files
+    stopAll(false);
+    QTimer::singleShot(5000, this, [this] {   // still going after 5 s: force it
+        if (process_.state() != QProcess::NotRunning)
+            stopAll(true);
+    });
+}
+
+void DownloadJob::stopAll(bool hard)
+{
+#ifdef Q_OS_UNIX
+    if (const qint64 pid = process_.processId(); pid > 0) {
+        ::kill(-pid_t(pid), hard ? SIGKILL : SIGTERM);   // the whole group: yt-dlp and its ffmpeg
+        return;
+    }
+#endif
+    hard ? process_.kill() : process_.terminate();
+}
+
+// Only files named after this video (title [id]) that were written since it started,
+// so files that were there before, or belong to other videos, are never touched.
+void DownloadJob::discardPartial()
+{
+    for (const QString &path : std::as_const(created_)) {
+        const QFileInfo info(path);
+        const QString name = info.fileName();
+        const qsizetype id = name.lastIndexOf(']');
+        const QString stem = id > 0 ? name.left(id + 1) : info.completeBaseName();
+        if (stem.size() < 3)
+            continue;
+        const QDir dir = info.absoluteDir();
+        for (const QFileInfo &f : dir.entryInfoList(QDir::Files | QDir::Hidden)) {
+            if (f.fileName().startsWith(stem) && f.lastModified() >= startedAt_ && QFile::remove(f.absoluteFilePath()))
+                emit logLine("Deleted leftover " + f.fileName());
+        }
+    }
 }
 
 void DownloadJob::readOutput(QProcess::ProcessChannel channel)
@@ -104,6 +157,7 @@ void DownloadJob::trackLine(const QString &line)
         tracker_.setPartCount(int(m.captured(1).count('+')) + 1);
     else if (line.startsWith("[download] Destination: ")) {
         sidecar_ = sidecar.match(line).hasMatch();   // subtitles and thumbnails aren't parts of the video
+        created_.append(line.mid(24));
         if (!sidecar_) {
             tracker_.startPart();
             file_ = line.mid(24);
@@ -118,9 +172,9 @@ void DownloadJob::trackLine(const QString &line)
     static const QRegularExpression merged(R"re(^\[Merger\] Merging formats into "(.+)"$)re");
     static const QRegularExpression moved(R"re(^\[(ExtractAudio|VideoRemuxer|VideoConvertor)\] .*Destination: (.+)$)re");
     if (const auto m = merged.match(line); m.hasMatch())
-        file_ = m.captured(1);
+        created_.append(file_ = m.captured(1));
     else if (const auto m = moved.match(line); m.hasMatch())
-        file_ = m.captured(2);
+        created_.append(file_ = m.captured(2));
 }
 
 // downloaded|total|estimate|speed|eta|fragment|fragments|title, missing numbers come as "NA".
