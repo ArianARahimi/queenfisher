@@ -20,7 +20,7 @@ inline const QColor edge{0x3c, 0x3f, 0x48};     // inner highlight line
 inline const QColor text{0xe6, 0xe6, 0xe6};
 inline const QColor dim{0x9a, 0xa0, 0xab};
 inline const QColor accent{0x4e, 0x86, 0x1a};   // the green: focus, hover, selection, headers
-inline const QColor onAccent{0x0b, 0x16, 0x04}; // text on the green
+inline const QColor onAccent{0xff, 0xff, 0xff}; // text on the green
 inline const QColor glow{0x8c, 0xc4, 0x44};     // green text on dark: wordmark, links, ticks
 inline const QColor hover{0x3c, 0x56, 0x22};    // dark green wash behind hovered buttons and tabs
 inline const QColor running = accent;           // progress while downloading
