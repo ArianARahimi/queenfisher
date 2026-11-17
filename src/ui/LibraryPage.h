@@ -15,6 +15,9 @@ class LibraryPage : public QWidget
 public:
     explicit LibraryPage(Library *library, QWidget *parent = nullptr);
 
+protected:
+    void showEvent(QShowEvent *event) override;
+
 private:
     void refill();
     void filter(const QString &text);

@@ -3,7 +3,6 @@
 #include "Theme.h"
 #include "Thumbnail.h"
 #include "Widgets.h"
-#include "core/ClipJob.h"
 #include "core/DownloadJob.h"
 #include "core/Ffmpeg.h"
 #include "core/Library.h"
@@ -244,14 +243,10 @@ QWidget *DownloadPage::buildTop()
     meta_->setObjectName("meta");
     meta_->setWordWrap(true);
 
-    // Play Clip and Open Page sit with the video they act on.
-    play_ = new QPushButton(QIcon(":/icons/play.png"), "Play Clip");
-    play_->setToolTip("Play a short clip with sound in the preview");
+    // Open Page sits with the video it acts on.
     openPage_ = new QPushButton(QIcon(":/icons/browser.png"), "Open Page");
     openPage_->setToolTip("Open the link in your web browser");
     auto *videoActions = new QHBoxLayout;
-    videoActions->setSpacing(6);
-    videoActions->addWidget(play_);
     videoActions->addWidget(openPage_);
     videoActions->addStretch(1);
 
@@ -264,8 +259,8 @@ QWidget *DownloadPage::buildTop()
     info->addStretch(1);
     auto *previewRow = new QHBoxLayout;
     previewRow->setSpacing(12);
-    previewRow->addWidget(thumbnail_, 0, Qt::AlignTop);
-    previewRow->addLayout(info, 1);
+    previewRow->addWidget(thumbnail_, 3);   // the picture grows with the window
+    previewRow->addLayout(info, 2);
 
     // Download right next to Paste: paste, then one short move to download.
     download_ = new QPushButton(Theme::recolour(":/icons/download.png", Theme::accent, false), "Download");
@@ -299,8 +294,6 @@ QWidget *DownloadPage::buildTop()
     connect(link_, &QLineEdit::returnPressed, this, [this] { if (download_->isEnabled()) download(); });
     connect(paste, &QPushButton::clicked, this, &DownloadPage::pasteLink);
     connect(download_, &QPushButton::clicked, this, &DownloadPage::download);
-    connect(play_, &QPushButton::clicked, this, &DownloadPage::toggleClip);
-    connect(thumbnail_, &Thumbnail::clicked, this, &DownloadPage::toggleClip);
     connect(openPage_, &QPushButton::clicked, this, [this] { QDesktopServices::openUrl(QUrl(link_->text().trimmed())); });
     return top;
 }
@@ -417,12 +410,8 @@ void DownloadPage::linkChanged(const QString &text)
     const bool ok = isWebLink(text);
     download_->setEnabled(ok);
     openPage_->setEnabled(ok);
-    play_->setEnabled(false);
     delete preview_;   // a new link makes the old answer useless
-    delete clip_;
-    playWhenReady_ = false;
     previewTitle_.clear();
-    previewSeconds_ = -1;
     previewDelay_.stop();
     if (ok) {
         title_->setText(QUrl(text.trimmed()).host());
@@ -470,9 +459,6 @@ void DownloadPage::startPreview()
 void DownloadPage::showPreview(const PreviewInfo &info)
 {
     previewTitle_ = info.title;
-    previewSeconds_ = info.seconds;
-    const bool clipOk = info.playlistCount < 0 && !info.live && info.seconds > 0;
-    play_->setEnabled(clipOk);
     title_->setText(info.title);
     QStringList meta;
     if (!info.channel.isEmpty())
@@ -491,9 +477,6 @@ void DownloadPage::showPreview(const PreviewInfo &info)
                         : info.live ? QString("LIVE") : info.seconds >= 0 ? clock(info.seconds) : QString();
     if (info.thumbnail.isEmpty()) {
         thumbnail_->setHint("No picture");
-        thumbnail_->setClipAvailable(clipOk);
-        if (clipOk)
-            fetchClip(false);
         return;
     }
     thumbnail_->setHint("Loading picture...");
@@ -506,7 +489,7 @@ void DownloadPage::showPreview(const PreviewInfo &info)
             reply->abort();   // a thumbnail is never this big
     });
     const QString url = link_->text().trimmed();
-    connect(reply, &QNetworkReply::finished, this, [this, reply, url, badge, clipOk] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, url, badge] {
         reply->deleteLater();
         if (link_->text().trimmed() != url)
             return;   // the link changed while the picture loaded
@@ -515,58 +498,7 @@ void DownloadPage::showPreview(const PreviewInfo &info)
             thumbnail_->setHint("No picture");
         else
             thumbnail_->setPicture(picture, badge);
-        thumbnail_->setClipAvailable(clipOk);
     });
-    if (clipOk)
-        fetchClip(false);   // in the background, so a click can play it straight away
-}
-
-// Click: play the clip (or stop it). It's usually fetched already, see showPreview().
-void DownloadPage::toggleClip()
-{
-    if (thumbnail_->playing()) {
-        thumbnail_->stopClip();
-        return;
-    }
-    if (play_->isEnabled())
-        fetchClip(true);
-}
-
-// Gets the clip for the current link; plays it once it's there if `play` (or a click while
-// loading) asks for it. Started as soon as the preview shows, so clicking rarely waits.
-void DownloadPage::fetchClip(bool play)
-{
-    const QString url = link_->text().trimmed();
-    if (QFile::exists(clips_.value(url))) {
-        if (play)
-            thumbnail_->playClip(clips_.value(url));
-        return;
-    }
-    playWhenReady_ = playWhenReady_ || play;
-    if (playWhenReady_)
-        thumbnail_->setLoadingClip("Loading clip...");
-    if (clip_)
-        return;   // already on its way
-    // Start a little way into longer videos, past intros and black frames.
-    const int start = previewSeconds_ > 60 ? qMin(previewSeconds_ / 10, 60) : 0;
-    clip_ = new ClipJob(url, start, clipDir_.path(), url == signInUrl_ ? signInCookies_ : QString(), engine_, this);
-    if (ffmpeg_)
-        clip_->setFfmpeg(ffmpeg_->location());
-    connect(clip_, &ClipJob::logLine, this, [this](const QString &line) { log(line); });
-    connect(clip_, &ClipJob::ready, this, [this, job = clip_.data()](const QString &file) {
-        clips_.insert(job->url(), file);
-        job->deleteLater();
-        if (link_->text().trimmed() == job->url() && std::exchange(playWhenReady_, false))
-            thumbnail_->playClip(file);
-    });
-    connect(clip_, &ClipJob::failed, this, [this, job = clip_.data()](const QString &message) {
-        job->deleteLater();
-        if (!std::exchange(playWhenReady_, false))
-            return;   // a background fetch failing isn't worth a message until someone clicks
-        thumbnail_->setLoadingClip(message);
-        QTimer::singleShot(3000, thumbnail_, [this] { thumbnail_->setLoadingClip({}); });
-    });
-    clip_->start();
 }
 
 void DownloadPage::showNotice()

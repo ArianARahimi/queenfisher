@@ -14,6 +14,17 @@ constexpr int keep = 1000;   // oldest entries drop off after this many
 Library::Library(QString file, QObject *parent) : QObject(parent), file_(std::move(file))
 {
     load();
+    forgetMissing();
+}
+
+void Library::forgetMissing()
+{
+    const qsizetype before = entries_.size();
+    entries_.removeIf([](const Entry &e) { return !QFileInfo::exists(e.file); });
+    if (entries_.size() == before)
+        return;
+    save();
+    emit changed();
 }
 
 void Library::add(const Entry &entry)

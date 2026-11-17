@@ -4,12 +4,10 @@
 
 #include <QHash>
 #include <QPointer>
-#include <QTemporaryDir>
 #include <QTimer>
 #include <QWidget>
 
 class Banner;
-class ClipJob;
 class DownloadJob;
 class Ffmpeg;
 class Library;
@@ -57,8 +55,6 @@ private:
     void linkChanged(const QString &text);
     void startPreview();
     void showPreview(const PreviewInfo &info);
-    void toggleClip();
-    void fetchClip(bool play);
     void engineChanged();
     void showNotice();
 
@@ -93,7 +89,6 @@ private:
     QLabel *title_ = nullptr;
     QLabel *meta_ = nullptr;
     QPushButton *download_ = nullptr;
-    QPushButton *play_ = nullptr;
     QPushButton *openPage_ = nullptr;
 
     QTreeWidget *list_ = nullptr;
@@ -110,11 +105,6 @@ private:
     QPointer<PreviewJob> preview_;
     QNetworkAccessManager *net_ = nullptr;
     QString previewTitle_;
-    int previewSeconds_ = -1;
     QString signInUrl_, signInCookies_;   // a preview needed a sign-in: reuse it for that link
 
-    QPointer<ClipJob> clip_;
-    QTemporaryDir clipDir_;               // preview clips, deleted when Queenfisher closes
-    QHash<QString, QString> clips_;       // link -> clip file
-    bool playWhenReady_ = false;          // clicked while the clip was still loading
 };

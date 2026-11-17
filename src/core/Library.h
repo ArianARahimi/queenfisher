@@ -22,6 +22,7 @@ public:
     const QList<Entry> &entries() const { return entries_; }   // newest first
     void add(const Entry &entry);
     void remove(int index);
+    void forgetMissing();   // drops entries whose file was moved or deleted
 
 signals:
     void changed();

@@ -1,15 +1,10 @@
 #pragma once
 
-#include <QImage>
 #include <QPixmap>
 #include <QWidget>
 
-class QAudioOutput;
-class QMediaPlayer;
-class QVideoSink;
-
-// 16:9 preview picture. When a clip is available, clicking plays it once with sound inside
-// the same frame; clicking again, or the clip ending, goes back to the picture.
+// Preview picture. Grows and shrinks with the window; the picture keeps its shape, with the
+// length badge in its corner.
 class Thumbnail : public QWidget
 {
     Q_OBJECT
@@ -17,30 +12,20 @@ class Thumbnail : public QWidget
 public:
     explicit Thumbnail(QWidget *parent = nullptr);
     void setPicture(const QPixmap &picture, const QString &badge = {});
-    void setHint(const QString &hint);         // shown when there's no picture; stops any clip
-    void setClipAvailable(bool available);     // shows the play button
-    void setLoadingClip(const QString &text);  // "Loading clip..." over the picture
-    void playClip(const QString &file);
-    void stopClip();
-    bool playing() const;
-
-signals:
-    void clicked();
+    void setHint(const QString &hint);   // shown when there's no picture
+    QSize sizeHint() const override { return {384, 216}; }
+    QSize minimumSizeHint() const override { return {192, 108}; }
 
 protected:
     void paintEvent(QPaintEvent *) override;
-    void mouseReleaseEvent(QMouseEvent *event) override;
+    void resizeEvent(QResizeEvent *) override;
 
 private:
-    void drawPlayButton(class QPainter &p, const QRect &area) const;
+    QRect area() const { return rect().adjusted(2, 2, -2, -2); }
+    void rescale();
 
-    QPixmap picture_;       // already scaled to fill the frame
-    QImage frame_;          // current clip frame
+    QPixmap original_;
+    QPixmap scaled_;   // original_ fitted to the current size, redone only when that changes
     QString badge_;
     QString hint_ = "Paste a link to see a preview";
-    QString overlay_;       // loading or error text over the picture
-    bool clipAvailable_ = false;
-    QMediaPlayer *player_ = nullptr;
-    QAudioOutput *audio_ = nullptr;
-    QVideoSink *sink_ = nullptr;
 };

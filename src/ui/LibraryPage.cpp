@@ -77,22 +77,25 @@ LibraryPage::LibraryPage(Library *library, QWidget *parent) : QWidget(parent), l
     refill();
 }
 
+// Opening the tab drops files that were moved or deleted since.
+void LibraryPage::showEvent(QShowEvent *event)
+{
+    library_->forgetMissing();
+    QWidget::showEvent(event);
+}
+
 void LibraryPage::refill()
 {
     list_->clear();
     const QList<Library::Entry> &entries = library_->entries();
     for (int i = 0; i < entries.size(); ++i) {
         const Library::Entry &e = entries[i];
-        const bool exists = QFileInfo::exists(e.file);
         auto *item = new QTreeWidgetItem(list_, {e.title, e.format, e.bytes > 0 ? Widgets::sizeText(e.bytes) : QString(),
                                                  QLocale().toString(e.finished, QLocale::ShortFormat),
                                                  QFileInfo(e.file).absolutePath()});
         item->setIcon(Name, Widgets::formatIcon(e.format.startsWith("MP3") || e.format.startsWith("Audio")));
         item->setData(Name, indexRole, i);
-        item->setToolTip(Name, exists ? e.file : "The file has been moved or deleted");
-        if (!exists)
-            for (int c = 0; c < list_->columnCount(); ++c)
-                item->setForeground(c, palette().color(QPalette::Disabled, QPalette::Text));
+        item->setToolTip(Name, e.file);
     }
     filter(search_->text());
     refreshButtons();
