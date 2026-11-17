@@ -146,7 +146,7 @@ void DownloadPage::restoreSettings()
     const int format = s.value("format", int(Options::Mp4)).toInt();
     if (format >= 0 && format < format_->count())
         format_->setCurrentRow(format);
-    const int quality = s.value("quality", 3).toInt();   // 1080p
+    const int quality = s.value("quality", 0).toInt();   // Best available
     if (quality >= 0 && quality < quality_->count())
         quality_->setCurrentRow(quality);
     const QString folder = s.value("folder").toString();
@@ -188,7 +188,7 @@ QWidget *DownloadPage::buildSidebar()
 
     quality_ = new QListWidget;
     quality_->addItems({"Best available", "2160p (4K)", "1440p", "1080p", "720p", "480p"});
-    quality_->setCurrentRow(3);
+    quality_->setCurrentRow(0);   // Best available
     // Quality is exactly as tall as its rows; Format takes the rest, with room for more formats.
     quality_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     quality_->setFixedHeight(quality_->sizeHintForRow(0) * quality_->count() + 2 * quality_->frameWidth() + 2);
