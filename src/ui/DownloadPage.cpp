@@ -48,12 +48,6 @@ bool isWebLink(const QString &text)
     return url.isValid() && (url.scheme() == "https" || url.scheme() == "http") && !url.host().isEmpty();
 }
 
-// Video icon as is; the green music note redrawn in the theme's lime so it doesn't clash.
-QIcon formatIcon(bool audio)
-{
-    return audio ? QIcon(Theme::recolour(":/icons/audio.png", Theme::accent, true)) : QIcon(":/icons/video.png");
-}
-
 // Shows the home folder as ~ so long paths stay readable.
 QString shortPath(const QString &path)
 {
@@ -64,13 +58,6 @@ QString shortPath(const QString &path)
 QString clock(int seconds)
 {
     return QTime(0, 0).addSecs(seconds).toString(seconds >= 3600 ? "h:mm:ss" : "m:ss");
-}
-
-QString bytes(double n)
-{
-    if (n >= 1e9) return QString::number(n / 1e9, 'f', 2) + " GB";
-    if (n >= 1e6) return QString::number(n / 1e6, 'f', 1) + " MB";
-    return QString::number(n / 1e3, 'f', 0) + " KB";
 }
 
 State stateOf(const QTreeWidgetItem *item) { return State(item->data(Name, stateRole).toInt()); }
@@ -139,7 +126,7 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, QWidget *paren
     engineChanged();
 }
 
-// Gold-header boxes: what to save and where.
+// Option boxes on the left: what to save and where.
 QWidget *DownloadPage::buildSidebar()
 {
     format_ = new QListWidget;
@@ -147,7 +134,7 @@ QWidget *DownloadPage::buildSidebar()
         {"video", "MP4 (plays everywhere)"}, {"video", "MKV"}, {"video", "WebM"},
         {"audio", "MP3"}, {"audio", "Audio (original)"}};
     for (const auto &f : formats)
-        new QListWidgetItem(formatIcon(QString(f.icon) == "audio"), f.text, format_);
+        new QListWidgetItem(Widgets::formatIcon(QString(f.icon) == "audio"), f.text, format_);
     format_->setCurrentRow(Options::Mp4);
 
     quality_ = new QListWidget;
@@ -331,7 +318,6 @@ QWidget *DownloadPage::buildDownloads()
     logButton->setDefaultAction(logAction_);
 
     log_ = new QPlainTextEdit;
-    log_->setObjectName("log");
     log_->setReadOnly(true);
     log_->setMaximumBlockCount(5000);
     log_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
@@ -583,7 +569,7 @@ void DownloadPage::download()
     const Options o = currentOptions();
     const QString name = previewTitle_.isEmpty() ? QUrl(o.url).host() : previewTitle_;
     auto *item = new QTreeWidgetItem(list_, {name, o.label()});
-    item->setIcon(Name, formatIcon(o.audioOnly()));
+    item->setIcon(Name, Widgets::formatIcon(o.audioOnly()));
     item->setToolTip(Name, o.url);
     addJob(item, o);
     list_->scrollToItem(item);
@@ -609,8 +595,8 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
             setState(item, State::Running, {});
         item->setText(Status, "Downloading");
         if (total > 0)
-            item->setText(Size, bytes(total));
-        item->setText(Speed, speed > 0 ? bytes(speed) + "/s" : QString());
+            item->setText(Size, Widgets::sizeText(total));
+        item->setText(Speed, speed > 0 ? Widgets::sizeText(speed) + "/s" : QString());
         item->setData(Speed, Qt::UserRole, speed);
         item->setText(Time, left >= 0 ? clock(left) : QString());
         reportActivity();
@@ -743,12 +729,13 @@ void DownloadPage::reportActivity()
     int downloading = 0, waiting = 0;
     double speed = 0;
     for (int i = 0; i < list_->topLevelItemCount(); ++i) {
-        const State s = stateOf(list_->topLevelItem(i));
-        downloading += s == State::Running;
+        const QTreeWidgetItem *item = list_->topLevelItem(i);
+        const State s = stateOf(item);
         waiting += s == State::Waiting;
+        if (s == State::Running) {
+            ++downloading;
+            speed += item->data(Speed, Qt::UserRole).toDouble();
+        }
     }
-    for (int i = 0; i < list_->topLevelItemCount(); ++i)
-        if (stateOf(list_->topLevelItem(i)) == State::Running)
-            speed += list_->topLevelItem(i)->data(Speed, Qt::UserRole).toDouble();
     emit activityChanged(downloading, waiting, speed);
 }

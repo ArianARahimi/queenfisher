@@ -18,13 +18,6 @@ namespace {
 enum Column { Name, Format, Size, Finished, Where };
 constexpr int indexRole = Qt::UserRole;   // position in Library::entries()
 
-QString bytes(qint64 n)
-{
-    if (n <= 0) return {};
-    if (n >= 1000000000) return QString::number(n / 1e9, 'f', 2) + " GB";
-    return QString::number(n / 1e6, 'f', 1) + " MB";
-}
-
 }
 
 LibraryPage::LibraryPage(Library *library, QWidget *parent) : QWidget(parent), library_(library)
@@ -91,11 +84,10 @@ void LibraryPage::refill()
     for (int i = 0; i < entries.size(); ++i) {
         const Library::Entry &e = entries[i];
         const bool exists = QFileInfo::exists(e.file);
-        auto *item = new QTreeWidgetItem(list_, {e.title, e.format, bytes(e.bytes),
+        auto *item = new QTreeWidgetItem(list_, {e.title, e.format, e.bytes > 0 ? Widgets::sizeText(e.bytes) : QString(),
                                                  QLocale().toString(e.finished, QLocale::ShortFormat),
                                                  QFileInfo(e.file).absolutePath()});
-        item->setIcon(Name, QIcon(e.format.startsWith("MP3") || e.format.startsWith("Audio")
-                                      ? ":/icons/audio.png" : ":/icons/video.png"));
+        item->setIcon(Name, Widgets::formatIcon(e.format.startsWith("MP3") || e.format.startsWith("Audio")));
         item->setData(Name, indexRole, i);
         item->setToolTip(Name, exists ? e.file : "The file has been moved or deleted");
         if (!exists)

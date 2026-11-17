@@ -34,7 +34,7 @@ protected:
 private:
     void drawPlayButton(class QPainter &p, const QRect &area) const;
 
-    QPixmap picture_;
+    QPixmap picture_;       // already scaled to fill the frame
     QImage frame_;          // current clip frame
     QString badge_;
     QString hint_ = "Paste a link to see a preview";

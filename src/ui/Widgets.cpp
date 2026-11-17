@@ -1,4 +1,5 @@
 #include "Widgets.h"
+#include "Theme.h"
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -32,6 +33,18 @@ QToolButton *action(const QString &icon, const QString &text, const QString &tip
     b->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     b->setMinimumWidth(72);
     return b;
+}
+
+QIcon formatIcon(bool audio)
+{
+    return audio ? QIcon(Theme::recolour(":/icons/audio.png", Theme::accent, true)) : QIcon(":/icons/video.png");
+}
+
+QString sizeText(double bytes)
+{
+    if (bytes >= 1e9) return QString::number(bytes / 1e9, 'f', 2) + " GB";
+    if (bytes >= 1e6) return QString::number(bytes / 1e6, 'f', 1) + " MB";
+    return QString::number(bytes / 1e3, 'f', 0) + " KB";
 }
 
 }

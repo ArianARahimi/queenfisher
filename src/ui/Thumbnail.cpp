@@ -37,7 +37,9 @@ Thumbnail::Thumbnail(QWidget *parent) : QWidget(parent)
 void Thumbnail::setPicture(const QPixmap &picture, const QString &badge)
 {
     stopClip();
-    picture_ = picture;
+    // Scaled once here, not on every repaint; it fills the frame, cropped to fit.
+    picture_ = picture.scaled(rect().adjusted(2, 2, -2, -2).size(), Qt::KeepAspectRatioByExpanding,
+                              Qt::SmoothTransformation);
     badge_ = badge;
     overlay_.clear();
     update();
@@ -119,8 +121,7 @@ void Thumbnail::paintEvent(QPaintEvent *)
         target.moveCenter(area.center());
         p.drawImage(target, frame_);
     } else {
-        const QPixmap scaled = picture_.scaled(area.size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-        p.drawPixmap(area.center() - scaled.rect().center(), scaled);
+        p.drawPixmap(area.center() - picture_.rect().center(), picture_);
     }
 
     QFont f = font();

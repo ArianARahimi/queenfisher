@@ -28,9 +28,6 @@ public:
     void checkDaily();   // installs on first run, otherwise updates at most once a day; call when idle
     void updateNow();                  // check the current channel right away
     void switchChannel(Channel channel);
-    Channel channel() const { return stamp_.channel; }
-    qint64 lastChecked() const { return stamp_.checked; }   // ms since epoch, 0 = never
-    QString location() const { return managedPath(); }
 
     // Pure helpers, public for tests.
     static QString assetName();   // release file for this computer, empty if unsupported
