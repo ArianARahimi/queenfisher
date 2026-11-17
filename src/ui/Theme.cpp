@@ -1,54 +1,147 @@
 #include "Theme.h"
 
 #include <QApplication>
-#include <QFontDatabase>
 #include <QPainter>
+#include <QPolygon>
 #include <QPalette>
+#include <QProxyStyle>
+#include <QPushButton>
 #include <QStyleFactory>
+#include <QStyleOption>
 
 namespace {
 
-QString family = "monospace";
+// Buttons and check boxes drawn the Windows 3.1 way; everything else is Fusion.
+class Win31Style : public QProxyStyle
+{
+public:
+    Win31Style() : QProxyStyle(QStyleFactory::create("Fusion")) {}
 
-// %1 = pixel font family.
+    void drawPrimitive(PrimitiveElement pe, const QStyleOption *opt, QPainter *p, const QWidget *w) const override
+    {
+        if (pe == PE_PanelButtonCommand) {
+            const auto *b = qstyleoption_cast<const QStyleOptionButton *>(opt);
+            const bool down = opt->state & (State_Sunken | State_On);
+            const bool main = b && (b->features & QStyleOptionButton::DefaultButton);
+            drawButton(*p, opt->rect, down, main);
+            return;
+        }
+        if (pe == PE_IndicatorCheckBox) {
+            const QRect r = opt->rect.adjusted(0, 0, -1, -1);
+            p->fillRect(r, Qt::white);
+            p->setPen(Qt::black);
+            p->drawRect(r);
+            if (opt->state & State_On) {  // an X, not a tick
+                p->drawLine(r.topLeft() + QPoint(2, 2), r.bottomRight() - QPoint(2, 2));
+                p->drawLine(r.topRight() + QPoint(-2, 2), r.bottomLeft() + QPoint(2, -2));
+            }
+            return;
+        }
+        QProxyStyle::drawPrimitive(pe, opt, p, w);
+    }
+
+    void drawComplexControl(ComplexControl cc, const QStyleOptionComplex *opt, QPainter *p, const QWidget *w) const override
+    {
+        if (cc != CC_ComboBox) {
+            QProxyStyle::drawComplexControl(cc, opt, p, w);
+            return;
+        }
+        // White box with a black outline, plus a bevelled arrow button on the right.
+        const bool enabled = opt->state & State_Enabled;
+        const QRect r = opt->rect.adjusted(0, 0, -1, -1);
+        p->fillRect(r, enabled ? Qt::white : Theme::face);
+        p->setPen(Qt::black);
+        p->drawRect(r);
+        QRect arrow = subControlRect(cc, opt, SC_ComboBoxArrow, w);
+        arrow.setTop(r.top());
+        arrow.setBottom(r.bottom() + 1);
+        arrow.setRight(r.right() + 1);
+        drawButton(*p, arrow, opt->state & State_On, false);
+        const QPoint c = arrow.center() + QPoint(1, -1);
+        p->setPen(Qt::NoPen);
+        p->setBrush(enabled ? Qt::black : Theme::shadow);
+        p->drawPolygon(QPolygon({c + QPoint(-4, -2), c + QPoint(4, -2), c + QPoint(0, 2)}));
+        p->fillRect(c.x() - 4, c.y() + 4, 9, 1, enabled ? Qt::black : Theme::shadow);  // the Windows 3.1 underline
+    }
+
+    int pixelMetric(PixelMetric m, const QStyleOption *opt, const QWidget *w) const override
+    {
+        switch (m) {
+        case PM_ButtonShiftHorizontal:
+        case PM_ButtonShiftVertical: return 1;
+        case PM_IndicatorWidth:
+        case PM_IndicatorHeight: return 13;
+        default: return QProxyStyle::pixelMetric(m, opt, w);
+        }
+    }
+
+private:
+    // Black outline with clipped corners, 2 px bevel inside; the main button gets a thicker outline.
+    static void drawButton(QPainter &p, QRect r, bool down, bool main)
+    {
+        r.adjust(0, 0, -1, -1);
+        p.fillRect(r.adjusted(1, 1, 0, 0), Theme::face);
+        p.setPen(Qt::black);
+        p.drawLine(r.left() + 1, r.top(), r.right() - 1, r.top());
+        p.drawLine(r.left() + 1, r.bottom(), r.right() - 1, r.bottom());
+        p.drawLine(r.left(), r.top() + 1, r.left(), r.bottom() - 1);
+        p.drawLine(r.right(), r.top() + 1, r.right(), r.bottom() - 1);
+        if (main) {
+            r.adjust(1, 1, -1, -1);
+            p.drawRect(r);
+        }
+        const QRect in = r.adjusted(1, 1, -1, -1);
+        if (down) {
+            p.setPen(Theme::shadow);
+            p.drawLine(in.topLeft(), in.topRight());
+            p.drawLine(in.topLeft(), in.bottomLeft());
+            return;
+        }
+        for (int i = 0; i < 2; ++i) {
+            const QRect e = in.adjusted(i, i, -i, -i);
+            p.setPen(Qt::white);
+            p.drawLine(e.topLeft(), e.topRight() - QPoint(1, 0));
+            p.drawLine(e.topLeft(), e.bottomLeft() - QPoint(0, 1));
+            p.setPen(Theme::shadow);
+            p.drawLine(e.bottomLeft(), e.bottomRight());
+            p.drawLine(e.topRight(), e.bottomRight());
+        }
+    }
+};
+
 const char *styleSheet = R"(
-QMainWindow, QWidget#central {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #474b5a, stop:1 #2a2c36);
+QWidget#central { background: #c0c0c0; }
+QLabel#strip {
+    background: #000080; color: #ffffff; font-weight: bold;
+    padding: 3px 6px; qproperty-alignment: AlignCenter;
 }
-QPushButton {
-    font-family: "%1"; font-size: 16px;
-    color: #e4e4e4;
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #626678, stop:1 #393c48);
-    border: 1px solid; border-color: #8a8fa4 #121318 #121318 #8a8fa4;
-    padding: 4px 10px; min-height: 18px;
+QLabel#meta { color: #404040; }
+QLabel#status {
+    padding: 2px 6px;
+    border: 1px solid; border-color: #808080 #ffffff #ffffff #808080;
 }
-QPushButton:hover { color: #ffff55; }
-QPushButton:pressed {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #34363f, stop:1 #4b4e5c);
-    border-color: #121318 #8a8fa4 #8a8fa4 #121318;
-    padding: 5px 9px 3px 11px;
-}
-QPushButton:disabled { color: #7a7d88; }
+QFrame#card { background: #c0c0c0; border: 1px solid #000000; }
 QLineEdit {
-    color: #55ff55; background: #050905; selection-background-color: #0000aa;
-    border: 2px solid; border-color: #121318 #868ba0 #868ba0 #121318;
-    padding: 4px 6px; font-size: 14px;
+    color: #000000; background: #ffffff; border: 1px solid #000000;
+    padding: 3px 5px; selection-background-color: #000080; selection-color: #ffffff;
+}
+QLineEdit:read-only { background: #e8e8e8; }
+QLineEdit:disabled { color: #808080; background: #c0c0c0; }
+QPushButton { font-weight: bold; }
+QComboBox QAbstractItemView {
+    color: #000000; background: #ffffff; border: 1px solid #000000;
+    selection-background-color: #000080; selection-color: #ffffff;
 }
 QTreeWidget {
-    color: #55ff55; background: #000000; alternate-background-color: #050c05;
-    border: 2px solid; border-color: #121318 #868ba0 #868ba0 #121318;
-    font-size: 14px; outline: 0;
+    color: #000000; background: #ffffff; border: 1px solid #000000; outline: 0;
 }
 QTreeWidget::item { padding: 3px 2px; }
-QTreeWidget::item:selected { background: #0000aa; color: #ffffff; }
-QLabel#status { font-family: "%1"; font-size: 16px; color: #b8bccb; }
-QScrollBar:vertical { background: #1b1c22; width: 14px; margin: 0; }
-QScrollBar::handle:vertical {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #626678, stop:1 #393c48);
-    border: 1px solid; border-color: #8a8fa4 #121318 #121318 #8a8fa4; min-height: 24px;
+QTreeWidget::item:selected { background: #000080; color: #ffffff; }
+QHeaderView::section {
+    color: #000000; font-weight: bold; padding: 3px 6px; background: #c0c0c0;
+    border: none; border-right: 1px solid #808080; border-bottom: 1px solid #000000;
 }
-QScrollBar::add-line, QScrollBar::sub-line { height: 0; }
-QScrollBar::add-page, QScrollBar::sub-page { background: none; }
+QToolTip { color: #000000; background: #ffffe1; border: 1px solid #000000; }
 )";
 
 }
@@ -57,43 +150,51 @@ namespace Theme {
 
 void apply(QApplication &app)
 {
-    const int id = QFontDatabase::addApplicationFont(":/fonts/Px437_IBM_VGA_8x16.ttf");
-    if (id >= 0)
-        family = QFontDatabase::applicationFontFamilies(id).value(0, family);
-
-    // Fusion draws the same everywhere, so the style sheet looks alike on all three systems.
-    app.setStyle(QStyleFactory::create("Fusion"));
-    QPalette pal = app.palette();
-    pal.setColor(QPalette::Window, QColor(0x33, 0x35, 0x40));
-    pal.setColor(QPalette::WindowText, QColor(0xe4, 0xe4, 0xe4));
-    pal.setColor(QPalette::Base, Qt::black);
-    pal.setColor(QPalette::Text, lcdLit);
-    pal.setColor(QPalette::Highlight, QColor(0, 0, 0xaa));
+    app.setStyle(new Win31Style);
+    QPalette pal;
+    pal.setColor(QPalette::Window, face);
+    pal.setColor(QPalette::WindowText, Qt::black);
+    pal.setColor(QPalette::Button, face);
+    pal.setColor(QPalette::ButtonText, Qt::black);
+    pal.setColor(QPalette::Base, Qt::white);
+    pal.setColor(QPalette::AlternateBase, QColor(0xf0, 0xf0, 0xf0));
+    pal.setColor(QPalette::Text, Qt::black);
+    pal.setColor(QPalette::Highlight, navy);
     pal.setColor(QPalette::HighlightedText, Qt::white);
-    pal.setColor(QPalette::ToolTipBase, Qt::black);
-    pal.setColor(QPalette::ToolTipText, lcdLit);
+    pal.setColor(QPalette::Light, Qt::white);
+    pal.setColor(QPalette::Mid, shadow);
+    pal.setColor(QPalette::Dark, shadow);
+    pal.setColor(QPalette::Shadow, Qt::black);
+    pal.setColor(QPalette::PlaceholderText, shadow);
+    pal.setColor(QPalette::Disabled, QPalette::ButtonText, shadow);
+    pal.setColor(QPalette::Disabled, QPalette::WindowText, shadow);
+    pal.setColor(QPalette::Disabled, QPalette::Text, shadow);
     app.setPalette(pal);
-    app.setStyleSheet(QString(styleSheet).arg(family));
+    app.setStyleSheet(styleSheet);
 }
 
-QFont pixelFont()
+void drawSunken(QPainter &p, const QRect &r, const QColor &fill)
 {
-    QFont f(family);
-    f.setPixelSize(16);
-    f.setStyleStrategy(QFont::NoAntialias);
-    f.setHintingPreference(QFont::PreferNoHinting);
-    return f;
-}
-
-void drawInset(QPainter &p, const QRect &r)
-{
-    p.fillRect(r, lcdBack);
-    p.setPen(bevelDark);
+    p.fillRect(r, fill);
+    p.setPen(shadow);
     p.drawLine(r.topLeft(), r.topRight());
     p.drawLine(r.topLeft(), r.bottomLeft());
-    p.setPen(bevelLight);
+    p.setPen(Qt::white);
     p.drawLine(r.bottomLeft(), r.bottomRight());
     p.drawLine(r.topRight(), r.bottomRight());
+}
+
+void drawBlocks(QPainter &p, const QRect &r, double fraction)
+{
+    p.fillRect(r, empty);
+    p.setPen(Qt::black);
+    p.drawRect(r.adjusted(0, 0, -1, -1));
+    const QRect inner = r.adjusted(2, 2, -2, -2);
+    constexpr int block = 6, gap = 2;
+    const int count = (inner.width() + gap) / (block + gap);
+    const int lit = fraction < 0 ? 0 : int(qMin(fraction, 1.0) * count + 0.5);
+    for (int i = 0; i < lit; ++i)
+        p.fillRect(inner.left() + i * (block + gap), inner.top(), block, inner.height(), navy);
 }
 
 }

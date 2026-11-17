@@ -2,14 +2,15 @@
 
 #include <QMainWindow>
 
-class LcdDisplay;
+class QCheckBox;
+class QComboBox;
 class QLabel;
 class QLineEdit;
 class QPushButton;
 class QTreeWidget;
-class SegmentBar;
+class Thumbnail;
 
-// Display on top, link box, transport buttons, then the download list.
+// Link box, preview card with download options, then the download list.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -18,13 +19,22 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
 
 private:
-    void addLink();
-    void refreshCounts();
+    QWidget *buildCard();
+    void linkChanged(const QString &text);
+    void chooseFolder();
+    void download();
+    void refreshStatus();
 
-    LcdDisplay *display_ = nullptr;
-    SegmentBar *progress_ = nullptr;
     QLineEdit *link_ = nullptr;
-    QPushButton *add_ = nullptr;
-    QTreeWidget *queue_ = nullptr;
+    Thumbnail *thumbnail_ = nullptr;
+    QLabel *title_ = nullptr;
+    QLabel *meta_ = nullptr;
+    QComboBox *format_ = nullptr;
+    QComboBox *quality_ = nullptr;
+    QLineEdit *folder_ = nullptr;
+    QCheckBox *subtitles_ = nullptr;
+    QCheckBox *playlist_ = nullptr;
+    QPushButton *download_ = nullptr;
+    QTreeWidget *list_ = nullptr;
     QLabel *status_ = nullptr;
 };

@@ -12,11 +12,10 @@ qt_standard_project_setup()
 qt_add_executable(qfisher
     src/main.cpp
     src/ui/MainWindow.cpp src/ui/MainWindow.h
-    src/ui/LcdDisplay.cpp src/ui/LcdDisplay.h
-    src/ui/SegmentBar.cpp src/ui/SegmentBar.h
+    src/ui/ProgressDelegate.cpp src/ui/ProgressDelegate.h
+    src/ui/Thumbnail.cpp src/ui/Thumbnail.h
     src/ui/Theme.cpp src/ui/Theme.h
 )
-qt_add_resources(qfisher fonts PREFIX "/" BASE resources FILES resources/fonts/Px437_IBM_VGA_8x16.ttf)
 target_compile_definitions(qfisher PRIVATE QFISHER_VERSION="${PROJECT_VERSION}")
 target_compile_options(qfisher PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>)
 target_link_libraries(qfisher PRIVATE Qt6::Widgets)
