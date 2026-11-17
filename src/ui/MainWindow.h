@@ -15,6 +15,7 @@ class QPushButton;
 class QTreeWidget;
 class QTreeWidgetItem;
 class Thumbnail;
+class YtDlpEngine;
 
 // Link box, preview card with download options, the download list, and a log at the bottom.
 class MainWindow : public QMainWindow
@@ -53,4 +54,6 @@ private:
 
     QHash<QTreeWidgetItem *, DownloadJob *> jobs_;   // every row has one; only one runs at a time
     DownloadJob *running_ = nullptr;
+    YtDlpEngine *engine_ = nullptr;
+    QString engineStatus_;
 };

@@ -6,15 +6,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets Network)
+find_package(OpenSSL 3 REQUIRED COMPONENTS Crypto)
 qt_standard_project_setup()
 
 qt_add_executable(qfisher
     src/main.cpp
     src/core/Cookies.cpp src/core/Cookies.h
     src/core/DownloadJob.cpp src/core/DownloadJob.h
+    src/core/Engine.h
+    src/core/ErrorRules.cpp src/core/ErrorRules.h
     src/core/Options.cpp src/core/Options.h
+    src/core/PgpVerify.cpp src/core/PgpVerify.h
     src/core/ProgressTracker.cpp src/core/ProgressTracker.h
+    src/core/YtDlpEngine.cpp src/core/YtDlpEngine.h
     src/ui/MainWindow.cpp src/ui/MainWindow.h
     src/ui/ProgressDelegate.cpp src/ui/ProgressDelegate.h
     src/ui/Thumbnail.cpp src/ui/Thumbnail.h
@@ -23,7 +28,9 @@ qt_add_executable(qfisher
 target_include_directories(qfisher PRIVATE src)
 target_compile_definitions(qfisher PRIVATE QFISHER_VERSION="${PROJECT_VERSION}")
 target_compile_options(qfisher PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>)
-target_link_libraries(qfisher PRIVATE Qt6::Widgets)
+target_link_libraries(qfisher PRIVATE Qt6::Widgets Qt6::Network OpenSSL::Crypto)
+# yt-dlp's signing key (fingerprint AC0CBBE6848D6A873464AF4E57CF65933B5A7581), same as yt-dlp's public.key.
+qt_add_resources(qfisher keys PREFIX "/" BASE resources FILES resources/ytdlp-public.key)
 set_target_properties(qfisher PROPERTIES WIN32_EXECUTABLE ON MACOSX_BUNDLE ON)
 
 install(TARGETS qfisher BUNDLE DESTINATION . RUNTIME DESTINATION bin)

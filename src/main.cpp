@@ -3,6 +3,7 @@
 #include "ui/Theme.h"
 
 #include <QApplication>
+#include <QNetworkProxyFactory>
 
 int main(int argc, char *argv[])
 {
@@ -11,6 +12,7 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName("QFisher");
     QApplication::setApplicationVersion(QFISHER_VERSION);
 
+    QNetworkProxyFactory::setUseSystemConfiguration(true);   // honour the system or environment proxy
     Theme::apply(app);
 
     MainWindow window;

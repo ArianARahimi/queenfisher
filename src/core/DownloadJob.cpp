@@ -1,9 +1,12 @@
 #include "DownloadJob.h"
 #include "Cookies.h"
+#include "Engine.h"
 
+#include <QPointer>
 #include <QRegularExpression>
 
-DownloadJob::DownloadJob(Options options, QObject *parent) : QObject(parent), options_(std::move(options))
+DownloadJob::DownloadJob(Options options, Engine *engine, QObject *parent)
+    : QObject(parent), options_(std::move(options)), engine_(engine)
 {
     connect(&process_, &QProcess::readyReadStandardOutput, this, [this] { readOutput(QProcess::StandardOutput); });
     connect(&process_, &QProcess::readyReadStandardError, this, [this] { readOutput(QProcess::StandardError); });
@@ -19,8 +22,8 @@ DownloadJob::DownloadJob(Options options, QObject *parent) : QObject(parent), op
             emit finished(false, "Stopped");
         else if (status == QProcess::NormalExit && code == 0)
             emit finished(true, "Done");
-        else if (!retryWithSignIn())
-            emit finished(false, friendlyError());
+        else
+            recover();
     });
 }
 
@@ -33,16 +36,20 @@ DownloadJob::~DownloadJob()
     }
 }
 
-void DownloadJob::start(const QString &ytDlp)
+void DownloadJob::start()
 {
-    ytDlp_ = ytDlp;
-    lastError_.clear();
+    const QString program = engine_->path();
+    if (program.isEmpty()) {
+        emit finished(false, "yt-dlp isn't available yet");
+        return;
+    }
+    problems_.clear();
     tracker_.reset();
     speed_ = eta_ = -1;
     sidecar_ = false;
     const QStringList args = ytDlpArgs(options_);
-    emit logLine("> yt-dlp " + args.join(' '));
-    process_.start(ytDlp, args);
+    emit logLine(QString("> yt-dlp %1  [%2]").arg(args.join(' '), engine_->version()));
+    process_.start(program, args);
 }
 
 void DownloadJob::cancel()
@@ -73,8 +80,8 @@ void DownloadJob::handleLine(const QString &line)
     }
     emit logLine(line);
     trackLine(line);
-    if (line.startsWith("ERROR:"))
-        lastError_ = line.mid(6).trimmed();
+    if (line.startsWith("ERROR:") || line.startsWith("WARNING:"))
+        problems_.append(line);
     else if (line.startsWith("[Merger]"))
         emit stage("Merging");
     else if (line.startsWith("[ExtractAudio]"))
@@ -130,45 +137,42 @@ void DownloadJob::handleProgress(const QString &fields)
     emit progress(fraction, tracker_.knownBytes(), speed_, eta_ < 0 ? -1 : int(eta_ + 0.5));
 }
 
-bool DownloadJob::needsSignIn() const
+// Each fix is tried at most once: the browser's sign-in, then a newer (or nightly) yt-dlp.
+void DownloadJob::recover()
 {
-    return lastError_.contains("Sign in to confirm", Qt::CaseInsensitive)
-        || lastError_.contains("--cookies", Qt::CaseInsensitive);
-}
+    const Diagnosis d = diagnose(problems_);
 
-// Account cookies are only sent when the site insists, and only one retry is made.
-bool DownloadJob::retryWithSignIn()
-{
-    if (!needsSignIn() || !options_.cookies.isEmpty())
-        return false;
-    options_.cookies = defaultBrowserCookies();
-    if (options_.cookies.isEmpty()) {
+    if (d.problem == Problem::SignIn && options_.cookies.isEmpty()) {
+        options_.cookies = defaultBrowserCookies();
+        if (!options_.cookies.isEmpty()) {
+            emit logLine("The site wants a sign-in. Trying again with your browser's sign-in ("
+                         + options_.cookies.section(':', 0, 0) + ").");
+            emit stage("Signing in");
+            start();
+            return;
+        }
         emit logLine("The site wants a sign-in, but QFisher couldn't find your default browser's cookies.");
-        return false;
     }
-    emit logLine("The site wants a sign-in. Trying again with your browser's sign-in ("
-                 + options_.cookies.section(':', 0, 0) + ").");
-    emit stage("Signing in");
-    start(ytDlp_);
-    return true;
-}
 
-// yt-dlp's errors in words a non-programmer understands; the log keeps the original.
-QString DownloadJob::friendlyError() const
-{
-    const QString e = lastError_;
-    if (needsSignIn())
-        return options_.cookies.isEmpty() ? "The site wants a sign-in, no browser found"
-                                          : "Sign in to the site in your browser, then retry";
-    if (e.contains("Unsupported URL"))
-        return "This site isn't supported";
-    if (e.contains("Private video") || e.contains("Video unavailable"))
-        return "The video is private or gone";
-    if (e.contains("HTTP Error 403"))
-        return "The site refused the download, try again";
-    if (e.contains("ffmpeg", Qt::CaseInsensitive))
-        return "ffmpeg is missing (needed to join video and sound)";
-    if (e.contains("Unable to download") || e.contains("timed out") || e.contains("Connection"))
-        return "Network problem, check your connection";
-    return e.isEmpty() ? "Failed, see the log" : "Failed: " + e.left(80);
+    if (d.problem == Problem::Outdated && !triedRepair_) {
+        triedRepair_ = true;
+        emit logLine("This looks like a site change. Checking for a newer yt-dlp before trying again.");
+        emit stage("Updating yt-dlp");
+        QPointer<DownloadJob> self(this);   // the row may be removed while yt-dlp updates
+        engine_->repair([self, d](bool changed, const QString &message) {
+            if (!self)
+                return;
+            emit self->logLine(message);
+            if (changed)
+                self->start();
+            else
+                emit self->finished(false, d.message + ", even with the newest yt-dlp");
+        });
+        return;
+    }
+
+    if (d.problem == Problem::SignIn && !options_.cookies.isEmpty())
+        emit finished(false, "Sign in to the site in your browser, then retry");
+    else
+        emit finished(false, d.message);
 }

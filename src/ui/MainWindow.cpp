@@ -3,6 +3,7 @@
 #include "Theme.h"
 #include "Thumbnail.h"
 #include "core/DownloadJob.h"
+#include "core/YtDlpEngine.h"
 
 #include <QCheckBox>
 #include <QClipboard>
@@ -105,8 +106,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         link_->setFocus();
     });
 
+    // QFisher's own yt-dlp: installed on first run, updated once a day, repaired when a site changes.
+    engine_ = new YtDlpEngine(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation), this);
+    connect(engine_, &Engine::logLine, this, [this](const QString &line) { log(line); });
+    connect(engine_, &Engine::statusChanged, this, [this](const QString &text) {
+        engineStatus_ = text;
+        refreshStatus();
+    });
+    connect(engine_, &Engine::readyChanged, this, &MainWindow::startNext);
+
     linkChanged({});
-    refreshStatus();
+    startNext();
 }
 
 // Preview on the left; what to save and where on the right.
@@ -300,7 +310,7 @@ void MainWindow::download()
     item->setToolTip(Title, o.url);
     const int number = list_->indexOfTopLevelItem(item) + 1;
 
-    auto *job = new DownloadJob(o, this);
+    auto *job = new DownloadJob(o, engine_, this);
     jobs_.insert(item, job);
     connect(job, &DownloadJob::logLine, this, [this, number](const QString &line) { log(line, number); });
     connect(job, &DownloadJob::titleKnown, this, [item](const QString &t) { item->setText(Title, t); });
@@ -334,27 +344,23 @@ void MainWindow::download()
 }
 
 // Downloads run one at a time, top to bottom.
+// Downloads run one at a time, top to bottom, and wait while yt-dlp is being installed or updated.
 void MainWindow::startNext()
 {
-    if (running_)
+    refreshStatus();
+    if (running_ || engine_->busy())
         return;
-    const QString ytDlp = QStandardPaths::findExecutable("yt-dlp");
     for (int i = 0; i < list_->topLevelItemCount(); ++i) {
         QTreeWidgetItem *item = list_->topLevelItem(i);
         if (item->text(State) != "Waiting")
             continue;
-        if (ytDlp.isEmpty()) {
-            item->setText(State, "yt-dlp isn't installed");
-            item->setData(Progress, ProgressDelegate::stateRole, int(Theme::BarState::Failed));
-            log("yt-dlp wasn't found on this computer. Install it and try again.", i + 1);
-            continue;
-        }
         running_ = jobs_.value(item);
         item->setText(State, "Starting...");
-        running_->start(ytDlp);
-        break;
+        running_->start();
+        refreshStatus();
+        return;
     }
-    refreshStatus();
+    engine_->checkDaily();   // idle: a good moment for the once-a-day update check
 }
 
 void MainWindow::removeSelected()
@@ -384,5 +390,12 @@ void MainWindow::refreshStatus()
     QString text = running_ ? QString("Downloading") : QString("Nothing downloading");
     if (waiting)
         text += QString(", %1 waiting").arg(waiting);
-    status_->setText(text + "  ·  saving to " + folder_->text());
+    text += "  \u00B7  saving to " + folder_->text();
+    if (engine_->busy())
+        text += "  \u00B7  " + engineStatus_;
+    else if (!engine_->version().isEmpty())
+        text += "  \u00B7  yt-dlp " + engine_->version();
+    else
+        text += "  \u00B7  yt-dlp isn't available: " + engineStatus_;
+    status_->setText(text);
 }
