@@ -35,7 +35,7 @@ public:
         p->setPen(enabled && (opt->state & State_MouseOver) ? Theme::accent : Theme::outline);
         p->drawRoundedRect(r, 2, 2);
         if (opt->state & State_On) {   // a tick, like Vista
-            QPen pen(enabled ? Theme::accent : QColor(0x4c, 0x50, 0x58), 2);
+            QPen pen(enabled ? Theme::accent : Theme::faint, 2);
             pen.setCapStyle(Qt::RoundCap);
             p->setPen(pen);
             const QPointF a = r.topLeft();
@@ -94,12 +94,12 @@ QMenuBar::item:selected { background: @hover; border-radius: 3px; }
 QMenu { color: @text; background: @panel; border: 1px solid @outline; padding: 2px; }
 QMenu::item { padding: 4px 24px 4px 24px; }
 QMenu::item:selected { background: @gloss; color: @accent; border-radius: 2px; }
-QMenu::item:disabled { color: #6c707a; }
+QMenu::item:disabled { color: @muted; }
 QMenu::separator { height: 1px; background: @edge; margin: 3px 6px; }
 
 QTabWidget::pane { border: 1px solid @outline; background: @panel; top: -1px; }
 QTabBar::tab {
-    color: #cfd3da; padding: 6px 14px 6px 10px; margin-right: -1px;
+    color: @label; padding: 6px 14px 6px 10px; margin-right: -1px;
     border: 1px solid @outline; border-bottom: none;
     border-top-left-radius: 4px; border-top-right-radius: 4px;
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b3e46, stop:0.5 #30333a, stop:0.51 #292b31, stop:1 #24262c);
@@ -117,14 +117,14 @@ QPushButton {
 }
 QPushButton:hover { border-color: @accent; background: @wash; }
 QPushButton:pressed { border-color: @accent; background: @sunk; }
-QPushButton:disabled { color: #6c707a; }
+QPushButton:disabled { color: @muted; }
 
 /* Download: the one button that matters, lime text and outline so it's found at a glance */
 QPushButton#primary { color: @accent; font-weight: bold; padding: 4px 16px; border-color: @accentDim; background: @gloss; }
 QPushButton#primary:hover { border-color: @accent; background: @glossLit; }
 QPushButton#primary:pressed { background: @glossSunk; }
 QPushButton#primary:disabled {
-    color: #6c707a; border-color: @outline;
+    color: @muted; border-color: @outline;
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3a3d45, stop:0.49 #33363d, stop:0.5 #2c2e34, stop:1 #282a2f);
 }
 
@@ -134,7 +134,7 @@ QToolButton#action {
 }
 QToolButton#action:hover { border-color: @accent; background: @wash; }
 QToolButton#action:pressed, QToolButton#action:checked { border-color: @accent; background: @sunk; }
-QToolButton#action:disabled { color: #6c707a; }
+QToolButton#action:disabled { color: @muted; }
 
 QLineEdit, QPlainTextEdit {
     color: @text; background: @field; border: 1px solid @outline; border-radius: 2px;
@@ -151,7 +151,7 @@ QComboBox QAbstractItemView {
     selection-background-color: @accent; selection-color: @onSelect;
 }
 QCheckBox { color: @text; spacing: 6px; }
-QCheckBox:disabled { color: #4c5058; }
+QCheckBox:disabled { color: @faint; }
 
 QTreeWidget, QListWidget {
     color: @text; background: @field; alternate-background-color: @fieldAlt;
@@ -160,9 +160,9 @@ QTreeWidget, QListWidget {
 QTreeWidget::item, QListWidget::item { padding: 2px 3px; }
 QTreeWidget::item:selected, QListWidget::item:selected { color: @accent; background: @gloss; }
 QHeaderView::section {
-    color: #cfd3da; padding: 3px 6px;
+    color: @label; padding: 3px 6px;
     border: none; border-right: 1px solid #1a1b1f; border-bottom: 1px solid @outline;
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #373a42, stop:0.5 #30333a, stop:0.51 #2b2d33, stop:1 #27292e);
+    background: @bar;
 }
 
 QFrame#box { background: @field; border: 1px solid @outline; }
@@ -172,17 +172,17 @@ QLabel#boxHeader {
 }
 /* a box that doesn't apply (Quality for audio) greys out completely */
 QLabel#boxHeader:disabled {
-    color: #6c707a; border-bottom-color: @outline;
+    color: @muted; border-bottom-color: @outline;
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3a3d45, stop:0.5 #33363d, stop:0.51 #2c2e34, stop:1 #282a2f);
 }
-QListWidget:disabled { color: #4c5058; background: @panel; }
-QListWidget::item:selected:disabled { color: #6c707a; background: #2c2e34; }
+QListWidget:disabled { color: @faint; background: @panel; }
+QListWidget::item:selected:disabled { color: @muted; background: #2c2e34; }
 QLabel#sideTitle, QLabel#paneTitle { color: @dim; }
 QFrame#banner {
     border: 1px solid @outline; border-radius: 2px;
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #373a42, stop:0.5 #30333a, stop:0.51 #2b2d33, stop:1 #27292e);
+    background: @bar;
 }
-QFrame#banner QLabel { color: #cfd3da; }
+QFrame#banner QLabel { color: @label; }
 QFrame#previewPane { background: @field; border: 1px solid @outline; }
 QLabel#meta { color: @dim; }
 
@@ -227,7 +227,10 @@ QString themedStyleSheet()
         {"@outline", Theme::outline.name()}, {"@window", Theme::window.name()}, {"@accent", Theme::accent.name()},
         {"@field", Theme::field.name()}, {"@panel", Theme::panel.name()}, {"@hover", Theme::hover.name()},
         {"@edge", Theme::edge.name()}, {"@text", Theme::text.name()},
-        {"@dim", Theme::dim.name()},
+        {"@dim", Theme::dim.name()}, {"@label", Theme::label.name()}, {"@muted", Theme::muted.name()},
+        {"@faint", Theme::faint.name()},
+        // grey header strip: list column headers and the notice bar
+        {"@bar", "qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #373a42, stop:0.5 #30333a, stop:0.51 #2b2d33, stop:1 #27292e)"},
     };
     QString css = styleSheet;
     for (const auto &[name, value] : names)
@@ -259,7 +262,7 @@ void apply(QApplication &app)
     pal.setColor(QPalette::PlaceholderText, dim.darker(120));
     pal.setColor(QPalette::Link, accent);
     for (auto role : {QPalette::ButtonText, QPalette::WindowText, QPalette::Text})
-        pal.setColor(QPalette::Disabled, role, QColor(0x6c, 0x70, 0x7a));
+        pal.setColor(QPalette::Disabled, role, muted);
     app.setPalette(pal);
     app.setStyleSheet(themedStyleSheet());
 }

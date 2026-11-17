@@ -7,8 +7,8 @@ class QApplication;
 class QPainter;
 class QRect;
 
-// Windows Vista era look (glossy gradients, rounded tabs) in night colours with one dark alien
-// green for every highlight. Every colour lives here; the style sheet refers to them by name.
+// Windows Vista era look (glossy gradients, rounded tabs) in night colours: dark grey gloss with
+// soft lime text for highlights. Named colours live here; the style sheet refers to them by name.
 namespace Theme {
 
 inline const QColor window{0x1d, 0x1f, 0x24};
@@ -19,6 +19,9 @@ inline const QColor outline{0x0b, 0x0c, 0x0f};
 inline const QColor edge{0x3c, 0x3f, 0x48};     // inner highlight line
 inline const QColor text{0xe6, 0xe6, 0xe6};
 inline const QColor dim{0x9a, 0xa0, 0xab};
+inline const QColor label{0xcf, 0xd3, 0xda};    // tab and column header text
+inline const QColor muted{0x6c, 0x70, 0x7a};    // disabled text
+inline const QColor faint{0x4c, 0x50, 0x58};    // greyed-out lists and ticks
 inline const QColor accent{0x9f, 0xd4, 0x5a};   // soft lime: highlighted text, focus, outlines
 inline const QColor accentDim{0x55, 0x73, 0x30}; // quiet lime outline (the link box)
 inline const QColor surface{0x34, 0x37, 0x3e};   // dark grey gloss: headers, selection, Download
@@ -27,6 +30,7 @@ inline const QColor hover{0x3a, 0x3e, 0x46};     // grey wash behind hovered but
 inline const QColor running{0x7d, 0xb3, 0x3c};   // progress bar fill, a muted lime
 inline const QColor done = running;              // finished
 inline const QColor failed{0xe0, 0x4a, 0x4a};   // something went wrong
+inline const QColor busy{0xe3, 0xb3, 0x41};      // status light while yt-dlp updates
 
 void apply(QApplication &app);   // style, palette, style sheet
 
