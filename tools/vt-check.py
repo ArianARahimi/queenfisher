@@ -22,7 +22,8 @@ MAX_POLLS = 60     # give up on one file after half an hour
 
 def api(path, data=None, headers=()):
     for _ in range(30):
-        req = urllib.request.Request("https://www.virustotal.com/api/v3/" + path, data,
+        url = path if path.startswith("https://") else "https://www.virustotal.com/api/v3/" + path
+        req = urllib.request.Request(url, data,
                                      {"x-apikey": KEY, **dict(headers)})
         try:
             with urllib.request.urlopen(req, timeout=300) as r:
@@ -41,8 +42,8 @@ def upload(name, data):
     body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{name}\"\r\n"
             "Content-Type: application/octet-stream\r\n\r\n").encode() + data + f"\r\n--{boundary}--\r\n".encode()
     url = "files"
-    if len(data) > 32 * 1024 * 1024:   # bigger files go to a one-off upload address
-        url = api("files/upload_url")["data"].split("/api/v3/", 1)[1]
+    if len(data) > 32 * 1024 * 1024:   # bigger files go to a one-off upload address, used as given
+        url = api("files/upload_url")["data"]
     return api(url, body, {"Content-Type": f"multipart/form-data; boundary={boundary}"})["data"]["id"]
 
 

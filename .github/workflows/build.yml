@@ -63,15 +63,18 @@ jobs:
       - name: Install build tools
         shell: bash
         run: |
-          choco install openssl --no-progress -y
           pip install "aqtinstall==$AQT_VERSION"
           python -m aqt install-qt windows desktop "$QT_VERSION" win64_msvc2022_64 -m qtmultimedia -O "$RUNNER_TEMP/Qt"
+          # OpenSSL 3 from Qt's own servers: the version Qt's HTTPS is built for. (Chocolatey's
+          # moved to OpenSSL 4, which the exe then needed but the zip didn't have.)
+          python -m aqt install-tool windows desktop tools_opensslv3_x64 -O "$RUNNER_TEMP/Qt"
 
       - name: Build and package
         shell: bash
         run: |
           qt="$RUNNER_TEMP/Qt/$QT_VERSION/msvc2022_64"
-          ssl=$(ls -d "/c/Program Files/OpenSSL"* | head -n 1)   # OpenSSL or OpenSSL-Win64
+          crypto=$(find "$RUNNER_TEMP/Qt/Tools" -name libcrypto-3-x64.dll | head -n 1)
+          ssl=$(dirname "$(dirname "$crypto")")
           echo "OpenSSL in $ssl"
           version=$(sed -n 's/^project(Queenfisher VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
           cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="$qt" -DOPENSSL_ROOT_DIR="$ssl"
@@ -87,6 +90,14 @@ jobs:
           echo "C++ runtime from $crt"
           cp "$crt"/*.dll "$out/"
           ls "$out"/vcruntime140.dll "$out"/msvcp140.dll
+          # Every DLL Queenfisher.exe needs ships in the zip or comes with Windows.
+          dumpbin=$(ls "$(cygpath -u "$vs")"/VC/Tools/MSVC/*/bin/Hostx64/x64/dumpbin.exe | tail -n 1)
+          missing=0
+          for dll in $("$dumpbin" -nologo -dependents "$out/Queenfisher.exe" | tr -d '\r' | grep -io '[a-z0-9_.-]*\.dll' | sort -u); do
+            case "$dll" in api-ms-*|API-MS-*|ext-ms-*) continue ;; esac   # parts of Windows itself
+            if [ -f "$out/$dll" ] || [ -f "/c/Windows/System32/$dll" ]; then echo "ok $dll"; else echo "MISSING $dll"; missing=1; fi
+          done
+          [ "$missing" = 0 ] || { echo "Queenfisher.exe needs DLLs the zip doesn't have"; exit 1; }
           cp LICENSE "$out/LICENSE.txt"
           cd dist && 7z a "Queenfisher-$version-windows.zip" "Queenfisher-$version-windows"
 
