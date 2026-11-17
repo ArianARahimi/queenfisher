@@ -18,6 +18,7 @@ public:
 
     QString location() const;   // folder to hand yt-dlp (--ffmpeg-location); empty = yt-dlp looks itself
     bool busy() const { return busy_; }
+    QString lastError() const { return lastError_; }   // why the last fetch failed; empty once it works
     void ensure();              // Windows: fetch it if missing; call when idle. Elsewhere: nothing.
 
     // The parts that don't need the network, public for tests.
@@ -31,10 +32,11 @@ signals:
     void readyChanged();   // location() or busy() changed
 
 private:
-    void finish(const QString &message);
+    void finish(bool ok, const QString &message);
 
     QString dir_;
     bool busy_ = false;
+    QString lastError_;
     qint64 lastTry_ = 0;
     QNetworkAccessManager net_;
 };

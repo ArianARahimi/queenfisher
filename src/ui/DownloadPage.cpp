@@ -124,9 +124,11 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg
     connect(engine_, &Engine::logLine, this, [this](const QString &line) { log(line); });
     if (ffmpeg_) {
         connect(ffmpeg_, &Ffmpeg::statusChanged, this, [this](const QString &text) {
-            banner_->setNotice(ffmpeg_->busy() ? text : QString());
+            if (ffmpeg_->busy() && !engine_->busy())
+                banner_->setNotice(text);
         });
         connect(ffmpeg_, &Ffmpeg::logLine, this, [this](const QString &line) { log(line); });
+        connect(ffmpeg_, &Ffmpeg::readyChanged, this, &DownloadPage::showNotice);
         connect(ffmpeg_, &Ffmpeg::readyChanged, this, &DownloadPage::startNext);
     }
 
@@ -398,17 +400,13 @@ void DownloadPage::log(const QString &line, int number)
                                  : QString("%1  %2").arg(time, line));
 }
 
-// The banner only shows while yt-dlp is missing or busy; a ready yt-dlp needs no notice.
+// The notice bar, most pressing first: yt-dlp or ffmpeg being fetched (their own messages),
+// yt-dlp missing, then tools a download will need. Nothing when all is well.
 void DownloadPage::engineChanged()
 {
     if (engine_->busy())
         return;   // statusChanged shows the progress
-    const bool missing = engine_->version().isEmpty();
-    banner_->setNotice(missing ? "yt-dlp isn't available yet. Check your connection; Queenfisher will try again." : QString());
-    if (missing)
-        engineRetry_.start();   // startNext() asks the engine again when nothing is downloading
-    else
-        engineRetry_.stop();
+    showNotice();
     if (isWebLink(link_->text()) && previewTitle_.isEmpty() && !preview_)
         startPreview();   // a preview was waiting for yt-dlp
     startNext();
@@ -569,6 +567,41 @@ void DownloadPage::fetchClip(bool play)
         QTimer::singleShot(3000, thumbnail_, [this] { thumbnail_->setLoadingClip({}); });
     });
     clip_->start();
+}
+
+void DownloadPage::showNotice()
+{
+    if (engine_->busy() || (ffmpeg_ && ffmpeg_->busy()))
+        return;   // they show their own progress
+    const bool noYtDlp = engine_->version().isEmpty();
+    const bool ffmpegFailed = ffmpeg_ && !ffmpeg_->lastError().isEmpty();
+    banner_->setNotice(noYtDlp ? QString("yt-dlp isn't available yet. Check your connection; Queenfisher will try again.")
+                               : toolWarning());
+    if (noYtDlp || ffmpegFailed)
+        engineRetry_.start();   // startNext() asks again when nothing is downloading
+    else
+        engineRetry_.stop();
+}
+
+// What a download would trip over: ffmpeg (joins picture and sound, makes MP3s) and Deno
+// (YouTube). Queenfisher's own ffmpeg counts; on Windows it fetches one, so only a failed
+// fetch is worth saying.
+QString DownloadPage::toolWarning() const
+{
+    QStringList lines;
+    const bool ffmpegHere = (ffmpeg_ && !ffmpeg_->location().isEmpty())
+        || (!QStandardPaths::findExecutable("ffmpeg").isEmpty() && !QStandardPaths::findExecutable("ffprobe").isEmpty());
+    if (!ffmpegHere) {
+#ifdef Q_OS_WIN
+        if (ffmpeg_ && !ffmpeg_->lastError().isEmpty())
+            lines << ffmpeg_->lastError() + ". Queenfisher will try again; until then most downloads can't join picture and sound.";
+#else
+        lines << "ffmpeg isn't installed: it's needed to join picture and sound and to make MP3s.";
+#endif
+    }
+    if (QStandardPaths::findExecutable("deno").isEmpty())
+        lines << "Deno isn't installed: YouTube needs it to unlock most videos.";
+    return lines.join('\n');
 }
 
 Options DownloadPage::currentOptions() const

@@ -110,13 +110,13 @@ void Ffmpeg::ensure()
         sums->deleteLater();
         const QString expected = sums->error() ? QString() : YtDlpEngine::checksumFor(sums->read(1 << 20), asset);
         if (expected.isEmpty())
-            return finish("Couldn't get ffmpeg's checksums");
+            return finish(false, "Couldn't get ffmpeg's checksums");
 
         // Straight to a file, hashed after: the zip is too big to hold in memory for long.
         auto *file = new QTemporaryFile(QDir::tempPath() + "/queenfisher-ffmpeg-XXXXXX.zip", this);
         if (!file->open()) {
             delete file;
-            return finish("Couldn't save the ffmpeg download");
+            return finish(false, "Couldn't save the ffmpeg download");
         }
         QNetworkRequest req(QUrl(release + asset));
         req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
@@ -134,7 +134,7 @@ void Ffmpeg::ensure()
             file->close();
             if (zip->error()) {
                 delete file;
-                return finish("Couldn't download ffmpeg: " + zip->errorString());
+                return finish(false, "Couldn't download ffmpeg: " + zip->errorString());
             }
             // Unpacking and trying it takes a few seconds: off the window's thread, so it doesn't freeze.
             const QString tar = QDir(qEnvironmentVariable("SystemRoot", "C:/Windows")).filePath("System32/tar.exe");
@@ -146,7 +146,7 @@ void Ffmpeg::ensure()
             connect(worker, &QThread::finished, this, [this, worker, file, result] {
                 worker->deleteLater();
                 delete file;
-                finish(result->isEmpty() ? QString("ffmpeg is ready") : *result);
+                finish(result->isEmpty(), result->isEmpty() ? QString("ffmpeg is ready") : *result);
             });
             worker->start();
         });
@@ -154,9 +154,10 @@ void Ffmpeg::ensure()
 #endif
 }
 
-void Ffmpeg::finish(const QString &message)
+void Ffmpeg::finish(bool ok, const QString &message)
 {
     busy_ = false;
+    lastError_ = ok ? QString() : message;
     emit logLine(message);
     emit statusChanged(message);
     emit readyChanged();
