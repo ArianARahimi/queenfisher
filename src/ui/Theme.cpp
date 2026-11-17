@@ -2,16 +2,15 @@
 
 #include <QApplication>
 #include <QPainter>
-#include <QPolygon>
 #include <QPalette>
+#include <QPolygon>
 #include <QProxyStyle>
-#include <QPushButton>
 #include <QStyleFactory>
 #include <QStyleOption>
 
 namespace {
 
-// Buttons and check boxes drawn the Windows 3.1 way; everything else is Fusion.
+// Buttons, check boxes and drop-downs drawn the Windows 3.1 way; everything else is Fusion.
 class Win31Style : public QProxyStyle
 {
 public:
@@ -28,10 +27,11 @@ public:
         }
         if (pe == PE_IndicatorCheckBox) {
             const QRect r = opt->rect.adjusted(0, 0, -1, -1);
-            p->fillRect(r, Qt::white);
-            p->setPen(Qt::black);
+            p->fillRect(r, Theme::field);
+            p->setPen(Theme::outline);
             p->drawRect(r);
             if (opt->state & State_On) {  // an X, not a tick
+                p->setPen(Theme::text);
                 p->drawLine(r.topLeft() + QPoint(2, 2), r.bottomRight() - QPoint(2, 2));
                 p->drawLine(r.topRight() + QPoint(-2, 2), r.bottomLeft() + QPoint(2, -2));
             }
@@ -46,22 +46,23 @@ public:
             QProxyStyle::drawComplexControl(cc, opt, p, w);
             return;
         }
-        // White box with a black outline, plus a bevelled arrow button on the right.
+        // Text box with a black outline, plus a bevelled arrow button on the right.
         const bool enabled = opt->state & State_Enabled;
         const QRect r = opt->rect.adjusted(0, 0, -1, -1);
-        p->fillRect(r, enabled ? Qt::white : Theme::face);
-        p->setPen(Qt::black);
+        p->fillRect(r, enabled ? Theme::field : Theme::face);
+        p->setPen(Theme::outline);
         p->drawRect(r);
         QRect arrow = subControlRect(cc, opt, SC_ComboBoxArrow, w);
         arrow.setTop(r.top());
         arrow.setBottom(r.bottom() + 1);
         arrow.setRight(r.right() + 1);
         drawButton(*p, arrow, opt->state & State_On, false);
+        const QColor ink = enabled ? Theme::text : Theme::dim;
         const QPoint c = arrow.center() + QPoint(1, -1);
         p->setPen(Qt::NoPen);
-        p->setBrush(enabled ? Qt::black : Theme::shadow);
+        p->setBrush(ink);
         p->drawPolygon(QPolygon({c + QPoint(-4, -2), c + QPoint(4, -2), c + QPoint(0, 2)}));
-        p->fillRect(c.x() - 4, c.y() + 4, 9, 1, enabled ? Qt::black : Theme::shadow);  // the Windows 3.1 underline
+        p->fillRect(c.x() - 4, c.y() + 4, 9, 1, ink);  // the Windows 3.1 underline
     }
 
     int pixelMetric(PixelMetric m, const QStyleOption *opt, const QWidget *w) const override
@@ -81,7 +82,7 @@ private:
     {
         r.adjust(0, 0, -1, -1);
         p.fillRect(r.adjusted(1, 1, 0, 0), Theme::face);
-        p.setPen(Qt::black);
+        p.setPen(Theme::outline);
         p.drawLine(r.left() + 1, r.top(), r.right() - 1, r.top());
         p.drawLine(r.left() + 1, r.bottom(), r.right() - 1, r.bottom());
         p.drawLine(r.left(), r.top() + 1, r.left(), r.bottom() - 1);
@@ -99,7 +100,7 @@ private:
         }
         for (int i = 0; i < 2; ++i) {
             const QRect e = in.adjusted(i, i, -i, -i);
-            p.setPen(Qt::white);
+            p.setPen(Theme::light);
             p.drawLine(e.topLeft(), e.topRight() - QPoint(1, 0));
             p.drawLine(e.topLeft(), e.bottomLeft() - QPoint(0, 1));
             p.setPen(Theme::shadow);
@@ -109,40 +110,58 @@ private:
     }
 };
 
+// @names are swapped for the Theme colours in apply().
 const char *styleSheet = R"(
-QWidget#central { background: #c0c0c0; }
+QWidget#central { background: @face; }
+QLabel { color: @text; }
 QLabel#strip {
-    background: #000080; color: #ffffff; font-weight: bold;
+    background: @strip; color: #ffffff; font-weight: bold;
     padding: 3px 6px; qproperty-alignment: AlignCenter;
 }
-QLabel#meta { color: #404040; }
+QLabel#meta { color: @dim; }
 QLabel#status {
-    padding: 2px 6px;
-    border: 1px solid; border-color: #808080 #ffffff #ffffff #808080;
+    color: @dim; padding: 2px 6px;
+    border: 1px solid; border-color: @shadow @light @light @shadow;
 }
-QFrame#card { background: #c0c0c0; border: 1px solid #000000; }
+QFrame#card { background: @face; border: 1px solid @outline; }
 QLineEdit {
-    color: #000000; background: #ffffff; border: 1px solid #000000;
-    padding: 3px 5px; selection-background-color: #000080; selection-color: #ffffff;
+    color: @text; background: @field; border: 1px solid @outline;
+    padding: 3px 5px; selection-background-color: @select; selection-color: #ffffff;
 }
-QLineEdit:read-only { background: #e8e8e8; }
-QLineEdit:disabled { color: #808080; background: #c0c0c0; }
+QLineEdit:read-only { background: @fieldAlt; }
+QLineEdit:disabled { color: @dim; background: @face; }
 QPushButton { font-weight: bold; }
+QCheckBox { color: @text; }
 QComboBox QAbstractItemView {
-    color: #000000; background: #ffffff; border: 1px solid #000000;
-    selection-background-color: #000080; selection-color: #ffffff;
+    color: @text; background: @field; border: 1px solid @outline;
+    selection-background-color: @select; selection-color: #ffffff;
 }
 QTreeWidget {
-    color: #000000; background: #ffffff; border: 1px solid #000000; outline: 0;
+    color: @text; background: @field; alternate-background-color: @fieldAlt;
+    border: 1px solid @outline; outline: 0;
 }
 QTreeWidget::item { padding: 3px 2px; }
-QTreeWidget::item:selected { background: #000080; color: #ffffff; }
+QTreeWidget::item:selected { background: @select; color: #ffffff; }
 QHeaderView::section {
-    color: #000000; font-weight: bold; padding: 3px 6px; background: #c0c0c0;
-    border: none; border-right: 1px solid #808080; border-bottom: 1px solid #000000;
+    color: @text; font-weight: bold; padding: 3px 6px; background: @face;
+    border: none; border-right: 1px solid @shadow; border-bottom: 1px solid @outline;
 }
-QToolTip { color: #000000; background: #ffffe1; border: 1px solid #000000; }
+QToolTip { color: @text; background: @fieldAlt; border: 1px solid @outline; }
 )";
+
+QString themedStyleSheet()
+{
+    // Longer names first so @field doesn't eat @fieldAlt.
+    const std::pair<const char *, QColor> names[] = {
+        {"@fieldAlt", Theme::fieldAlt}, {"@outline", Theme::outline}, {"@shadow", Theme::shadow},
+        {"@select", Theme::select}, {"@strip", Theme::strip}, {"@field", Theme::field},
+        {"@light", Theme::light}, {"@face", Theme::face}, {"@text", Theme::text}, {"@dim", Theme::dim},
+    };
+    QString css = styleSheet;
+    for (const auto &[name, colour] : names)
+        css.replace(name, colour.name());
+    return css;
+}
 
 }
 
@@ -153,24 +172,23 @@ void apply(QApplication &app)
     app.setStyle(new Win31Style);
     QPalette pal;
     pal.setColor(QPalette::Window, face);
-    pal.setColor(QPalette::WindowText, Qt::black);
+    pal.setColor(QPalette::WindowText, text);
     pal.setColor(QPalette::Button, face);
-    pal.setColor(QPalette::ButtonText, Qt::black);
-    pal.setColor(QPalette::Base, Qt::white);
-    pal.setColor(QPalette::AlternateBase, QColor(0xf0, 0xf0, 0xf0));
-    pal.setColor(QPalette::Text, Qt::black);
-    pal.setColor(QPalette::Highlight, navy);
+    pal.setColor(QPalette::ButtonText, text);
+    pal.setColor(QPalette::Base, field);
+    pal.setColor(QPalette::AlternateBase, fieldAlt);
+    pal.setColor(QPalette::Text, text);
+    pal.setColor(QPalette::Highlight, select);
     pal.setColor(QPalette::HighlightedText, Qt::white);
-    pal.setColor(QPalette::Light, Qt::white);
+    pal.setColor(QPalette::Light, light);
     pal.setColor(QPalette::Mid, shadow);
     pal.setColor(QPalette::Dark, shadow);
-    pal.setColor(QPalette::Shadow, Qt::black);
-    pal.setColor(QPalette::PlaceholderText, shadow);
-    pal.setColor(QPalette::Disabled, QPalette::ButtonText, shadow);
-    pal.setColor(QPalette::Disabled, QPalette::WindowText, shadow);
-    pal.setColor(QPalette::Disabled, QPalette::Text, shadow);
+    pal.setColor(QPalette::Shadow, outline);
+    pal.setColor(QPalette::PlaceholderText, dim.darker(115));
+    for (auto role : {QPalette::ButtonText, QPalette::WindowText, QPalette::Text})
+        pal.setColor(QPalette::Disabled, role, dim.darker(130));
     app.setPalette(pal);
-    app.setStyleSheet(styleSheet);
+    app.setStyleSheet(themedStyleSheet());
 }
 
 void drawSunken(QPainter &p, const QRect &r, const QColor &fill)
@@ -179,22 +197,22 @@ void drawSunken(QPainter &p, const QRect &r, const QColor &fill)
     p.setPen(shadow);
     p.drawLine(r.topLeft(), r.topRight());
     p.drawLine(r.topLeft(), r.bottomLeft());
-    p.setPen(Qt::white);
+    p.setPen(light);
     p.drawLine(r.bottomLeft(), r.bottomRight());
     p.drawLine(r.topRight(), r.bottomRight());
 }
 
 void drawBlocks(QPainter &p, const QRect &r, double fraction)
 {
-    p.fillRect(r, empty);
-    p.setPen(Qt::black);
+    p.fillRect(r, field);
+    p.setPen(light);
     p.drawRect(r.adjusted(0, 0, -1, -1));
     const QRect inner = r.adjusted(2, 2, -2, -2);
     constexpr int block = 6, gap = 2;
     const int count = (inner.width() + gap) / (block + gap);
     const int lit = fraction < 0 ? 0 : int(qMin(fraction, 1.0) * count + 0.5);
     for (int i = 0; i < lit; ++i)
-        p.fillRect(inner.left() + i * (block + gap), inner.top(), block, inner.height(), navy);
+        p.fillRect(inner.left() + i * (block + gap), inner.top(), block, inner.height(), bar);
 }
 
 }

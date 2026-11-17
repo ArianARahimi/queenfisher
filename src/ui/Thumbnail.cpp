@@ -29,7 +29,7 @@ void Thumbnail::paintEvent(QPaintEvent *)
     const QRect area = rect().adjusted(2, 2, -2, -2);
 
     if (picture_.isNull()) {
-        p.setPen(QColor(0xc0, 0xc0, 0xc0));
+        p.setPen(Theme::dim);
         p.drawText(area, Qt::AlignCenter | Qt::TextWordWrap, hint_);
         return;
     }
