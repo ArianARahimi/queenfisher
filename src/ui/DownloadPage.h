@@ -114,6 +114,8 @@ private:
     QString quickId_;          // YouTube video whose picture and title were fetched directly
     QString quickPictureId_;   // ...and whose picture is showing
     PreviewInfo lastPreview_;   // the current link's, for the quality line
+    bool previewPending_ = false;   // a link is in but its qualities aren't known yet
+    int wantedQuality_ = 0;         // the row the user picked; shown lower when the video lacks it
     QString signInUrl_, signInCookies_;   // a preview needed a sign-in: reuse it for that link
 
 };

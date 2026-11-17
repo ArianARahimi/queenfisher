@@ -31,6 +31,7 @@
 #include <QJsonObject>
 #include <QPushButton>
 #include <QSettings>
+#include <QSignalBlocker>
 #include <QSplitter>
 #include <QStandardPaths>
 #include <QTime>
@@ -223,6 +224,7 @@ QWidget *DownloadPage::buildSidebar()
         subtitles_->setEnabled(row < Options::Mp3);
     });
     connect(format_, &QListWidget::currentRowChanged, this, &DownloadPage::showQuality);
+    connect(quality_, &QListWidget::currentRowChanged, this, [this](int row) { wantedQuality_ = qMax(0, row); });
     connect(quality_, &QListWidget::currentRowChanged, this, &DownloadPage::showQuality);
     connect(openFolder, &QPushButton::clicked, this, &DownloadPage::openFolder);
     return side;
@@ -448,6 +450,7 @@ void DownloadPage::linkChanged(const QString &text)
     const bool ok = isWebLink(text);
     download_->setEnabled(ok);
     lastPreview_ = {};
+    previewPending_ = ok;
     showQuality();
     delete preview_;   // a new link makes the old answer useless
     previewTitle_.clear();
@@ -563,6 +566,8 @@ void DownloadPage::startPreview()
     });
     connect(preview_, &PreviewJob::failed, this, [this, job = preview_.data()](const QString &message) {
         job->deleteLater();
+        previewPending_ = false;   // unknown qualities: every row can be picked again
+        showQuality();
         meta_->setText(message);
         if (quickPictureId_.isEmpty())   // a picture straight from YouTube still beats nothing
             thumbnail_->setHint("No preview");
@@ -575,6 +580,7 @@ void DownloadPage::showPreview(const PreviewInfo &info)
 {
     previewTitle_ = info.title;
     lastPreview_ = info;
+    previewPending_ = false;
     showQuality();
     title_->setText(info.title);
     QStringList meta;
@@ -642,10 +648,23 @@ void DownloadPage::showQuality()
 {
     const auto format = Options::Format(qMax(0, format_->currentRow()));
     const int best = bestHeight(lastPreview_, format);
-    for (int row = 1; row < quality_->count(); ++row) {   // "Best available" always applies
+    // While the preview loads nothing is known, so only "Best available" (always right) can be
+    // picked; afterwards, only what the video has.
+    int shown = wantedQuality_, tallest = 0;
+    for (int row = quality_->count() - 1; row >= 1; --row) {
         QListWidgetItem *item = quality_->item(row);
-        const bool offered = !best || heights[row] <= best;
+        const bool offered = !previewPending_ && (!best || heights[row] <= best);
         item->setFlags(offered ? item->flags() | Qt::ItemIsEnabled : item->flags() & ~Qt::ItemIsEnabled);
+        if (offered)
+            tallest = row;
+    }
+    // A pick the video lacks shows as the tallest it has, which is what yt-dlp gets anyway.
+    // Not saved, so the next video still gets the user's own pick.
+    if (best && !previewPending_ && shown > 0 && heights[shown] > best)
+        shown = tallest ? tallest : 0;
+    if (quality_->currentRow() != shown) {
+        const QSignalBlocker quiet(quality_);
+        quality_->setCurrentRow(shown);
     }
     const QString audioName = originalAudioName(lastPreview_);   // "Opus" on YouTube
     format_->item(Options::AudioOriginal)->setText(audioName.isEmpty() ? QString("Original audio") : audioName);
