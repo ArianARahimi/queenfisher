@@ -186,6 +186,7 @@ QFrame#banner {
 QFrame#banner QLabel { color: @label; }
 QFrame#previewPane { background: @field; border: 1px solid @outline; }
 QLabel#meta { color: @dim; }
+QLabel#qualityInfo { color: @accent; font-weight: bold; }
 
 QSplitter::handle { background: @window; }
 QSplitter::handle:vertical { height: 7px; }

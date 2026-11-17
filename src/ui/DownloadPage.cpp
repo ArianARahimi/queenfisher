@@ -211,6 +211,8 @@ QWidget *DownloadPage::buildSidebar()
         qualityBox_->setEnabled(row < Options::Mp3);
         subtitles_->setEnabled(row < Options::Mp3);
     });
+    connect(format_, &QListWidget::currentRowChanged, this, &DownloadPage::showQuality);
+    connect(quality_, &QListWidget::currentRowChanged, this, &DownloadPage::showQuality);
     connect(change, &QPushButton::clicked, this, &DownloadPage::chooseFolder);
     connect(openFolder, &QPushButton::clicked, this, &DownloadPage::openFolder);
     connect(playlist_, &QCheckBox::toggled, this, [this] { if (isWebLink(link_->text())) previewDelay_.start(); });
@@ -243,19 +245,17 @@ QWidget *DownloadPage::buildTop()
     meta_->setObjectName("meta");
     meta_->setWordWrap(true);
 
-    // Open Page sits with the video it acts on.
-    openPage_ = new QPushButton(QIcon(":/icons/browser.png"), "Open Page");
-    openPage_->setToolTip("Open the link in your web browser");
-    auto *videoActions = new QHBoxLayout;
-    videoActions->addWidget(openPage_);
-    videoActions->addStretch(1);
+    // What the video really offers, and roughly how big the download will be.
+    qualityInfo_ = new QLabel;
+    qualityInfo_->setObjectName("qualityInfo");
+    qualityInfo_->setVisible(false);
 
     auto *info = new QVBoxLayout;
     info->setSpacing(6);
     info->addWidget(title_);
     info->addWidget(meta_);
     info->addSpacing(4);
-    info->addLayout(videoActions);
+    info->addWidget(qualityInfo_);
     info->addStretch(1);
     auto *previewRow = new QHBoxLayout;
     previewRow->setSpacing(12);
@@ -294,7 +294,6 @@ QWidget *DownloadPage::buildTop()
     connect(link_, &QLineEdit::returnPressed, this, [this] { if (download_->isEnabled()) download(); });
     connect(paste, &QPushButton::clicked, this, &DownloadPage::pasteLink);
     connect(download_, &QPushButton::clicked, this, &DownloadPage::download);
-    connect(openPage_, &QPushButton::clicked, this, [this] { QDesktopServices::openUrl(QUrl(link_->text().trimmed())); });
     return top;
 }
 
@@ -409,7 +408,8 @@ void DownloadPage::linkChanged(const QString &text)
 {
     const bool ok = isWebLink(text);
     download_->setEnabled(ok);
-    openPage_->setEnabled(ok);
+    lastPreview_ = {};
+    showQuality();
     delete preview_;   // a new link makes the old answer useless
     previewTitle_.clear();
     previewDelay_.stop();
@@ -459,6 +459,8 @@ void DownloadPage::startPreview()
 void DownloadPage::showPreview(const PreviewInfo &info)
 {
     previewTitle_ = info.title;
+    lastPreview_ = info;
+    showQuality();
     title_->setText(info.title);
     QStringList meta;
     if (!info.channel.isEmpty())
@@ -513,6 +515,31 @@ void DownloadPage::showNotice()
         engineRetry_.start();   // startNext() asks again when nothing is downloading
     else
         engineRetry_.stop();
+}
+
+// "Up to 1080p · about 51 MB" for the current choices; quality rows the video doesn't have
+// are greyed out. Nothing for playlists or before a preview.
+void DownloadPage::showQuality()
+{
+    const int best = bestHeight(lastPreview_);
+    for (int row = 1; row < quality_->count(); ++row) {   // "Best available" always applies
+        QListWidgetItem *item = quality_->item(row);
+        const bool offered = !best || heights[row] <= best;
+        item->setFlags(offered ? item->flags() | Qt::ItemIsEnabled : item->flags() & ~Qt::ItemIsEnabled);
+    }
+    if (lastPreview_.streams.isEmpty()) {
+        qualityInfo_->setVisible(false);
+        return;
+    }
+    const auto format = Options::Format(qMax(0, format_->currentRow()));
+    const bool audio = format == Options::Mp3 || format == Options::AudioOriginal;
+    QStringList parts;
+    if (best)
+        parts << QString("Up to %1p").arg(best);
+    if (const qint64 bytes = estimateSize(lastPreview_, format, audio ? 0 : heights[qMax(0, quality_->currentRow())]); bytes > 0)
+        parts << "about " + Widgets::sizeText(double(bytes));
+    qualityInfo_->setText(parts.join("  ·  "));
+    qualityInfo_->setVisible(!parts.isEmpty());
 }
 
 Options DownloadPage::currentOptions() const

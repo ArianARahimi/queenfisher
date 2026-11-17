@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Options.h"
+#include "core/PreviewJob.h"
 
 #include <QHash>
 #include <QPointer>
@@ -26,7 +27,6 @@ class QTreeWidget;
 class QTreeWidgetItem;
 class Thumbnail;
 class YtDlpEngine;
-struct PreviewInfo;
 
 // The Download tab: options on the left, link and preview on top, downloads below.
 class DownloadPage : public QWidget
@@ -57,6 +57,7 @@ private:
     void showPreview(const PreviewInfo &info);
     void engineChanged();
     void showNotice();
+    void showQuality();
 
     Options currentOptions() const;
     void download();
@@ -89,7 +90,7 @@ private:
     QLabel *title_ = nullptr;
     QLabel *meta_ = nullptr;
     QPushButton *download_ = nullptr;
-    QPushButton *openPage_ = nullptr;
+    QLabel *qualityInfo_ = nullptr;
 
     QTreeWidget *list_ = nullptr;
     QToolButton *remove_ = nullptr, *retry_ = nullptr, *stop_ = nullptr, *launch_ = nullptr;
@@ -105,6 +106,7 @@ private:
     QPointer<PreviewJob> preview_;
     QNetworkAccessManager *net_ = nullptr;
     QString previewTitle_;
+    PreviewInfo lastPreview_;   // the current link's, for the quality line
     QString signInUrl_, signInCookies_;   // a preview needed a sign-in: reuse it for that link
 
 };

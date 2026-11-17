@@ -55,7 +55,91 @@ PreviewInfo parsePreview(const QByteArray &json)
     } else {
         info.thumbnail = pickThumbnail(o);
     }
+    const double seconds = o.value("duration").toDouble();
+    for (const QJsonValue &v : o.value("formats").toArray()) {
+        const QJsonObject f = v.toObject();
+        Stream s;
+        s.height = f.value("height").toInt();
+        s.kbps = f.value("tbr").toDouble();
+        s.ext = f.value("ext").toString();
+        s.vcodec = f.value("vcodec").toString();
+        s.acodec = f.value("acodec").toString();
+        s.hls = f.value("protocol").toString().startsWith("m3u8");
+        s.bytes = f.contains("filesize") && !f.value("filesize").isNull() ? qint64(f.value("filesize").toDouble())
+                : f.contains("filesize_approx") && !f.value("filesize_approx").isNull() ? qint64(f.value("filesize_approx").toDouble())
+                : s.kbps > 0 && seconds > 0 ? qint64(s.kbps * 1000 / 8 * seconds) : -1;
+        if (s.picture() || s.sound())   // not storyboards and the like
+            info.streams.append(s);
+    }
     return info;
+}
+
+int bestHeight(const PreviewInfo &info)
+{
+    int best = 0;
+    for (const Stream &s : info.streams)
+        if (s.picture())
+            best = qMax(best, s.height);
+    return best;
+}
+
+namespace {
+
+// The best of the streams `fits` allows, preferring those `preferred` likes: tallest, then
+// highest bitrate. Null if none fit.
+const Stream *pick(const QList<Stream> &streams, const auto &fits, const auto &preferred)
+{
+    const Stream *best = nullptr;
+    for (bool usePreference : {true, false}) {
+        for (const Stream &s : streams) {
+            if (!fits(s) || (usePreference && !preferred(s)))
+                continue;
+            if (!best || s.height > best->height || (s.height == best->height && s.kbps > best->kbps))
+                best = &s;
+        }
+        if (best)
+            return best;
+    }
+    return nullptr;
+}
+
+}
+
+qint64 estimateSize(const PreviewInfo &info, Options::Format format, int maxHeight)
+{
+    // Like yt-dlp: plain downloads before streamed-in-pieces ones, when there are any.
+    QList<Stream> streams;
+    for (const Stream &s : info.streams)
+        if (!s.hls)
+            streams << s;
+    if (streams.isEmpty())
+        streams = info.streams;
+    const auto isSound = [](const Stream &s) { return s.sound() && !s.picture(); };
+    if (format == Options::Mp3) {
+        double seconds = 0;   // MP3 at the best quality averages about 245 kbit/s
+        for (const Stream &s : streams)
+            if (s.kbps > 0 && s.bytes > 0)
+                seconds = qMax(seconds, s.bytes * 8.0 / (s.kbps * 1000));
+        return seconds > 0 ? qint64(seconds * 245000 / 8) : -1;
+    }
+    if (format == Options::AudioOriginal) {
+        const Stream *a = pick(streams, isSound, [](const Stream &) { return true; });
+        return a ? a->bytes : -1;
+    }
+    const auto fits = [maxHeight](const Stream &s) { return s.picture() && (!maxHeight || s.height <= maxHeight); };
+    const auto likedPicture = [format](const Stream &s) {
+        return format == Options::Mp4 ? s.vcodec.startsWith("avc1") : format == Options::Webm ? s.ext == "webm" : true;
+    };
+    const auto likedSound = [format](const Stream &s) {
+        return format == Options::Mp4 ? s.ext == "m4a" : format == Options::Webm ? s.ext == "webm" : true;
+    };
+    const Stream *v = pick(streams, fits, likedPicture);
+    if (!v || v->bytes < 0)
+        return -1;
+    if (v->sound())
+        return v->bytes;   // picture and sound in one
+    const Stream *a = pick(streams, isSound, likedSound);
+    return a && a->bytes >= 0 ? v->bytes + a->bytes : -1;
 }
 
 PreviewJob::PreviewJob(QString url, bool playlist, Engine *engine, QObject *parent)

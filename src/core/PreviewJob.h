@@ -1,12 +1,27 @@
 #pragma once
 
+#include "Options.h"
+
 #include <QByteArray>
+#include <QList>
 #include <QObject>
 #include <QProcess>
 #include <QStringList>
 #include <QTimer>
 
 class Engine;
+
+// One of the video's streams, as yt-dlp lists them: picture, sound, or both.
+struct Stream
+{
+    int height = 0;      // picture height; 0 for sound only
+    double kbps = 0;     // average bitrate
+    qint64 bytes = -1;   // size, exact or estimated; -1 if unknown
+    QString ext, vcodec, acodec;
+    bool hls = false;    // streamed in pieces (m3u8); yt-dlp prefers plain downloads
+    bool picture() const { return height > 0 && !vcodec.isEmpty() && vcodec != "none"; }
+    bool sound() const { return !acodec.isEmpty() && acodec != "none"; }
+};
 
 // What the preview card shows for a link.
 struct PreviewInfo
@@ -18,7 +33,15 @@ struct PreviewInfo
     bool live = false;
     int playlistCount = -1;  // number of videos when the link is a playlist
     QString thumbnail;       // picture URL, JPEG preferred
+    QList<Stream> streams;   // empty for playlists
 };
+
+// The tallest picture the video has; 0 if unknown.
+int bestHeight(const PreviewInfo &info);
+
+// Roughly how big the download will be with these choices, picking streams the way yt-dlp
+// does for them (H.264 and AAC for MP4, WebM for WebM); -1 if the sizes aren't known.
+qint64 estimateSize(const PreviewInfo &info, Options::Format format, int maxHeight);
 
 // Reads yt-dlp's JSON for one video or playlist; empty title means it couldn't.
 PreviewInfo parsePreview(const QByteArray &json);
