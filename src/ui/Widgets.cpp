@@ -37,7 +37,11 @@ QToolButton *action(const QString &icon, const QString &text, const QString &tip
 
 QIcon formatIcon(bool audio)
 {
-    return audio ? QIcon(Theme::recolour(":/icons/audio.png", Theme::accent, true)) : QIcon(":/icons/video.png");
+    if (!audio)
+        return QIcon(":/icons/video.png");
+    QIcon note(Theme::recolour(":/icons/audio.png", Theme::text, true));                   // white in a list
+    note.addPixmap(Theme::recolour(":/icons/audio.png", Theme::accent, true), QIcon::Selected);   // lime when picked
+    return note;
 }
 
 QString sizeText(double bytes)

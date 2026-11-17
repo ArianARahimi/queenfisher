@@ -15,7 +15,7 @@ QFrame *sideBox(const QString &title, QLayout *content);
 // Big icon with its label underneath, for the rows of actions under each list.
 QToolButton *action(const QString &icon, const QString &text, const QString &tip);
 
-// Icon for a list row: the film for video, the music note redrawn in the theme's lime for audio.
+// Icon for a list row: the film for video; for audio the music note, white, lime when selected.
 QIcon formatIcon(bool audio);
 
 // File sizes as the lists show them: "820 KB", "33.3 MB", "1.21 GB".
