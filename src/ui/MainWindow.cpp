@@ -3,6 +3,7 @@
 #include "Theme.h"
 #include "Thumbnail.h"
 #include "core/DownloadJob.h"
+#include "core/PreviewJob.h"
 #include "core/YtDlpEngine.h"
 
 #include <QCheckBox>
@@ -18,6 +19,8 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QStandardPaths>
@@ -50,6 +53,11 @@ QString shortPath(const QString &path)
 {
     const QString home = QDir::homePath();
     return path.startsWith(home) ? "~" + path.mid(home.size()) : path;
+}
+
+QString clock(int seconds)
+{
+    return QTime(0, 0).addSecs(seconds).toString(seconds >= 3600 ? "h:mm:ss" : "m:ss");
 }
 
 QString megabytes(double bytes)
@@ -114,6 +122,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         refreshStatus();
     });
     connect(engine_, &Engine::readyChanged, this, &MainWindow::startNext);
+    connect(engine_, &Engine::readyChanged, this, [this] {
+        if (!engine_->busy() && isWebLink(link_->text()) && previewTitle_.isEmpty() && !preview_)
+            startPreview();   // a preview was waiting for yt-dlp to be installed
+    });
+
+    net_ = new QNetworkAccessManager(this);
+    previewDelay_.setSingleShot(true);
+    previewDelay_.setInterval(500);
+    connect(&previewDelay_, &QTimer::timeout, this, &MainWindow::startPreview);
+    connect(playlist_, &QCheckBox::toggled, this, [this] { if (isWebLink(link_->text())) previewDelay_.start(); });
 
     linkChanged({});
     startNext();
@@ -268,15 +286,92 @@ void MainWindow::linkChanged(const QString &text)
 {
     const bool ok = isWebLink(text);
     download_->setEnabled(ok);
+    delete preview_;   // a new link makes the old answer useless
+    previewTitle_.clear();
+    previewDelay_.stop();
     if (ok) {
         title_->setText(QUrl(text.trimmed()).host());
-        meta_->setText("Preview isn't built yet");
-        thumbnail_->setHint("Preview coming soon");
+        meta_->setText("Loading preview...");
+        thumbnail_->setHint("Loading preview...");
+        previewDelay_.start();
     } else {
         title_->setText("No video yet");
         meta_->setText(text.trimmed().isEmpty() ? "Paste a link above" : "That doesn't look like a web link");
         thumbnail_->setHint("Paste a link to see a preview");
     }
+}
+
+void MainWindow::startPreview()
+{
+    const QString url = link_->text().trimmed();
+    if (!isWebLink(url))
+        return;
+    if (engine_->busy()) {
+        meta_->setText("Waiting for yt-dlp...");
+        return;   // retried when the engine is ready
+    }
+    delete preview_;
+    preview_ = new PreviewJob(url, playlist_->isChecked(), engine_, this);
+    connect(preview_, &PreviewJob::logLine, this, [this](const QString &line) { log(line); });
+    connect(preview_, &PreviewJob::ready, this, [this, job = preview_.data()](const PreviewInfo &info) {
+        if (!job->cookies().isEmpty()) {
+            signInUrl_ = job->url();
+            signInCookies_ = job->cookies();
+        }
+        job->deleteLater();
+        showPreview(info);
+    });
+    connect(preview_, &PreviewJob::failed, this, [this, job = preview_.data()](const QString &message) {
+        job->deleteLater();
+        meta_->setText(message);
+        thumbnail_->setHint("No preview");
+    });
+    preview_->start();
+}
+
+void MainWindow::showPreview(const PreviewInfo &info)
+{
+    previewTitle_ = info.title;
+    title_->setText(info.title);
+    QStringList meta;
+    if (!info.channel.isEmpty())
+        meta << info.channel;
+    if (info.playlistCount >= 0)
+        meta << QString("Playlist, %1 videos").arg(info.playlistCount);
+    else if (info.live)
+        meta << "Live now";
+    else if (info.seconds >= 0)
+        meta << clock(info.seconds);
+    if (!info.site.isEmpty())
+        meta << info.site;
+    meta_->setText(meta.join("  \u00B7  "));
+
+    const QString badge = info.playlistCount >= 0 ? QString("%1 videos").arg(info.playlistCount)
+                        : info.live ? QString("LIVE") : info.seconds >= 0 ? clock(info.seconds) : QString();
+    if (info.thumbnail.isEmpty()) {
+        thumbnail_->setHint("No picture");
+        return;
+    }
+    thumbnail_->setHint("Loading picture...");
+    QNetworkRequest req{QUrl(info.thumbnail)};
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    req.setTransferTimeout(20000);
+    QNetworkReply *reply = net_->get(req);
+    connect(reply, &QNetworkReply::downloadProgress, reply, [reply](qint64 got, qint64 total) {
+        if (got > (8 << 20) || total > (8 << 20))
+            reply->abort();   // a thumbnail is never this big
+    });
+    const QString url = link_->text().trimmed();
+    connect(reply, &QNetworkReply::finished, this, [this, reply, url, badge] {
+        reply->deleteLater();
+        if (link_->text().trimmed() != url)
+            return;   // the link changed while the picture loaded
+        QPixmap picture;
+        if (reply->error() || !picture.loadFromData(reply->readAll()))
+            thumbnail_->setHint("No picture");
+        else
+            thumbnail_->setPicture(picture, badge);
+    });
 }
 
 void MainWindow::chooseFolder()
@@ -303,8 +398,11 @@ Options MainWindow::currentOptions() const
 
 void MainWindow::download()
 {
-    const Options o = currentOptions();
-    auto *item = new QTreeWidgetItem(list_, {QUrl(o.url).host(), o.label(), "", "", "Waiting"});
+    Options o = currentOptions();
+    if (o.url == signInUrl_)
+        o.cookies = signInCookies_;   // the preview already found a sign-in is needed
+    const QString name = previewTitle_.isEmpty() ? QUrl(o.url).host() : previewTitle_;
+    auto *item = new QTreeWidgetItem(list_, {name, o.label(), "", "", "Waiting"});
     item->setData(Progress, Qt::UserRole, -1.0);
     item->setData(Progress, ProgressDelegate::stateRole, int(Theme::BarState::Waiting));
     item->setToolTip(Title, o.url);

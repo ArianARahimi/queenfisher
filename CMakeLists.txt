@@ -18,6 +18,7 @@ qt_add_executable(qfisher
     src/core/ErrorRules.cpp src/core/ErrorRules.h
     src/core/Options.cpp src/core/Options.h
     src/core/PgpVerify.cpp src/core/PgpVerify.h
+    src/core/PreviewJob.cpp src/core/PreviewJob.h
     src/core/ProgressTracker.cpp src/core/ProgressTracker.h
     src/core/YtDlpEngine.cpp src/core/YtDlpEngine.h
     src/ui/MainWindow.cpp src/ui/MainWindow.h

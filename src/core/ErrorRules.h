@@ -10,6 +10,7 @@ enum class Problem {
     SignIn,        // the site wants an account: retry with the browser's sign-in
     Outdated,      // the site changed and yt-dlp can't keep up: update yt-dlp, then try nightly
     RateLimited,   // too many requests from this connection
+    Blocked,       // the site refuses this connection (often a VPN or data-centre address)
     Network,
     Unavailable,   // private, removed, region-locked, not started yet
     Unsupported,

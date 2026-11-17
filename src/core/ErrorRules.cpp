@@ -17,6 +17,8 @@ const Rule rules[] = {
      Problem::SignIn, "The site wants a sign-in"},
     {R"(http error 429|too many requests)",
      Problem::RateLimited, "The site is limiting this connection, try again later"},
+    {R"(data center ip|vpn/proxy|your ip.*(blocked|banned)|blocked.*your (ip|country|region))",
+     Problem::Blocked, "The site is blocking this connection, a VPN can cause this"},
     {R"(no supported javascript runtime|javascript runtime.*(not found|required)|install.*deno)",
      Problem::NoJsRuntime, "YouTube needs Deno installed to unlock videos"},
     {R"(ffmpeg.*not (found|installed)|ffprobe.*not found|you have requested merging)",

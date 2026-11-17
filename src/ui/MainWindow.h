@@ -4,8 +4,13 @@
 
 #include <QHash>
 #include <QMainWindow>
+#include <QPointer>
+#include <QTimer>
 
 class DownloadJob;
+class PreviewJob;
+class QNetworkAccessManager;
+struct PreviewInfo;
 class QCheckBox;
 class QComboBox;
 class QLabel;
@@ -29,6 +34,8 @@ private:
     QWidget *buildCard();
     QWidget *buildList();
     void linkChanged(const QString &text);
+    void startPreview();
+    void showPreview(const PreviewInfo &info);
     void chooseFolder();
     void download();
     void startNext();
@@ -56,4 +63,10 @@ private:
     DownloadJob *running_ = nullptr;
     YtDlpEngine *engine_ = nullptr;
     QString engineStatus_;
+
+    QTimer previewDelay_;              // waits for typing or pasting to settle
+    QPointer<PreviewJob> preview_;
+    QNetworkAccessManager *net_ = nullptr;
+    QString previewTitle_;             // for the list once the download starts
+    QString signInUrl_, signInCookies_;   // the preview needed a sign-in: reuse it for the download
 };
