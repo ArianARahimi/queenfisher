@@ -28,7 +28,7 @@ Queenfisher needs [ffmpeg](https://ffmpeg.org/) installed to join video and soun
 
 ## Building
 
-Needs Qt 6.5 or newer, CMake and a C++20 compiler.
+Needs Qt 6.5 or newer, OpenSSL 3, CMake and a C++20 compiler.
 
 ```
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -48,6 +48,7 @@ To build the Linux AppImage (into `dist/`):
 - YouTube needs Deno installed to unlock most videos. Queenfisher tells you when it's missing but doesn't install it yet.
 - ffmpeg must be installed on every system; Queenfisher doesn't bring its own yet.
 - The Windows and macOS builds come from GitHub Actions and haven't been tried on a real Windows PC or Mac yet. Windows is a zip, not an installer. The Mac apps aren't signed by Apple.
+- The Linux AppImage hasn't been tried on a Wayland desktop yet (it bundles the parts Wayland needs, but that's unconfirmed).
 - The app icon is a placeholder.
 - Stopping a download also stops the programs yt-dlp started (like ffmpeg) on Linux and macOS. On Windows only yt-dlp itself is stopped so far, so a merge already under way may finish on its own.
 - When a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. That only works on Linux so far.
