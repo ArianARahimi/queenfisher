@@ -180,10 +180,6 @@ QFrame#banner {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #373a42, stop:0.5 #30333a, stop:0.51 #2b2d33, stop:1 #27292e);
 }
 QFrame#banner QLabel { color: #cfd3da; }
-QLabel#chip {
-    color: @onSelect; font-weight: bold; padding: 3px 10px; border: 1px solid @outline; border-bottom: none;
-    border-top-left-radius: 3px; border-top-right-radius: 3px; background: @gloss;
-}
 QFrame#previewPane { background: @field; border: 1px solid @outline; }
 QLabel#meta { color: @dim; }
 

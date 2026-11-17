@@ -39,19 +39,17 @@ QToolButton *action(const QString &icon, const QString &text, const QString &tip
 Banner::Banner(QWidget *parent) : QFrame(parent)
 {
     setObjectName("banner");
-    icon_ = new QLabel;
     text_ = new QLabel;
     text_->setWordWrap(true);
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(6, 3, 6, 3);
-    layout->setSpacing(6);
-    layout->addWidget(icon_);
     layout->addWidget(text_, 1);
+    setVisible(false);
 }
 
-void Banner::setNotice(Kind kind, const QString &text)
+void Banner::setNotice(const QString &text)
 {
-    icon_->setPixmap(QPixmap(kind == Warning ? ":/icons/warning.png" : ":/icons/info.png"));
     text_->setText(text);
     setToolTip(text);
+    setVisible(!text.isEmpty());
 }

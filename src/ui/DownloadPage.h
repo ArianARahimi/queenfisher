@@ -84,7 +84,6 @@ private:
     QCheckBox *playlist_ = nullptr;
 
     QLineEdit *link_ = nullptr;
-    QLabel *chip_ = nullptr;
     Banner *banner_ = nullptr;
     Thumbnail *thumbnail_ = nullptr;
     QLabel *title_ = nullptr;

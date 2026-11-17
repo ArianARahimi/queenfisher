@@ -122,7 +122,7 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, QWidget *paren
     connect(engine_, &Engine::readyChanged, this, &DownloadPage::engineChanged);
     connect(engine_, &Engine::statusChanged, this, [this](const QString &text) {
         if (engine_->busy())
-            banner_->setNotice(Banner::Info, text);
+            banner_->setNotice(text);
     });
     connect(engine_, &Engine::logLine, this, [this](const QString &line) { log(line); });
 
@@ -201,7 +201,7 @@ QWidget *DownloadPage::buildSidebar()
     return side;
 }
 
-// Link box, a tab with the current title, the notice bar, the preview and its actions.
+// Link box, the notice bar, the preview and its actions.
 QWidget *DownloadPage::buildTop()
 {
     link_ = new QLineEdit;
@@ -210,8 +210,6 @@ QWidget *DownloadPage::buildTop()
     auto *paste = new QPushButton(QIcon(":/icons/paste.png"), "Paste");
     paste->setToolTip("Paste the link you copied");
 
-    chip_ = new QLabel;
-    chip_->setObjectName("chip");
     banner_ = new Banner;
 
     thumbnail_ = new Thumbnail;
@@ -248,14 +246,6 @@ QWidget *DownloadPage::buildTop()
     previewRow->addWidget(thumbnail_, 0, Qt::AlignTop);
     previewRow->addLayout(info, 1);
 
-    auto *pane = new QFrame;
-    pane->setObjectName("previewPane");
-    auto *paneLayout = new QVBoxLayout(pane);
-    paneLayout->setContentsMargins(8, 8, 8, 8);
-    paneLayout->setSpacing(8);
-    paneLayout->addWidget(banner_);
-    paneLayout->addLayout(previewRow, 1);
-
     // Download right next to Paste: paste, then one short move to download.
     download_ = new QPushButton(Theme::recolour(":/icons/download.png", Theme::onAccent, false), "Download");
     download_->setObjectName("primary");
@@ -267,16 +257,20 @@ QWidget *DownloadPage::buildTop()
     linkRow->addWidget(paste);
     linkRow->addWidget(download_);
 
+    // Link row on top of the pane, a notice under it only when there's something to say.
+    auto *pane = new QFrame;
+    pane->setObjectName("previewPane");
+    auto *paneLayout = new QVBoxLayout(pane);
+    paneLayout->setContentsMargins(8, 8, 8, 8);
+    paneLayout->setSpacing(8);
+    paneLayout->addLayout(linkRow);
+    paneLayout->addWidget(banner_);
+    paneLayout->addLayout(previewRow, 1);
+
     auto *top = new QWidget;
     auto *layout = new QVBoxLayout(top);
     layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(6);
-    auto *tabbed = new QVBoxLayout;   // the title tab sits right on the pane
-    tabbed->setSpacing(0);
-    tabbed->addWidget(chip_, 0, Qt::AlignLeft);
-    tabbed->addWidget(pane, 1);
-    layout->addLayout(linkRow);
-    layout->addLayout(tabbed, 1);
+    layout->addWidget(pane, 1);
 
     connect(link_, &QLineEdit::textChanged, this, &DownloadPage::linkChanged);
     connect(link_, &QLineEdit::returnPressed, this, [this] { if (download_->isEnabled()) download(); });
@@ -384,16 +378,13 @@ void DownloadPage::log(const QString &line, int number)
                                  : QString("%1  %2").arg(time, line));
 }
 
-// The banner says what yt-dlp is up to once nothing more pressing is shown.
+// The banner only shows while yt-dlp is missing or busy; a ready yt-dlp needs no notice.
 void DownloadPage::engineChanged()
 {
     if (engine_->busy())
         return;   // statusChanged shows the progress
-    if (engine_->version().isEmpty())
-        banner_->setNotice(Banner::Warning, "yt-dlp isn't available yet. Check your connection; QFisher will try again.");
-    else
-        banner_->setNotice(Banner::Info, "yt-dlp " + engine_->version()
-                           + " is ready. Only the sites you paste links from are contacted.");
+    banner_->setNotice(engine_->version().isEmpty()
+                       ? "yt-dlp isn't available yet. Check your connection; QFisher will try again." : QString());
     if (isWebLink(link_->text()) && previewTitle_.isEmpty() && !preview_)
         startPreview();   // a preview was waiting for yt-dlp
     startNext();
@@ -412,13 +403,11 @@ void DownloadPage::linkChanged(const QString &text)
     previewSeconds_ = -1;
     previewDelay_.stop();
     if (ok) {
-        chip_->setText(QUrl(text.trimmed()).host());
         title_->setText(QUrl(text.trimmed()).host());
         meta_->setText("Loading preview...");
         thumbnail_->setHint("Loading preview...");
         previewDelay_.start();
     } else {
-        chip_->setText("No link yet");
         title_->setText("No video yet");
         meta_->setText(text.trimmed().isEmpty() ? "Paste a link above, then choose a format on the left."
                                                 : "That doesn't look like a web link.");
@@ -442,7 +431,7 @@ void DownloadPage::startPreview()
         if (!job->cookies().isEmpty()) {
             signInUrl_ = job->url();
             signInCookies_ = job->cookies();
-            banner_->setNotice(Banner::Info, "This site wanted a sign-in, so QFisher is using your browser's.");
+            banner_->setNotice("This site wanted a sign-in, so QFisher is using your browser's.");
         }
         job->deleteLater();
         showPreview(info);
@@ -451,7 +440,7 @@ void DownloadPage::startPreview()
         job->deleteLater();
         meta_->setText(message);
         thumbnail_->setHint("No preview");
-        banner_->setNotice(Banner::Warning, message);
+        banner_->setNotice(message);
     });
     preview_->start();
 }
@@ -462,7 +451,6 @@ void DownloadPage::showPreview(const PreviewInfo &info)
     previewSeconds_ = info.seconds;
     const bool clipOk = info.playlistCount < 0 && !info.live && info.seconds > 0;
     play_->setEnabled(clipOk);
-    chip_->setText(info.playlistCount >= 0 ? QString("%1 (%2)").arg(info.title).arg(info.playlistCount) : info.title);
     title_->setText(info.title);
     QStringList meta;
     if (!info.channel.isEmpty())

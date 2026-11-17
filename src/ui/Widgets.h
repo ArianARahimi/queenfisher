@@ -17,17 +17,15 @@ QToolButton *action(const QString &icon, const QString &text, const QString &tip
 
 }
 
-// Lime green notice bar with an icon: what QFisher wants you to know right now.
+// Grey notice bar: what QFisher wants you to know right now. Hidden when there's nothing.
 class Banner : public QFrame
 {
     Q_OBJECT
 
 public:
-    enum Kind { Info, Warning };
     explicit Banner(QWidget *parent = nullptr);
-    void setNotice(Kind kind, const QString &text);
+    void setNotice(const QString &text);   // empty hides it
 
 private:
-    QLabel *icon_;
     QLabel *text_;
 };
