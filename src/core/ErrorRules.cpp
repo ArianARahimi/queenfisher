@@ -54,6 +54,15 @@ Diagnosis match(const QString &line)
 
 }
 
+QStringList problemLines(const QByteArray &output)
+{
+    QStringList problems;
+    for (const QString &line : QString::fromUtf8(output).split('\n'))
+        if (line.startsWith("ERROR:") || line.startsWith("WARNING:"))
+            problems << line.trimmed();
+    return problems;
+}
+
 Diagnosis diagnose(const QStringList &lines)
 {
     QString lastError;

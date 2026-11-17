@@ -60,10 +60,7 @@ void ClipJob::finishedRun(int code, QProcess::ExitStatus status)
 {
     timeout_.stop();
     const QStringList out = QString::fromUtf8(process_.readAllStandardOutput()).split('\n', Qt::SkipEmptyParts);
-    QStringList problems;
-    for (const QString &line : QString::fromUtf8(process_.readAllStandardError()).split('\n'))
-        if (line.startsWith("ERROR:") || line.startsWith("WARNING:"))
-            problems << line.trimmed();
+    const QStringList problems = problemLines(process_.readAllStandardError());
 
     const QString file = out.isEmpty() ? QString() : out.last().trimmed();
     if (status == QProcess::NormalExit && code == 0 && QFileInfo(file).isFile()

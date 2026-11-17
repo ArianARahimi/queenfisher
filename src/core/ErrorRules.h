@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QByteArray>
 #include <QString>
 #include <QStringList>
 
@@ -28,3 +29,6 @@ struct Diagnosis
 // lines: yt-dlp's ERROR: and WARNING: lines, oldest first. The last error decides;
 // warnings only count when no error matched.
 Diagnosis diagnose(const QStringList &lines);
+
+// The ERROR: and WARNING: lines of yt-dlp's output, oldest first.
+QStringList problemLines(const QByteArray &output);

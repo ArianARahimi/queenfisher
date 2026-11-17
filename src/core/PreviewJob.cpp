@@ -99,10 +99,7 @@ void PreviewJob::finishedRun(int code, QProcess::ExitStatus status)
 {
     timeout_.stop();
     const QByteArray out = process_.readAllStandardOutput();
-    QStringList problems;
-    for (const QString &line : QString::fromUtf8(process_.readAllStandardError()).split('\n'))
-        if (line.startsWith("ERROR:") || line.startsWith("WARNING:"))
-            problems << line.trimmed();
+    const QStringList problems = problemLines(process_.readAllStandardError());
 
     if (status == QProcess::NormalExit && code == 0) {
         const PreviewInfo info = parsePreview(out);
