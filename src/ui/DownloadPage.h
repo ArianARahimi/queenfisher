@@ -22,6 +22,7 @@ class QListWidget;
 class QNetworkAccessManager;
 class QFrame;
 class QPlainTextEdit;
+class QListWidgetItem;
 class QPushButton;
 class QSplitter;
 class QToolButton;
@@ -64,6 +65,9 @@ private:
     void engineChanged();
     void showNotice();
     void showQuality();
+    Options::Format currentFormat() const;
+    QListWidgetItem *formatItem(Options::Format f) const;
+    void selectFormat(Options::Format f);
     void restoreSettings();
 
     Options currentOptions() const;

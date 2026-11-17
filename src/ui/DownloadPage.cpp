@@ -163,7 +163,7 @@ void DownloadPage::restoreSettings()
     bool oldRow = false;
     const int row = saved.toInt(&oldRow);
     const Options::Format oldFormats[] = {Options::Mp4, Options::Mkv, Options::Webm, Options::Mp3, Options::AudioOriginal};
-    format_->setCurrentRow(oldRow ? (row >= 0 && row < 5 ? oldFormats[row] : Options::Mp4) : Options::fromKey(saved.toString()));
+    selectFormat(oldRow ? (row >= 0 && row < 5 ? oldFormats[row] : Options::Mp4) : Options::fromKey(saved.toString()));
     const int quality = s.value("quality", 0).toInt();   // Best available
     if (quality >= 0 && quality < quality_->count())
         quality_->setCurrentRow(quality);
@@ -177,9 +177,7 @@ void DownloadPage::restoreSettings()
     sponsors_->setChecked(s.value("sponsors", false).toBool());
     split_->restoreState(s.value("split").toByteArray());
 
-    connect(format_, &QListWidget::currentRowChanged, this, [](int row) {
-        QSettings().setValue("format", Options::key(Options::Format(qMax(0, row))));
-    });
+    connect(format_, &QListWidget::currentRowChanged, this, [this] { QSettings().setValue("format", Options::key(currentFormat())); });
     connect(quality_, &QListWidget::currentRowChanged, this, [](int row) { QSettings().setValue("quality", row); });
     connect(subtitles_, &QCheckBox::toggled, this, [](bool on) { QSettings().setValue("subtitles", on); });
     connect(playlist_, &QCheckBox::toggled, this, [](bool on) { QSettings().setValue("playlist", on); });
@@ -201,10 +199,15 @@ DownloadPage::~DownloadPage()
 QWidget *DownloadPage::buildSidebar()
 {
     format_ = new QListWidget;
-    for (int f = 0; f < Options::FormatCount; ++f)   // rows are in Options::Format order
-        new QListWidgetItem(Widgets::formatIcon(Options::isAudio(Options::Format(f))), Options::name(Options::Format(f)), format_);
-    format_->item(Options::Gif)->setToolTip("For clips up to a minute: 480 px wide, no sound");
-    format_->setCurrentRow(Options::Mp4);
+    for (int i = 0; i < Options::FormatCount; ++i) {   // each row knows its format; video, a line, sound
+        const auto f = Options::Format(i);
+        if (f == Options::Mp3)
+            Widgets::addDivider(format_);
+        auto *item = new QListWidgetItem(Widgets::formatIcon(Options::isAudio(f)), Options::name(f), format_);
+        item->setData(Qt::UserRole, i);
+    }
+    formatItem(Options::Gif)->setToolTip("For clips up to a minute: 480 px wide, no sound");
+    selectFormat(Options::Mp4);
 
     quality_ = new QListWidget;
     quality_->addItems({"Best available", "2160p (4K)", "1440p", "1080p", "720p", "480p"});
@@ -237,8 +240,8 @@ QWidget *DownloadPage::buildSidebar()
 
     // Audio and GIF have no picture size to choose (the Quality box greys out); subtitles only
     // go into MP4, MKV and WebM.
-    connect(format_, &QListWidget::currentRowChanged, this, [this](int row) {
-        const auto f = Options::Format(qMax(0, row));
+    connect(format_, &QListWidget::currentRowChanged, this, [this] {
+        const Options::Format f = currentFormat();
         qualityBox_->setEnabled(Options::hasQuality(f));
         subtitles_->setEnabled(Options::takesSubtitles(f));
     });
@@ -668,7 +671,7 @@ void DownloadPage::showNotice()
 // are greyed out. Nothing for playlists or before a preview.
 void DownloadPage::showQuality()
 {
-    const auto format = Options::Format(qMax(0, format_->currentRow()));
+    const Options::Format format = currentFormat();
     const int best = bestHeight(lastPreview_, format);
     // While the preview loads nothing is known, so only "Best available" (always right) can be
     // picked; afterwards, only what the video has.
@@ -689,11 +692,11 @@ void DownloadPage::showQuality()
         quality_->setCurrentRow(shown);
     }
     const QString audioName = originalAudioName(lastPreview_);   // "Opus" on YouTube
-    format_->item(Options::AudioOriginal)->setText(audioName.isEmpty() ? QString("Original audio") : audioName);
+    formatItem(Options::AudioOriginal)->setText(audioName.isEmpty() ? QString("Original audio") : audioName);
 
     // GIF is for short clips: a longer video would make a huge file.
     const bool tooLongForGif = lastPreview_.seconds > gifSeconds;
-    QListWidgetItem *gif = format_->item(Options::Gif);
+    QListWidgetItem *gif = formatItem(Options::Gif);
     gif->setFlags(tooLongForGif ? gif->flags() & ~Qt::ItemIsEnabled : gif->flags() | Qt::ItemIsEnabled);
     const bool blocked = format == Options::Gif && tooLongForGif;
     download_->setEnabled(isWebLink(link_->text()) && !blocked);
@@ -717,12 +720,31 @@ void DownloadPage::showQuality()
     qualityInfo_->setVisible(!parts.isEmpty());
 }
 
+Options::Format DownloadPage::currentFormat() const
+{
+    const QListWidgetItem *item = format_->currentItem();
+    return item ? Options::Format(item->data(Qt::UserRole).toInt()) : Options::Mp4;
+}
+
+QListWidgetItem *DownloadPage::formatItem(Options::Format f) const
+{
+    for (int row = 0; row < format_->count(); ++row)
+        if (QListWidgetItem *item = format_->item(row); item->data(Qt::UserRole).isValid() && item->data(Qt::UserRole).toInt() == f)
+            return item;
+    return nullptr;
+}
+
+void DownloadPage::selectFormat(Options::Format f)
+{
+    format_->setCurrentItem(formatItem(f));
+}
+
 Options DownloadPage::currentOptions() const
 {
     Options o;
     o.url = link_->text().trimmed();
     o.folder = folder_->toolTip();
-    o.format = Options::Format(qMax(0, format_->currentRow()));
+    o.format = currentFormat();
     o.maxHeight = heights[qMax(0, quality_->currentRow())];
     o.subtitles = subtitles_->isChecked();
     o.playlist = playlist_->isChecked();

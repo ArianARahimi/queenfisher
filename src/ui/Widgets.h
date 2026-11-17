@@ -4,6 +4,7 @@
 #include <QToolButton>
 
 class QAbstractItemView;
+class QListWidget;
 class QLabel;
 class QLayout;
 
@@ -22,6 +23,9 @@ void pickOnClick(QAbstractItemView *list);
 
 // Icon for a list row: the film for video; for audio the music note, white, lime when selected.
 QIcon formatIcon(bool audio);
+
+// A thin line between groups of rows; it can't be picked, hovered or reached with the keys.
+void addDivider(QListWidget *list);
 
 // File sizes as the lists show them: "820 KB", "33.3 MB", "1.21 GB".
 QString sizeText(double bytes);

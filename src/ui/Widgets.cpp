@@ -5,6 +5,9 @@
 #include <QHBoxLayout>
 #include <QMouseEvent>
 #include <QLabel>
+#include <QListWidget>
+#include <QPainter>
+#include <QStyledItemDelegate>
 #include <QVBoxLayout>
 
 namespace Widgets {
@@ -74,6 +77,41 @@ void pickOnClick(QAbstractItemView *list)
     list->setMouseTracking(true);
     list->viewport()->setAttribute(Qt::WA_Hover);
     list->viewport()->installEventFilter(new PickOnClick(list));
+}
+
+namespace {
+
+constexpr int dividerRole = Qt::UserRole + 100;
+
+class DividerDelegate : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter *p, const QStyleOptionViewItem &option, const QModelIndex &index) const override
+    {
+        if (!index.data(dividerRole).toBool())
+            return QStyledItemDelegate::paint(p, option, index);
+        const int y = option.rect.center().y();
+        p->setPen(Theme::outline);
+        p->drawLine(option.rect.left() + 6, y, option.rect.right() - 6, y);
+    }
+
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override
+    {
+        return index.data(dividerRole).toBool() ? QSize(0, 9) : QStyledItemDelegate::sizeHint(option, index);
+    }
+};
+
+}
+
+void addDivider(QListWidget *list)
+{
+    if (!dynamic_cast<DividerDelegate *>(list->itemDelegate()))
+        list->setItemDelegate(new DividerDelegate(list));
+    auto *line = new QListWidgetItem(list);
+    line->setFlags(Qt::NoItemFlags);
+    line->setData(dividerRole, true);
 }
 
 QIcon formatIcon(bool audio)
