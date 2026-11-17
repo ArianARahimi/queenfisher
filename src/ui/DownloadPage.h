@@ -102,6 +102,7 @@ private:
     DownloadJob *running_ = nullptr;
 
     QTimer previewDelay_;   // waits for typing or pasting to settle
+    QTimer engineRetry_;    // tries to get yt-dlp again while there is none
     QPointer<PreviewJob> preview_;
     QNetworkAccessManager *net_ = nullptr;
     QString previewTitle_;

@@ -125,6 +125,9 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, QWidget *paren
     previewDelay_.setSingleShot(true);
     previewDelay_.setInterval(500);
     connect(&previewDelay_, &QTimer::timeout, this, &DownloadPage::startPreview);
+    engineRetry_.setSingleShot(true);
+    engineRetry_.setInterval(65000);   // safely past the engine's own minute between automatic checks
+    connect(&engineRetry_, &QTimer::timeout, this, &DownloadPage::startNext);
     connect(engine_, &Engine::readyChanged, this, &DownloadPage::engineChanged);
     connect(engine_, &Engine::statusChanged, this, [this](const QString &text) {
         if (engine_->busy())
@@ -395,8 +398,12 @@ void DownloadPage::engineChanged()
 {
     if (engine_->busy())
         return;   // statusChanged shows the progress
-    banner_->setNotice(engine_->version().isEmpty()
-                       ? "yt-dlp isn't available yet. Check your connection; Queenfisher will try again." : QString());
+    const bool missing = engine_->version().isEmpty();
+    banner_->setNotice(missing ? "yt-dlp isn't available yet. Check your connection; Queenfisher will try again." : QString());
+    if (missing)
+        engineRetry_.start();   // startNext() asks the engine again when nothing is downloading
+    else
+        engineRetry_.stop();
     if (isWebLink(link_->text()) && previewTitle_.isEmpty() && !preview_)
         startPreview();   // a preview was waiting for yt-dlp
     startNext();

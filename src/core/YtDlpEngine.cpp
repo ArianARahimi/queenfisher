@@ -18,6 +18,7 @@ namespace {
 
 const QString fingerprint = "AC0CBBE6848D6A873464AF4E57CF65933B5A7581";   // yt-dlp signing key
 constexpr qint64 dayMs = 24LL * 60 * 60 * 1000;
+constexpr qint64 retryMs = 60 * 1000;          // automatic checks after a failure wait this long
 constexpr qint64 smallLimit = 1 << 20;        // checksum files
 constexpr qint64 binaryLimit = 200LL << 20;   // yt-dlp itself is about 35 MB
 
@@ -72,7 +73,8 @@ void YtDlpEngine::checkDaily()
         return;
     }
     // On nightly after a rescue: go back to stable once it has caught up.
-    if (busy_ || QDateTime::currentMSecsSinceEpoch() - stamp_.checked < dayMs)
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (busy_ || now - stamp_.checked < dayMs || now - lastTry_ < retryMs)
         return;
     latestTag(Stable, [this, quiet](const QString &tag) {
         const bool caughtUp = !tag.isEmpty() && compareVersions(tag, stamp_.version, 3) >= 0;
@@ -112,9 +114,14 @@ void YtDlpEngine::run(Channel channel, bool force, Done done)
         return;
     }
     const bool installed = QFile::exists(managedPath());
-    if (!force && installed && stamp_.channel == channel
-        && QDateTime::currentMSecsSinceEpoch() - stamp_.checked < dayMs) {
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (!force && installed && stamp_.channel == channel && now - stamp_.checked < dayMs) {
         done(false, "yt-dlp was checked today");
+        return;
+    }
+    // Without this, a failed check (offline, GitHub down) would start the next one straight away.
+    if (!force && now - lastTry_ < retryMs) {
+        done(false, "yt-dlp was checked a moment ago");
         return;
     }
     if (assetName().isEmpty()) {
@@ -122,6 +129,7 @@ void YtDlpEngine::run(Channel channel, bool force, Done done)
         return;
     }
     busy_ = true;
+    lastTry_ = now;
     waiting_.append(done);
     emit readyChanged();
     emit statusChanged(installed ? "Checking for a newer yt-dlp..." : "Getting yt-dlp...");

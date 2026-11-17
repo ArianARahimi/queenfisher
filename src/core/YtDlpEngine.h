@@ -54,6 +54,7 @@ private:
     QString dir_;
     Stamp stamp_;
     bool busy_ = false;
+    qint64 lastTry_ = 0;   // when the last check started, ms since epoch
     QList<Done> waiting_;
     QNetworkAccessManager net_;
     QByteArray sums_;
