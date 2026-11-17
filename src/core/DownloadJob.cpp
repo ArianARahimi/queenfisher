@@ -47,8 +47,14 @@ DownloadJob::DownloadJob(Options options, Engine *engine, QObject *parent)
             discardPartial();
             emit finished(false, "Stopped");
         }
-        else if (status == QProcess::NormalExit && code == 0)
-            emit finished(true, "Done");
+        else if (status == QProcess::NormalExit && code == 0) {
+            // Without ffmpeg, yt-dlp keeps picture and sound apart and still exits 0.
+            const Diagnosis d = diagnose(problems_);
+            if (d.problem == Problem::NoFfmpeg)
+                emit finished(false, d.message);
+            else
+                emit finished(true, "Done");
+        }
         else
             recover();
     });
