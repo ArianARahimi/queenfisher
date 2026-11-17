@@ -40,6 +40,10 @@ struct PreviewInfo
 // 0 if unknown.
 int bestHeight(const PreviewInfo &info, Options::Format format);
 
+// The sound "original audio" keeps, named for the format list ("Opus", "AAC"...); empty if
+// unknown. Chosen the way yt-dlp ranks sound codecs, not by bitrate alone.
+QString originalAudioName(const PreviewInfo &info);
+
 // Roughly how big the download will be with these choices, picking streams the way yt-dlp
 // does for them (H.264 and AAC for MP4, WebM for WebM); -1 if the sizes aren't known.
 qint64 estimateSize(const PreviewInfo &info, Options::Format format, int maxHeight);

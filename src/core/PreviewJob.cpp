@@ -85,6 +85,48 @@ bool wantedPicture(const Stream &s, Options::Format format)
 
 }
 
+namespace {
+
+// yt-dlp's own order for sound codecs: higher is better.
+int soundRank(const QString &codec)
+{
+    static const QStringList order = {"dts", "ac3", "eac3", "ac4", "mp3", "mp4a", "aac", "vorbis", "opus", "aiff", "wav", "alac", "flac"};
+    for (qsizetype i = order.size() - 1; i >= 0; --i)
+        if (codec.startsWith(order[i]))
+            return int(i) + 1;
+    return 0;
+}
+
+// The sound-only stream yt-dlp takes for "ba": best codec first, then bitrate.
+const Stream *bestSound(const QList<Stream> &streams)
+{
+    const Stream *best = nullptr;
+    for (const Stream &s : streams) {
+        if (!s.sound() || s.picture())
+            continue;
+        if (!best || soundRank(s.acodec) > soundRank(best->acodec)
+            || (soundRank(s.acodec) == soundRank(best->acodec) && s.kbps > best->kbps))
+            best = &s;
+    }
+    return best;
+}
+
+}
+
+QString originalAudioName(const PreviewInfo &info)
+{
+    const Stream *s = bestSound(info.streams);
+    if (!s)
+        return {};
+    static const QList<std::pair<const char *, const char *>> names = {
+        {"opus", "Opus"}, {"mp4a", "AAC"}, {"aac", "AAC"}, {"vorbis", "Vorbis"}, {"flac", "FLAC"},
+        {"alac", "ALAC"}, {"mp3", "MP3"}, {"wav", "WAV"}, {"ac3", "AC-3"}, {"eac3", "E-AC-3"}};
+    for (const auto &[codec, name] : names)
+        if (s->acodec.startsWith(codec))
+            return name;
+    return s->acodec.section('.', 0, 0).toUpper();
+}
+
 int bestHeight(const PreviewInfo &info, Options::Format format)
 {
     int best = 0, bestWanted = 0;
@@ -138,7 +180,7 @@ qint64 estimateSize(const PreviewInfo &info, Options::Format format, int maxHeig
         return seconds > 0 ? qint64(seconds * 245000 / 8) : -1;
     }
     if (format == Options::AudioOriginal) {
-        const Stream *a = pick(streams, isSound, [](const Stream &) { return true; });
+        const Stream *a = bestSound(streams);
         return a ? a->bytes : -1;
     }
     const auto fits = [maxHeight](const Stream &s) { return s.picture() && (!maxHeight || s.height <= maxHeight); };

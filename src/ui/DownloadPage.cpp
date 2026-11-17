@@ -180,8 +180,8 @@ QWidget *DownloadPage::buildSidebar()
 {
     format_ = new QListWidget;
     const struct { const char *icon, *text; } formats[] = {
-        {"video", "MP4 (plays everywhere)"}, {"video", "MKV"}, {"video", "WebM"},
-        {"audio", "MP3"}, {"audio", "Audio (original)"}};
+        {"video", "MP4"}, {"video", "MKV"}, {"video", "WebM"},
+        {"audio", "MP3"}, {"audio", "Original audio"}};
     for (const auto &f : formats)
         new QListWidgetItem(Widgets::formatIcon(QString(f.icon) == "audio"), f.text, format_);
     format_->setCurrentRow(Options::Mp4);
@@ -565,6 +565,8 @@ void DownloadPage::showQuality()
         const bool offered = !best || heights[row] <= best;
         item->setFlags(offered ? item->flags() | Qt::ItemIsEnabled : item->flags() & ~Qt::ItemIsEnabled);
     }
+    const QString audioName = originalAudioName(lastPreview_);   // "Opus" on YouTube
+    format_->item(Options::AudioOriginal)->setText(audioName.isEmpty() ? QString("Original audio") : audioName);
     if (lastPreview_.streams.isEmpty()) {
         qualityInfo_->setVisible(false);
         return;
