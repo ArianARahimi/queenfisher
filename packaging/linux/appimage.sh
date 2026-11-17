@@ -36,7 +36,7 @@ export LDAI_OUTPUT="dist/Queenfisher-$version-x86_64.AppImage"
 export EXTRA_PLATFORM_PLUGINS="libqwayland-generic.so"
 "$tools/linuxdeploy-x86_64.AppImage" --appdir build/AppDir --plugin qt \
     --desktop-file build/AppDir/usr/share/applications/queenfisher.desktop \
-    --icon-file build/AppDir/usr/share/icons/hicolor/32x32/apps/queenfisher.png
+    --icon-file build/AppDir/usr/share/icons/hicolor/256x256/apps/queenfisher.png
 
 # The Qt plugin leaves out what the Wayland platform needs to open a window (xdg-shell and
 # friends), so Wayland desktops couldn't start it. Copy those in and bundle what they use.

@@ -57,7 +57,6 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 - On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows. That copy isn't updated yet once it's there.
 - The Windows and macOS builds come from GitHub Actions and haven't been tried on a real Windows PC or Mac yet. Windows is a zip, not an installer. The Mac apps aren't signed by Apple.
 - The Linux AppImage hasn't been tried on a Wayland desktop yet (it bundles the parts Wayland needs, but that's unconfirmed).
-- The app icon is a placeholder.
 - Stopping a download also stops the programs yt-dlp started (like ffmpeg) on Linux and macOS. On Windows only yt-dlp itself is stopped so far, so a merge already under way may finish on its own.
 - When a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. That only works on Linux so far.
 - Before the sound part of a video starts, its size is guessed, so the bar can pause briefly when it starts.
@@ -71,6 +70,8 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 ## Credits
 
 Icons from the [Tango Desktop Project](http://tango.freedesktop.org/) (public domain), see `resources/icons/COPYING-tango.txt`.
+
+The fish icon is from Microsoft's [Fluent UI Emoji](https://github.com/microsoft/fluentui-emoji) (MIT License), see `packaging/COPYING-fish-icon.txt`.
 
 ## License
 
