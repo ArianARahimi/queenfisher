@@ -11,7 +11,9 @@
 #include <QApplication>
 #include <QLabel>
 #include <QMenuBar>
+#include <QCloseEvent>
 #include <QMessageBox>
+#include <QSettings>
 #include <QTimer>
 #include <QStandardPaths>
 #include <QStatusBar>
@@ -22,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     setWindowTitle("Queenfisher");
     resize(1100, 760);
     setMinimumSize(900, 640);
+    restoreGeometry(QSettings().value("window").toByteArray());   // size and place from last time
 
     const QString data = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
     engine_ = new YtDlpEngine(data, this);
@@ -57,6 +60,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         if (!ffmpeg_->busy() && !ffmpeg_->lastError().isEmpty() && !std::exchange(ffmpegFailureShown_, true))
             askToContinue("ffmpeg", ffmpeg_->lastError() + ".\nQueenfisher will try again; until then most downloads can't join picture and sound.");
     });
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    QSettings().setValue("window", saveGeometry());
+    QMainWindow::closeEvent(event);
 }
 
 void MainWindow::checkTools()

@@ -28,6 +28,7 @@
 #include <QNetworkReply>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSettings>
 #include <QSplitter>
 #include <QStandardPaths>
 #include <QTime>
@@ -102,6 +103,7 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg
     split->setStretchFactor(0, 1);
     split->setStretchFactor(1, 1);
     split->setChildrenCollapsible(false);
+    split_ = split;
 
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(6, 6, 6, 6);
@@ -132,7 +134,35 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg
     }
 
     linkChanged({});
+    restoreSettings();
     engineChanged();
+}
+
+// Everything picked last time comes back: format, quality, folder, extras and the split
+// between preview and downloads (the log always starts closed). Saved the moment it changes.
+void DownloadPage::restoreSettings()
+{
+    QSettings s;
+    const int format = s.value("format", int(Options::Mp4)).toInt();
+    if (format >= 0 && format < format_->count())
+        format_->setCurrentRow(format);
+    const int quality = s.value("quality", 3).toInt();   // 1080p
+    if (quality >= 0 && quality < quality_->count())
+        quality_->setCurrentRow(quality);
+    const QString folder = s.value("folder").toString();
+    if (!folder.isEmpty() && QFileInfo(folder).isDir()) {   // a folder that's gone falls back to Videos
+        folder_->setText(shortPath(folder));
+        folder_->setToolTip(folder);
+    }
+    subtitles_->setChecked(s.value("subtitles", false).toBool());
+    playlist_->setChecked(s.value("playlist", false).toBool());
+    split_->restoreState(s.value("split").toByteArray());
+
+    connect(format_, &QListWidget::currentRowChanged, this, [](int row) { QSettings().setValue("format", row); });
+    connect(quality_, &QListWidget::currentRowChanged, this, [](int row) { QSettings().setValue("quality", row); });
+    connect(subtitles_, &QCheckBox::toggled, this, [](bool on) { QSettings().setValue("subtitles", on); });
+    connect(playlist_, &QCheckBox::toggled, this, [](bool on) { QSettings().setValue("playlist", on); });
+    connect(split_, &QSplitter::splitterMoved, this, [this] { QSettings().setValue("split", split_->saveState()); });
 }
 
 // Closing with downloads running: they stop and clean up first, while the log their last
@@ -384,6 +414,7 @@ void DownloadPage::chooseFolder()
         return;
     folder_->setText(shortPath(dir));
     folder_->setToolTip(dir);
+    QSettings().setValue("folder", dir);
 }
 
 void DownloadPage::openFolder()

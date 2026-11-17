@@ -22,6 +22,7 @@ class QNetworkAccessManager;
 class QFrame;
 class QPlainTextEdit;
 class QPushButton;
+class QSplitter;
 class QToolButton;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -58,6 +59,7 @@ private:
     void engineChanged();
     void showNotice();
     void showQuality();
+    void restoreSettings();
 
     Options currentOptions() const;
     void download();
@@ -97,6 +99,7 @@ private:
     QToolButton *clearAll_ = nullptr, *clear_ = nullptr;
     QAction *logAction_ = nullptr;
     QPlainTextEdit *log_ = nullptr;
+    QSplitter *split_ = nullptr;
 
     QHash<QTreeWidgetItem *, DownloadJob *> jobs_;   // every row has one; only one runs at a time
     DownloadJob *running_ = nullptr;
