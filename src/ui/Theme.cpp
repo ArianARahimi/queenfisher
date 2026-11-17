@@ -93,7 +93,7 @@ QMenuBar::item { padding: 3px 8px; background: transparent; }
 QMenuBar::item:selected { background: @hover; border-radius: 3px; }
 QMenu { color: @text; background: @panel; border: 1px solid @outline; padding: 2px; }
 QMenu::item { padding: 4px 24px 4px 24px; }
-QMenu::item:selected { background: @accent; color: @onAccent; border-radius: 2px; }
+QMenu::item:selected { background: @accent; color: @onSelect; border-radius: 2px; }
 QMenu::item:disabled { color: #6c707a; }
 QMenu::separator { height: 1px; background: @edge; margin: 3px 6px; }
 
@@ -138,14 +138,14 @@ QToolButton#action:disabled { color: #6c707a; }
 
 QLineEdit, QPlainTextEdit {
     color: @text; background: @field; border: 1px solid @outline; border-radius: 2px;
-    padding: 3px 5px; selection-background-color: @accent; selection-color: @onAccent;
+    padding: 3px 5px; selection-background-color: @accent; selection-color: @onSelect;
 }
 QLineEdit:focus { border-color: @accent; }
 QLineEdit:read-only { color: @dim; }
 QComboBox { color: @text; padding: 3px 5px; }
 QComboBox QAbstractItemView {
     color: @text; background: @field; border: 1px solid @outline;
-    selection-background-color: @accent; selection-color: @onAccent;
+    selection-background-color: @accent; selection-color: @onSelect;
 }
 QCheckBox { color: @text; spacing: 6px; }
 QCheckBox:disabled { color: #4c5058; }
@@ -155,7 +155,7 @@ QTreeWidget, QListWidget {
     border: 1px solid @outline; outline: 0;
 }
 QTreeWidget::item, QListWidget::item { padding: 2px 3px; }
-QTreeWidget::item:selected, QListWidget::item:selected { color: @onAccent; background: @gloss; }
+QTreeWidget::item:selected, QListWidget::item:selected { color: @onSelect; background: @gloss; }
 QHeaderView::section {
     color: #cfd3da; padding: 3px 6px;
     border: none; border-right: 1px solid #1a1b1f; border-bottom: 1px solid @outline;
@@ -221,7 +221,7 @@ QString themedStyleSheet()
     const std::pair<const char *, QString> names[] = {
         {"@glossLit", gloss(Theme::accent.lighter(118))}, {"@glossSunk", gloss(Theme::accent.darker(125))},
         {"@gloss", gloss(Theme::accent)}, {"@wash", gloss(Theme::hover)}, {"@sunk", gloss(Theme::hover.darker(140))},
-        {"@fieldAlt", Theme::fieldAlt.name()}, {"@onAccent", Theme::onAccent.name()},
+        {"@fieldAlt", Theme::fieldAlt.name()}, {"@onAccent", Theme::onAccent.name()}, {"@onSelect", Theme::onSelect.name()},
         {"@outline", Theme::outline.name()}, {"@window", Theme::window.name()}, {"@accent", Theme::accent.name()},
         {"@field", Theme::field.name()}, {"@panel", Theme::panel.name()}, {"@hover", Theme::hover.name()},
         {"@glow", Theme::glow.name()}, {"@edge", Theme::edge.name()}, {"@text", Theme::text.name()},
@@ -249,7 +249,7 @@ void apply(QApplication &app)
     pal.setColor(QPalette::AlternateBase, fieldAlt);
     pal.setColor(QPalette::Text, text);
     pal.setColor(QPalette::Highlight, accent);
-    pal.setColor(QPalette::HighlightedText, onAccent);
+    pal.setColor(QPalette::HighlightedText, onSelect);
     pal.setColor(QPalette::Light, edge);
     pal.setColor(QPalette::Mid, outline);
     pal.setColor(QPalette::Dark, outline);
