@@ -23,7 +23,12 @@ cmake --build build
 
 ## Known issues
 
-- Downloading isn't built yet: links only go into the list.
+- Downloading isn't built yet: links only go into the list, and the display shows no real progress.
+- Only checked on Linux (KDE); the look on Windows and macOS is untested.
+
+## Credits
+
+Pixel font: IBM VGA 8x16 from the [Ultimate Oldschool PC Font Pack](https://int10h.org/oldschool-pc-fonts/) by VileR, [CC BY-SA 4.0](resources/fonts/LICENSE.TXT).
 
 ## License
 
