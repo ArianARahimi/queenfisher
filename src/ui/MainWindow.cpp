@@ -10,6 +10,7 @@
 
 #include <QApplication>
 #include <QLabel>
+#include <QMenu>
 #include <QMenuBar>
 #include <QCloseEvent>
 #include <QMessageBox>
@@ -17,11 +18,13 @@
 #include <QTimer>
 #include <QStandardPaths>
 #include <QStatusBar>
+#include <QSystemTrayIcon>
 #include <QTabWidget>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
     setWindowTitle("Queenfisher");
+    setWindowIcon(QIcon(":/queenfisher.png"));
     resize(1100, 760);
     setMinimumSize(900, 640);
     restoreGeometry(QSettings().value("window").toByteArray());   // size and place from last time
@@ -43,6 +46,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     tabs_->setCornerWidget(wordmark, Qt::TopRightCorner);
     setCentralWidget(tabs_);
 
+    buildTray();
     buildMenus();
     buildStatusBar();
     connect(downloads_, &DownloadPage::activityChanged, this, &MainWindow::showActivity);
@@ -102,6 +106,7 @@ void MainWindow::buildMenus()
         view->addAction(names[i], QKeySequence(QString("Ctrl+%1").arg(i + 1)), this, [this, i] { tabs_->setCurrentIndex(i); });
     view->addSeparator();
     view->addAction(downloads_->logAction());
+    view->addAction(toTray_);
 
     QMenu *tools = menuBar()->addMenu("&Tools");
     tools->addAction(QIcon(":/icons/retry.png"), "&Check for yt-dlp Updates", engine_, &YtDlpEngine::updateNow);
@@ -136,6 +141,50 @@ void MainWindow::showActivity(int downloading, int waiting, double bytesPerSecon
     if (waiting)
         text += QString("  ·  %1 waiting").arg(waiting);
     activity_->setText(text);
+    if (tray_)
+        tray_->setToolTip("Queenfisher\n" + text);
+}
+
+// Tray icon: click to show or hide the window; minimizing hides it there when that's on.
+void MainWindow::buildTray()
+{
+    toTray_ = new QAction("Minimize to &Tray", this);
+    toTray_->setCheckable(true);
+    toTray_->setChecked(QSettings().value("minimizeToTray", true).toBool());
+    connect(toTray_, &QAction::toggled, this, [](bool on) { QSettings().setValue("minimizeToTray", on); });
+    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
+        toTray_->setEnabled(false);   // nowhere to go: minimizing works as usual
+        return;
+    }
+    tray_ = new QSystemTrayIcon(windowIcon(), this);
+    auto *menu = new QMenu(this);
+    menu->addAction("&Show Queenfisher", this, &MainWindow::showFromTray);
+    menu->addSeparator();
+    menu->addAction("&Quit", qApp, &QApplication::quit);
+    tray_->setContextMenu(menu);
+    connect(tray_, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason why) {
+        if (why != QSystemTrayIcon::Trigger)
+            return;
+        if (isVisible() && !isMinimized())
+            hide();
+        else
+            showFromTray();
+    });
+    tray_->show();
+}
+
+void MainWindow::showFromTray()
+{
+    showNormal();
+    raise();
+    activateWindow();
+}
+
+void MainWindow::changeEvent(QEvent *event)
+{
+    QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::WindowStateChange && isMinimized() && tray_ && toTray_->isChecked())
+        QTimer::singleShot(0, this, &QWidget::hide);   // after the minimize finishes
 }
 
 void MainWindow::showEngine()

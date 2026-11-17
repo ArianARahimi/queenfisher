@@ -6,6 +6,7 @@ class DownloadPage;
 class Ffmpeg;
 class Library;
 class QLabel;
+class QSystemTrayIcon;
 class QTabWidget;
 class YtDlpEngine;
 
@@ -19,6 +20,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    void changeEvent(QEvent *event) override;
 
 private:
     void buildMenus();
@@ -27,6 +29,8 @@ private:
     void showEngine();
     void checkTools();
     void askToContinue(const QString &title, const QString &message);
+    void buildTray();
+    void showFromTray();
 
     YtDlpEngine *engine_ = nullptr;
     Library *library_ = nullptr;
@@ -37,4 +41,6 @@ private:
     QLabel *engineLight_ = nullptr;
     QLabel *activity_ = nullptr;
     QLabel *engineCell_ = nullptr;
+    QSystemTrayIcon *tray_ = nullptr;
+    QAction *toTray_ = nullptr;   // View > Minimize to Tray
 };

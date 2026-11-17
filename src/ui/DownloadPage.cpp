@@ -170,12 +170,14 @@ void DownloadPage::restoreSettings()
     }
     subtitles_->setChecked(s.value("subtitles", false).toBool());
     playlist_->setChecked(s.value("playlist", false).toBool());
+    sponsors_->setChecked(s.value("sponsors", false).toBool());
     split_->restoreState(s.value("split").toByteArray());
 
     connect(format_, &QListWidget::currentRowChanged, this, [](int row) { QSettings().setValue("format", row); });
     connect(quality_, &QListWidget::currentRowChanged, this, [](int row) { QSettings().setValue("quality", row); });
     connect(subtitles_, &QCheckBox::toggled, this, [](bool on) { QSettings().setValue("subtitles", on); });
     connect(playlist_, &QCheckBox::toggled, this, [](bool on) { QSettings().setValue("playlist", on); });
+    connect(sponsors_, &QCheckBox::toggled, this, [](bool on) { QSettings().setValue("sponsors", on); });
     connect(split_, &QSplitter::splitterMoved, this, [this] { QSettings().setValue("split", split_->saveState()); });
 }
 
@@ -285,10 +287,13 @@ QWidget *DownloadPage::buildTop()
     subtitles_->setToolTip("Add English subtitles to the video when the site has them");
     playlist_ = new QCheckBox("Whole playlist");
     playlist_->setToolTip("When the link is part of a playlist, download every video in it");
+    sponsors_ = new QCheckBox("Skip sponsors");
+    sponsors_->setToolTip("Cut sponsored segments out of YouTube videos, using SponsorBlock's community list");
     auto *extrasRow = new QHBoxLayout;
     extrasRow->setSpacing(16);
     extrasRow->addWidget(subtitles_);
     extrasRow->addWidget(playlist_);
+    extrasRow->addWidget(sponsors_);
     extrasRow->addStretch(1);
 
     // What the video really offers, and roughly how big the download will be.
@@ -702,6 +707,7 @@ Options DownloadPage::currentOptions() const
     o.maxHeight = heights[qMax(0, quality_->currentRow())];
     o.subtitles = subtitles_->isChecked();
     o.playlist = playlist_->isChecked();
+    o.skipSponsors = sponsors_->isChecked();
     if (o.url == signInUrl_)
         o.cookies = signInCookies_;   // the preview already found a sign-in is needed
     if (ffmpeg_)

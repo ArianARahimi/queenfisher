@@ -42,6 +42,7 @@ qt_add_resources(queenfisher keys PREFIX "/" BASE resources FILES resources/ytdl
 # Tango Desktop Project icons (public domain), see resources/icons/COPYING-tango.txt.
 file(GLOB ICONS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} resources/icons/*.png)
 qt_add_resources(queenfisher icons PREFIX "/" BASE resources FILES ${ICONS})
+qt_add_resources(queenfisher appicon PREFIX "/" BASE packaging/linux FILES packaging/linux/queenfisher.png)
 set_target_properties(queenfisher PROPERTIES WIN32_EXECUTABLE ON MACOSX_BUNDLE ON)
 # Windows: icon, version details and manifest inside the .exe, like any regular program.
 if(WIN32)

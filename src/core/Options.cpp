@@ -53,6 +53,8 @@ QStringList ytDlpArgs(const Options &o)
     if (o.subtitles && !o.audioOnly())
         a << "--write-subs" << "--embed-subs" << "--sub-langs" << "en.*,en";
 
+    if (o.skipSponsors)
+        a << "--sponsorblock-remove" << "sponsor";   // needs ffmpeg, which every video format needs anyway
     if (o.overwrite)
         a << "--force-overwrites";
     if (!o.cookies.isEmpty())

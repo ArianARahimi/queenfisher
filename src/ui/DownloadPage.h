@@ -90,6 +90,7 @@ private:
     QLineEdit *folder_ = nullptr;
     QCheckBox *subtitles_ = nullptr;
     QCheckBox *playlist_ = nullptr;
+    QCheckBox *sponsors_ = nullptr;
 
     QLineEdit *link_ = nullptr;
     Banner *banner_ = nullptr;
