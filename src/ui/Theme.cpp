@@ -164,7 +164,7 @@ QHeaderView::section {
 
 QFrame#box { background: @field; border: 1px solid @outline; }
 QLabel#boxHeader {
-    color: @onAccent; font-weight: bold; padding: 2px 6px; qproperty-alignment: AlignCenter;
+    color: @onSelect; font-weight: bold; padding: 2px 6px; qproperty-alignment: AlignCenter;
     border-bottom: 1px solid @outline; background: @gloss;
 }
 /* a box that doesn't apply (Quality for audio) greys out completely */
@@ -175,10 +175,13 @@ QLabel#boxHeader:disabled {
 QListWidget:disabled { color: #4c5058; background: @panel; }
 QListWidget::item:selected:disabled { color: #6c707a; background: #2c2e34; }
 QLabel#sideTitle, QLabel#paneTitle { color: @dim; }
-QFrame#banner { border: 1px solid @outline; border-radius: 2px; background: @gloss; }
-QFrame#banner QLabel { color: @onAccent; font-weight: bold; }
+QFrame#banner {
+    border: 1px solid @outline; border-radius: 2px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #373a42, stop:0.5 #30333a, stop:0.51 #2b2d33, stop:1 #27292e);
+}
+QFrame#banner QLabel { color: #cfd3da; }
 QLabel#chip {
-    color: @onAccent; font-weight: bold; padding: 3px 10px; border: 1px solid @outline; border-bottom: none;
+    color: @onSelect; font-weight: bold; padding: 3px 10px; border: 1px solid @outline; border-bottom: none;
     border-top-left-radius: 3px; border-top-right-radius: 3px; background: @gloss;
 }
 QFrame#previewPane { background: @field; border: 1px solid @outline; }
