@@ -6,7 +6,14 @@
 // What the user picked for one download.
 struct Options
 {
-    enum Format { Mp4, Mkv, Webm, Mp3, AudioOriginal };
+    // Video formats first, then sound only; the order is the order of the Format list.
+    enum Format { Mp4, Mkv, Webm, Mov, Avi, Flv, Gif, Mp3, M4a, AudioOriginal, Wav, Flac, Alac, Vorbis, FormatCount };
+    static bool isAudio(Format f) { return f >= Mp3; }
+    static bool hasQuality(Format f) { return !isAudio(f) && f != Gif; }   // GIF has its own fixed size
+    static bool takesSubtitles(Format f) { return f == Mp4 || f == Mkv || f == Webm; }   // what yt-dlp can embed into
+    static QString name(Format f);                  // "MP4", "Original audio"...
+    static QString key(Format f);                   // for settings: "mp4", "original"...
+    static Format fromKey(const QString &key);      // unknown: MP4
 
     QString url;
     QString folder;
@@ -19,7 +26,7 @@ struct Options
     QString cookies;     // --cookies-from-browser value, only set after a site asks for a sign-in
     QString ffmpeg;      // folder with Queenfisher's own ffmpeg (Windows); empty = yt-dlp finds one
 
-    bool audioOnly() const { return format == Mp3 || format == AudioOriginal; }
+    bool audioOnly() const { return isAudio(format); }
     QString label() const;   // short text for the list, e.g. "MP4 1080p"
 };
 

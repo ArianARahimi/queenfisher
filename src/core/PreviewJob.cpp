@@ -102,7 +102,8 @@ namespace {
 // MP4 wants H.264 and WebM wants WebM when the video has any; otherwise anything goes.
 bool wantedPicture(const Stream &s, Options::Format format)
 {
-    return format == Options::Mp4 ? s.vcodec.startsWith("avc1") : format == Options::Webm ? s.ext == "webm" : true;
+    const bool h264 = format == Options::Mp4 || format == Options::Mov || format == Options::Flv;
+    return h264 ? s.vcodec.startsWith("avc1") : format == Options::Webm ? s.ext == "webm" : true;
 }
 
 }
@@ -205,10 +206,22 @@ qint64 estimateSize(const PreviewInfo &info, Options::Format format, int maxHeig
         const Stream *a = bestSound(streams);
         return a ? a->bytes : -1;
     }
+    if (format == Options::M4a) {   // the site's AAC as it is; converted from something else: unknown
+        const Stream *a = pick(streams, isSound, [](const Stream &s) { return s.acodec.startsWith("mp4a"); });
+        return a && a->acodec.startsWith("mp4a") ? a->bytes : -1;
+    }
+    if (format == Options::Wav) {   // 48 kHz, 16-bit stereo: 192 KB a second
+        const double seconds = info.seconds;
+        return seconds > 0 ? qint64(seconds * 192000) : -1;
+    }
+    // Re-encoded (AVI, GIF) or compressed by ffmpeg (FLAC, ALAC, Vorbis): no honest guess.
+    if (format == Options::Avi || format == Options::Gif || Options::isAudio(format))
+        return -1;
     const auto fits = [maxHeight](const Stream &s) { return s.picture() && (!maxHeight || s.height <= maxHeight); };
     const auto likedPicture = [format](const Stream &s) { return wantedPicture(s, format); };
     const auto likedSound = [format](const Stream &s) {
-        return format == Options::Mp4 ? s.ext == "m4a" : format == Options::Webm ? s.ext == "webm" : true;
+        const bool aac = format == Options::Mp4 || format == Options::Mov || format == Options::Flv;
+        return aac ? s.ext == "m4a" : format == Options::Webm ? s.ext == "webm" : true;
     };
     const Stream *v = pick(streams, fits, likedPicture);
     if (!v || v->bytes < 0)

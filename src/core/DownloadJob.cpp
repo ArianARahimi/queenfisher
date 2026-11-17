@@ -160,8 +160,10 @@ void DownloadJob::handleLine(const QString &line)
         problems_.append(line);
     else if (line.startsWith("[Merger]"))
         emit stage("Merging");
-    else if (line.startsWith("[ExtractAudio]"))
+    else if (line.startsWith("[ExtractAudio]") || line.startsWith("[VideoConvertor]") || line.startsWith("[VideoRemuxer]"))
         emit stage("Converting");
+    else if (line.startsWith("[ModifyChapters]"))
+        emit stage("Cutting sponsors");
     else if (line.startsWith("[EmbedSubtitle]"))
         emit stage("Adding subtitles");
 }

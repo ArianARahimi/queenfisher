@@ -6,6 +6,7 @@ Queenfisher is a window around [yt-dlp](https://github.com/yt-dlp/yt-dlp), which
 
 - Free and open source (GPLv3)
 - No ads, no tracking, no account, nothing bundled
+- Video as MP4, MKV, WebM, MOV, AVI, FLV or GIF; sound as MP3, M4A, the site's original, WAV, FLAC, ALAC or Vorbis
 
 ## Keeping yt-dlp working
 
@@ -24,7 +25,7 @@ Get the newest version from [Releases](https://github.com/ArianARahimi/queenfish
 - **Windows:** download the `-windows.zip`, unpack it and run `Queenfisher.exe`.
 - **macOS:** download the `-macos.zip` (Apple Silicon) or `-macos-intel.zip` (Intel), open it and open Queenfisher. The first time, macOS blocks it: System Settings → Privacy & Security → **Open Anyway**.
 
-Queenfisher uses [ffmpeg](https://ffmpeg.org/) to join video and sound and to make MP3s. On Windows it fetches yt-dlp's own build the first time (about 90 MB, checked against the release's SHA-256 checksums); on Linux and macOS, install ffmpeg yourself. YouTube also needs [Deno](https://deno.com/).
+Queenfisher uses [ffmpeg](https://ffmpeg.org/) to join video and sound and to convert between formats. On Windows it fetches yt-dlp's own build the first time (about 90 MB, checked against the release's SHA-256 checksums); on Linux and macOS, install ffmpeg yourself. YouTube also needs [Deno](https://deno.com/).
 
 ## Building
 
@@ -64,6 +65,7 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 - YouTube previews show the picture and title right away, but the qualities and size still take a few seconds. Other sites take a few seconds for everything, since yt-dlp has to ask the site.
 - Overwriting a video you already have deletes the old file first, so if the new download fails, neither is left.
 - The tray icon has only been tried on KDE. GNOME shows tray icons only with an extension; without one, minimizing works as usual.
+- AVI is re-encoded so old players can open it, which is slow for long videos. GIF is offered only for videos up to a minute, and even those make big files.
 - Skip sponsors only works on YouTube, and only for segments the SponsorBlock community has marked.
 
 ## Credits

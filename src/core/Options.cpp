@@ -1,10 +1,35 @@
 #include "Options.h"
 
+namespace {
+
+struct FormatInfo { const char *name, *key; };
+constexpr FormatInfo formats[Options::FormatCount] = {
+    {"MP4", "mp4"}, {"MKV", "mkv"}, {"WebM", "webm"}, {"MOV", "mov"}, {"AVI", "avi"}, {"FLV", "flv"}, {"GIF", "gif"},
+    {"MP3", "mp3"}, {"M4A", "m4a"}, {"Original audio", "original"}, {"WAV", "wav"}, {"FLAC", "flac"},
+    {"ALAC", "alac"}, {"Vorbis", "vorbis"}};
+
+// The GIF recipe: at most 480 px wide, 10 frames a second, one palette for the whole clip and
+// only the changed parts of each frame stored. Still big: GIF is an old, wasteful format.
+const QString gifArgs = "VideoConvertor:-an -vf \"fps=10,scale='min(480,iw)':-2:flags=lanczos,split[a][b];"
+                        "[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle\" -loop 0";
+
+}
+
+QString Options::name(Format f) { return formats[f].name; }
+QString Options::key(Format f) { return formats[f].key; }
+
+Options::Format Options::fromKey(const QString &key)
+{
+    for (int f = 0; f < FormatCount; ++f)
+        if (key == formats[f].key)
+            return Format(f);
+    return Mp4;
+}
+
 QString Options::label() const
 {
-    static const char *names[] = {"MP4", "MKV", "WebM", "MP3", "Audio"};
-    QString text = names[format];
-    if (!audioOnly())
+    QString text = format == AudioOriginal ? QString("Audio") : name(format);
+    if (hasQuality(format))
         text += maxHeight ? QString(" %1p").arg(maxHeight) : QString(" Best");
     return text;
 }
@@ -22,7 +47,9 @@ QStringList ytDlpArgs(const Options &o)
         "-P", o.folder,
         // The picture's height is in the name ("... [id] 1080p.mp4"; none for sound), so another
         // quality is another file instead of yt-dlp skipping it as already downloaded.
-        "-o", QString(o.playlist ? "%(playlist_index)03d - " : "") + "%(title)s [%(id)s]%(height& {}p|)s.%(ext)s",
+        // ALAC files end in .m4a too, so they're marked to stay apart from M4A ones.
+        "-o", QString(o.playlist ? "%(playlist_index)03d - " : "") + "%(title)s [%(id)s]%(height& {}p|)s"
+                  + (o.format == Options::Alac ? " ALAC" : "") + ".%(ext)s",
         o.playlist ? "--yes-playlist" : "--no-playlist",
     };
 
@@ -42,15 +69,38 @@ QStringList ytDlpArgs(const Options &o)
     case Options::Webm:
         a << "-S" << "ext:webm:webm," + res << "--merge-output-format" << "webm";
         break;
+    case Options::Mov:   // the MP4 picture and sound, repacked: nothing is re-encoded
+    case Options::Flv:
+        a << "-S" << "vcodec:h264," + res + ",acodec:aac,ext:mp4:m4a" << "--remux-video" << Options::key(o.format);
+        break;
+    case Options::Avi:   // re-encoded to what old players expect (MPEG-4 picture, MP3 sound): slow
+        a << "-S" << res << "--recode-video" << "avi";
+        break;
+    case Options::Gif:   // picture only, small to start with
+        a << "-S" << "res:480" << "-f" << "bv*/b" << "--recode-video" << "gif" << "--postprocessor-args" << gifArgs;
+        break;
     case Options::Mp3:
         a << "-f" << "ba/b" << "-x" << "--audio-format" << "mp3" << "--audio-quality" << "0";
+        break;
+    case Options::M4a:   // AAC as it is when the site has it, converted when it doesn't
+        a << "-f" << "ba[acodec^=mp4a]/ba/b" << "-x" << "--audio-format" << "m4a";
         break;
     case Options::AudioOriginal:
         a << "-f" << "ba/b" << "-x";
         break;
+    case Options::Wav:
+    case Options::Flac:
+    case Options::Vorbis:
+        a << "-f" << "ba/b" << "-x" << "--audio-format" << Options::key(o.format);
+        break;
+    case Options::Alac:   // yt-dlp doesn't name the codec itself, and ffmpeg would make AAC
+        a << "-f" << "ba/b" << "-x" << "--audio-format" << "alac" << "--postprocessor-args" << "ExtractAudio:-c:a alac";
+        break;
+    case Options::FormatCount:
+        break;
     }
 
-    if (o.subtitles && !o.audioOnly())
+    if (o.subtitles && Options::takesSubtitles(o.format))
         a << "--write-subs" << "--embed-subs" << "--sub-langs" << "en.*,en";
 
     if (o.skipSponsors)
