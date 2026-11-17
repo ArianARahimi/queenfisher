@@ -257,7 +257,7 @@ QWidget *DownloadPage::buildTop()
     paneLayout->addLayout(previewRow, 1);
 
     // Download right next to Paste: paste, then one short move to download.
-    download_ = new QPushButton(QIcon(":/icons/download.png"), "Download");
+    download_ = new QPushButton(Theme::recolour(":/icons/download.png", Theme::onAccent, false), "Download");
     download_->setObjectName("primary");
     download_->setToolTip("Download this link with the options on the left");
 

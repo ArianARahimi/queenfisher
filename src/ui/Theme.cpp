@@ -1,6 +1,7 @@
 #include "Theme.h"
 
 #include <QApplication>
+#include <QImage>
 #include <QLinearGradient>
 #include <QPainter>
 #include <QPalette>
@@ -259,6 +260,22 @@ void apply(QApplication &app)
         pal.setColor(QPalette::Disabled, role, QColor(0x6c, 0x70, 0x7a));
     app.setPalette(pal);
     app.setStyleSheet(themedStyleSheet());
+}
+
+QPixmap recolour(const QString &file, const QColor &colour, bool shaded)
+{
+    QImage img = QImage(file).convertToFormat(QImage::Format_ARGB32);
+    for (int y = 0; y < img.height(); ++y) {
+        auto *line = reinterpret_cast<QRgb *>(img.scanLine(y));
+        for (int x = 0; x < img.width(); ++x) {
+            const int a = qAlpha(line[x]);
+            // shaded: the icon's brightness scales the colour, so its 3D look survives
+            const double k = shaded ? 0.4 + 1.2 * qGray(line[x]) / 255.0 : 1.0;
+            line[x] = qRgba(qMin(255, int(colour.red() * k)), qMin(255, int(colour.green() * k)),
+                            qMin(255, int(colour.blue() * k)), a);
+        }
+    }
+    return QPixmap::fromImage(img);
 }
 
 void drawGloss(QPainter &p, const QRect &r, const QColor &base, int radius)

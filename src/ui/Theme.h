@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QColor>
+#include <QPixmap>
 
 class QApplication;
 class QPainter;
@@ -27,6 +28,9 @@ inline const QColor done = accent;              // finished
 inline const QColor failed{0xe0, 0x4a, 0x4a};   // something went wrong
 
 void apply(QApplication &app);   // style, palette, style sheet
+
+// An icon redrawn in one colour: flat (a silhouette), or keeping its light and shade.
+QPixmap recolour(const QString &file, const QColor &colour, bool shaded);
 
 enum class BarState { Waiting, Running, Done, Failed };
 void drawBar(QPainter &p, const QRect &r, double fraction, BarState state);   // glossy progress bar
