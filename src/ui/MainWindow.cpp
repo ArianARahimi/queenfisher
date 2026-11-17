@@ -1,6 +1,7 @@
 #include "MainWindow.h"
 #include "ProgressDelegate.h"
 #include "Thumbnail.h"
+#include "core/DownloadJob.h"
 
 #include <QCheckBox>
 #include <QClipboard>
@@ -8,14 +9,17 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileDialog>
+#include <QFontDatabase>
 #include <QGridLayout>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QStandardPaths>
+#include <QTime>
 #include <QTreeWidget>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -23,6 +27,7 @@
 namespace {
 
 enum Column { Title, Format, Size, Progress, State };
+constexpr int heights[] = {0, 2160, 1440, 1080, 720, 480};   // matches the Quality list
 
 bool isWebLink(const QString &text)
 {
@@ -45,12 +50,17 @@ QString shortPath(const QString &path)
     return path.startsWith(home) ? "~" + path.mid(home.size()) : path;
 }
 
+QString megabytes(double bytes)
+{
+    return bytes >= 1e9 ? QString::number(bytes / 1e9, 'f', 2) + " GB" : QString::number(bytes / 1e6, 'f', 1) + " MB";
+}
+
 }
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
     setWindowTitle("QFisher");
-    resize(860, 640);
+    resize(860, 680);
     setMinimumSize(720, 520);
 
     link_ = new QLineEdit;
@@ -64,42 +74,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     linkRow->addWidget(link_, 1);
     linkRow->addWidget(paste);
 
-    list_ = new QTreeWidget;
-    list_->setHeaderLabels({"Video", "Format", "Size", "Progress", "Status"});
-    list_->setRootIsDecorated(false);
-    list_->setAlternatingRowColors(true);
-    list_->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    list_->setItemDelegateForColumn(Progress, new ProgressDelegate(list_));
-    QHeaderView *header = list_->header();
-    header->setStretchLastSection(false);
-    header->setSectionResizeMode(Title, QHeaderView::Stretch);
-    for (int c : {Format, Size, State})
-        header->setSectionResizeMode(c, QHeaderView::ResizeToContents);
-    header->setSectionResizeMode(Progress, QHeaderView::Fixed);
-    header->resizeSection(Progress, 160);
-
-    auto *openFolder = new QPushButton("Open folder");
-    openFolder->setToolTip("Show the downloaded files");
-    auto *remove = new QPushButton("Remove");
-    remove->setToolTip("Take the selected downloads off the list (files stay)");
-    remove->setEnabled(false);
-    auto *listButtons = new QHBoxLayout;
-    listButtons->addWidget(remove);
-    listButtons->addStretch(1);
-    listButtons->addWidget(openFolder);
-
-    auto *listBox = new QFrame;
-    listBox->setObjectName("card");
-    auto *listLayout = new QVBoxLayout(listBox);
-    listLayout->setContentsMargins(0, 0, 0, 8);
-    listLayout->setSpacing(8);
-    listLayout->addWidget(strip("Downloads"));
-    auto *listInner = new QVBoxLayout;
-    listInner->setContentsMargins(8, 0, 8, 0);
-    listInner->setSpacing(8);
-    listInner->addWidget(list_, 1);
-    listInner->addLayout(listButtons);
-    listLayout->addLayout(listInner, 1);
+    log_ = new QPlainTextEdit;
+    log_->setObjectName("log");
+    log_->setReadOnly(true);
+    log_->setMaximumBlockCount(5000);
+    log_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    log_->setFixedHeight(150);
+    log_->setVisible(false);
 
     status_ = new QLabel;
     status_->setObjectName("status");
@@ -111,8 +92,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     layout->setSpacing(10);
     layout->addLayout(linkRow);
     layout->addWidget(buildCard());
-    layout->addWidget(listBox, 1);
+    layout->addWidget(buildList(), 1);
     layout->addWidget(status_);
+    layout->addWidget(log_);
     setCentralWidget(central);
 
     connect(link_, &QLineEdit::textChanged, this, &MainWindow::linkChanged);
@@ -120,9 +102,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(paste, &QPushButton::clicked, this, [this] {
         link_->setText(QGuiApplication::clipboard()->text().trimmed());
         link_->setFocus();
-    });
-    connect(openFolder, &QPushButton::clicked, this, [this] {
-        QDesktopServices::openUrl(QUrl::fromLocalFile(folder_->toolTip()));
     });
 
     linkChanged({});
@@ -158,6 +137,7 @@ QWidget *MainWindow::buildCard()
     auto *browse = new QPushButton("Change...");
 
     subtitles_ = new QCheckBox("Subtitles");
+    subtitles_->setToolTip("Add English subtitles to the video when the site has them");
     playlist_ = new QCheckBox("Whole playlist");
     playlist_->setToolTip("When the link is part of a playlist, download every video in it");
 
@@ -208,11 +188,69 @@ QWidget *MainWindow::buildCard()
     outer->addWidget(strip("New download"));
     outer->addLayout(row);
 
-    // Audio has no picture size to choose.
-    connect(format_, &QComboBox::currentIndexChanged, this, [this](int i) { quality_->setEnabled(i < 3); });
+    // Audio has no picture size to choose, and no subtitles.
+    connect(format_, &QComboBox::currentIndexChanged, this, [this](int i) {
+        quality_->setEnabled(i < Options::Mp3);
+        subtitles_->setEnabled(i < Options::Mp3);
+    });
     connect(browse, &QPushButton::clicked, this, &MainWindow::chooseFolder);
     connect(download_, &QPushButton::clicked, this, &MainWindow::download);
     return card;
+}
+
+QWidget *MainWindow::buildList()
+{
+    list_ = new QTreeWidget;
+    list_->setHeaderLabels({"Video", "Format", "Size", "Progress", "Status"});
+    list_->setRootIsDecorated(false);
+    list_->setAlternatingRowColors(true);
+    list_->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    list_->setItemDelegateForColumn(Progress, new ProgressDelegate(list_));
+    QHeaderView *header = list_->header();
+    header->setStretchLastSection(false);
+    header->setSectionResizeMode(Title, QHeaderView::Stretch);
+    for (int c : {Format, Size, State})
+        header->setSectionResizeMode(c, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(Progress, QHeaderView::Fixed);
+    header->resizeSection(Progress, 160);
+
+    remove_ = new QPushButton("Remove");
+    remove_->setToolTip("Take the selected downloads off the list (finished files stay)");
+    remove_->setEnabled(false);
+    auto *logButton = new QPushButton("Log");
+    logButton->setToolTip("Show what yt-dlp is doing");
+    logButton->setCheckable(true);
+    auto *openFolder = new QPushButton("Open folder");
+    openFolder->setToolTip("Show the downloaded files");
+
+    auto *buttons = new QHBoxLayout;
+    buttons->addWidget(remove_);
+    buttons->addStretch(1);
+    buttons->addWidget(logButton);
+    buttons->addWidget(openFolder);
+
+    auto *box = new QFrame;
+    box->setObjectName("card");
+    auto *layout = new QVBoxLayout(box);
+    layout->setContentsMargins(0, 0, 0, 8);
+    layout->setSpacing(8);
+    layout->addWidget(strip("Downloads"));
+    auto *inner = new QVBoxLayout;
+    inner->setContentsMargins(8, 0, 8, 0);
+    inner->setSpacing(8);
+    inner->addWidget(list_, 1);
+    inner->addLayout(buttons);
+    layout->addLayout(inner, 1);
+
+    connect(list_, &QTreeWidget::itemSelectionChanged, this, [this] {
+        remove_->setEnabled(!list_->selectedItems().isEmpty());
+    });
+    connect(remove_, &QPushButton::clicked, this, &MainWindow::removeSelected);
+    connect(logButton, &QPushButton::toggled, log_, &QWidget::setVisible);
+    connect(openFolder, &QPushButton::clicked, this, [this] {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(folder_->toolTip()));
+    });
+    return box;
 }
 
 void MainWindow::linkChanged(const QString &text)
@@ -222,7 +260,7 @@ void MainWindow::linkChanged(const QString &text)
     if (ok) {
         title_->setText(QUrl(text.trimmed()).host());
         meta_->setText("Preview isn't built yet");
-        thumbnail_->setHint("Loading preview...");
+        thumbnail_->setHint("Preview coming soon");
     } else {
         title_->setText("No video yet");
         meta_->setText(text.trimmed().isEmpty() ? "Paste a link above" : "That doesn't look like a web link");
@@ -237,25 +275,111 @@ void MainWindow::chooseFolder()
         return;
     folder_->setText(shortPath(dir));
     folder_->setToolTip(dir);
+    refreshStatus();
+}
+
+Options MainWindow::currentOptions() const
+{
+    Options o;
+    o.url = link_->text().trimmed();
+    o.folder = folder_->toolTip();
+    o.format = Options::Format(format_->currentIndex());
+    o.maxHeight = heights[quality_->currentIndex()];
+    o.subtitles = subtitles_->isChecked();
+    o.playlist = playlist_->isChecked();
+    return o;
 }
 
 void MainWindow::download()
 {
-    const QString format = format_->currentText().section(' ', 0, 0) == "Audio"
-        ? format_->currentText().mid(12).remove(')') : format_->currentText().section(' ', 0, 0);
-    const QString quality = quality_->isEnabled() ? " " + quality_->currentText().section(' ', 0, 0) : QString();
-    auto *item = new QTreeWidgetItem(list_, {title_->text(), format + quality, "", "", "Waiting"});
+    const Options o = currentOptions();
+    auto *item = new QTreeWidgetItem(list_, {QUrl(o.url).host(), o.label(), "", "", "Waiting"});
     item->setData(Progress, Qt::UserRole, -1.0);
-    item->setToolTip(Title, link_->text().trimmed());
+    item->setToolTip(Title, o.url);
+    const int number = list_->indexOfTopLevelItem(item) + 1;
+
+    auto *job = new DownloadJob(o, this);
+    jobs_.insert(item, job);
+    connect(job, &DownloadJob::logLine, this, [this, number](const QString &line) { log(line, number); });
+    connect(job, &DownloadJob::titleKnown, this, [item](const QString &t) { item->setText(Title, t); });
+    connect(job, &DownloadJob::stage, this, [item](const QString &s) { item->setText(State, s + "..."); });
+    connect(job, &DownloadJob::progress, this, [item](double fraction, qint64 total, double speed, int left) {
+        item->setData(Progress, Qt::UserRole, fraction);
+        if (total > 0)
+            item->setText(Size, megabytes(total));
+        QString text = fraction >= 0 ? QString::number(int(fraction * 100)) + "%" : "Downloading";
+        if (speed > 0)
+            text += "  " + megabytes(speed) + "/s";
+        if (left >= 0)
+            text += "  " + QTime(0, 0).addSecs(left).toString(left >= 3600 ? "h:mm:ss" : "m:ss") + " left";
+        item->setText(State, text);
+    });
+    connect(job, &DownloadJob::finished, this, [this, item, job, number](bool ok, const QString &message) {
+        item->setText(State, message);
+        if (ok)
+            item->setData(Progress, Qt::UserRole, 1.0);
+        log(ok ? "Finished" : "Stopped: " + message, number);
+        if (running_ == job)
+            running_ = nullptr;
+        refreshStatus();
+        startNext();
+    });
+
     list_->scrollToItem(item);
     link_->clear();
+    startNext();
     refreshStatus();
+}
+
+// Downloads run one at a time, top to bottom.
+void MainWindow::startNext()
+{
+    if (running_)
+        return;
+    const QString ytDlp = QStandardPaths::findExecutable("yt-dlp");
+    for (int i = 0; i < list_->topLevelItemCount(); ++i) {
+        QTreeWidgetItem *item = list_->topLevelItem(i);
+        if (item->text(State) != "Waiting")
+            continue;
+        if (ytDlp.isEmpty()) {
+            item->setText(State, "yt-dlp isn't installed");
+            log("yt-dlp wasn't found on this computer. Install it and try again.", i + 1);
+            continue;
+        }
+        running_ = jobs_.value(item);
+        item->setText(State, "Starting...");
+        running_->start(ytDlp);
+        break;
+    }
+    refreshStatus();
+}
+
+void MainWindow::removeSelected()
+{
+    for (QTreeWidgetItem *item : list_->selectedItems()) {
+        DownloadJob *job = jobs_.take(item);
+        if (job == running_)
+            running_ = nullptr;
+        delete job;   // stops yt-dlp if it's still running
+        delete item;
+    }
+    startNext();
+}
+
+void MainWindow::log(const QString &line, int number)
+{
+    const QString time = QTime::currentTime().toString("HH:mm:ss");
+    log_->appendPlainText(number ? QString("%1 #%2  %3").arg(time).arg(number).arg(line)
+                                 : QString("%1  %2").arg(time, line));
 }
 
 void MainWindow::refreshStatus()
 {
-    const int count = list_->topLevelItemCount();
-    const QString where = "saving to " + folder_->text();
-    status_->setText(count == 0 ? "Nothing downloading  ·  " + where
-                                : QString("%1 in the list  ·  %2").arg(count).arg(where));
+    int waiting = 0;
+    for (int i = 0; i < list_->topLevelItemCount(); ++i)
+        waiting += list_->topLevelItem(i)->text(State) == "Waiting";
+    QString text = running_ ? QString("Downloading") : QString("Nothing downloading");
+    if (waiting)
+        text += QString(", %1 waiting").arg(waiting);
+    status_->setText(text + "  ·  saving to " + folder_->text());
 }

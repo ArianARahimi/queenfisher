@@ -146,6 +146,10 @@ QHeaderView::section {
     color: @text; font-weight: bold; padding: 3px 6px; background: @face;
     border: none; border-right: 1px solid @shadow; border-bottom: 1px solid @outline;
 }
+QPlainTextEdit#log {
+    color: @text; background: @field; border: 1px solid @outline;
+    selection-background-color: @select; selection-color: #ffffff;
+}
 QToolTip { color: @text; background: @fieldAlt; border: 1px solid @outline; }
 )";
 

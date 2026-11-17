@@ -11,11 +11,15 @@ qt_standard_project_setup()
 
 qt_add_executable(qfisher
     src/main.cpp
+    src/core/Cookies.cpp src/core/Cookies.h
+    src/core/DownloadJob.cpp src/core/DownloadJob.h
+    src/core/Options.cpp src/core/Options.h
     src/ui/MainWindow.cpp src/ui/MainWindow.h
     src/ui/ProgressDelegate.cpp src/ui/ProgressDelegate.h
     src/ui/Thumbnail.cpp src/ui/Thumbnail.h
     src/ui/Theme.cpp src/ui/Theme.h
 )
+target_include_directories(qfisher PRIVATE src)
 target_compile_definitions(qfisher PRIVATE QFISHER_VERSION="${PROJECT_VERSION}")
 target_compile_options(qfisher PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>)
 target_link_libraries(qfisher PRIVATE Qt6::Widgets)

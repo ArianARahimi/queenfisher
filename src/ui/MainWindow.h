@@ -1,16 +1,22 @@
 #pragma once
 
+#include "core/Options.h"
+
+#include <QHash>
 #include <QMainWindow>
 
+class DownloadJob;
 class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
+class QPlainTextEdit;
 class QPushButton;
 class QTreeWidget;
+class QTreeWidgetItem;
 class Thumbnail;
 
-// Link box, preview card with download options, then the download list.
+// Link box, preview card with download options, the download list, and a log at the bottom.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -20,10 +26,15 @@ public:
 
 private:
     QWidget *buildCard();
+    QWidget *buildList();
     void linkChanged(const QString &text);
     void chooseFolder();
     void download();
+    void startNext();
+    void removeSelected();
+    void log(const QString &line, int number = 0);
     void refreshStatus();
+    Options currentOptions() const;
 
     QLineEdit *link_ = nullptr;
     Thumbnail *thumbnail_ = nullptr;
@@ -36,5 +47,10 @@ private:
     QCheckBox *playlist_ = nullptr;
     QPushButton *download_ = nullptr;
     QTreeWidget *list_ = nullptr;
+    QPushButton *remove_ = nullptr;
+    QPlainTextEdit *log_ = nullptr;
     QLabel *status_ = nullptr;
+
+    QHash<QTreeWidgetItem *, DownloadJob *> jobs_;   // every row has one; only one runs at a time
+    DownloadJob *running_ = nullptr;
 };
