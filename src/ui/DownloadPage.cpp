@@ -48,6 +48,12 @@ bool isWebLink(const QString &text)
     return url.isValid() && (url.scheme() == "https" || url.scheme() == "http") && !url.host().isEmpty();
 }
 
+// Video icon as is; the green music note redrawn in the theme's lime so it doesn't clash.
+QIcon formatIcon(bool audio)
+{
+    return audio ? QIcon(Theme::recolour(":/icons/audio.png", Theme::accent, true)) : QIcon(":/icons/video.png");
+}
+
 // Shows the home folder as ~ so long paths stay readable.
 QString shortPath(const QString &path)
 {
@@ -138,7 +144,7 @@ QWidget *DownloadPage::buildSidebar()
         {"video", "MP4 (plays everywhere)"}, {"video", "MKV"}, {"video", "WebM"},
         {"audio", "MP3"}, {"audio", "Audio (original)"}};
     for (const auto &f : formats)
-        new QListWidgetItem(QIcon(QString(":/icons/") + f.icon + ".png"), f.text, format_);
+        new QListWidgetItem(formatIcon(QString(f.icon) == "audio"), f.text, format_);
     format_->setCurrentRow(Options::Mp4);
 
     quality_ = new QListWidget;
@@ -207,6 +213,10 @@ QWidget *DownloadPage::buildTop()
     link_ = new QLineEdit;
     link_->setPlaceholderText("Paste a video link (YouTube, Vimeo, Twitch, and more than a thousand other sites)");
     link_->setClearButtonEnabled(true);
+    link_->setObjectName("link");
+    QPalette hint = link_->palette();   // a readable placeholder, so the empty box is easy to spot
+    hint.setColor(QPalette::PlaceholderText, Theme::dim);
+    link_->setPalette(hint);
     auto *paste = new QPushButton(QIcon(":/icons/paste.png"), "Paste");
     paste->setToolTip("Paste the link you copied");
 
@@ -247,7 +257,7 @@ QWidget *DownloadPage::buildTop()
     previewRow->addLayout(info, 1);
 
     // Download right next to Paste: paste, then one short move to download.
-    download_ = new QPushButton(Theme::recolour(":/icons/download.png", Theme::onAccent, false), "Download");
+    download_ = new QPushButton(Theme::recolour(":/icons/download.png", Theme::accent, false), "Download");
     download_->setObjectName("primary");
     download_->setToolTip("Download this link with the options on the left");
 
@@ -256,6 +266,8 @@ QWidget *DownloadPage::buildTop()
     linkRow->addWidget(link_, 1);
     linkRow->addWidget(paste);
     linkRow->addWidget(download_);
+    for (QPushButton *b : {paste, download_})   // as tall as the link box
+        b->setMinimumHeight(link_->sizeHint().height());
 
     // Link row on top of the pane, a notice under it only when there's something to say.
     auto *pane = new QFrame;
@@ -564,7 +576,7 @@ void DownloadPage::download()
     const Options o = currentOptions();
     const QString name = previewTitle_.isEmpty() ? QUrl(o.url).host() : previewTitle_;
     auto *item = new QTreeWidgetItem(list_, {name, o.label()});
-    item->setIcon(Name, QIcon(o.audioOnly() ? ":/icons/audio.png" : ":/icons/video.png"));
+    item->setIcon(Name, formatIcon(o.audioOnly()));
     item->setToolTip(Name, o.url);
     addJob(item, o);
     list_->scrollToItem(item);

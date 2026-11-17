@@ -19,13 +19,13 @@ inline const QColor outline{0x0b, 0x0c, 0x0f};
 inline const QColor edge{0x3c, 0x3f, 0x48};     // inner highlight line
 inline const QColor text{0xe6, 0xe6, 0xe6};
 inline const QColor dim{0x9a, 0xa0, 0xab};
-inline const QColor accent{0x4e, 0x86, 0x1a};   // the green: focus, hover, selection, headers
-inline const QColor onAccent{0xff, 0xff, 0xff}; // text on green bars and buttons
-inline const QColor onSelect{0x1c, 0x1d, 0x20};  // text on a green selection (jet grey)
-inline const QColor glow{0x8c, 0xc4, 0x44};     // green text on dark: wordmark, links, ticks
-inline const QColor hover{0x3c, 0x56, 0x22};    // dark green wash behind hovered buttons and tabs
-inline const QColor running = accent;           // progress while downloading
-inline const QColor done = accent;              // finished
+inline const QColor accent{0x9f, 0xd4, 0x5a};   // soft lime: highlighted text, focus, outlines
+inline const QColor accentDim{0x55, 0x73, 0x30}; // quiet lime outline (the link box)
+inline const QColor surface{0x34, 0x37, 0x3e};   // dark grey gloss: headers, selection, Download
+inline const QColor onSelect{0x1c, 0x1d, 0x20};  // dark text on lime (text selection, bar label)
+inline const QColor hover{0x3a, 0x3e, 0x46};     // grey wash behind hovered buttons and tabs
+inline const QColor running{0x7d, 0xb3, 0x3c};   // progress bar fill, a muted lime
+inline const QColor done = running;              // finished
 inline const QColor failed{0xe0, 0x4a, 0x4a};   // something went wrong
 
 void apply(QApplication &app);   // style, palette, style sheet

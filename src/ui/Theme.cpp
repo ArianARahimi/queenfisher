@@ -35,7 +35,7 @@ public:
         p->setPen(enabled && (opt->state & State_MouseOver) ? Theme::accent : Theme::outline);
         p->drawRoundedRect(r, 2, 2);
         if (opt->state & State_On) {   // a tick, like Vista
-            QPen pen(enabled ? Theme::glow : QColor(0x4c, 0x50, 0x58), 2);
+            QPen pen(enabled ? Theme::accent : QColor(0x4c, 0x50, 0x58), 2);
             pen.setCapStyle(Qt::RoundCap);
             p->setPen(pen);
             const QPointF a = r.topLeft();
@@ -93,7 +93,7 @@ QMenuBar::item { padding: 3px 8px; background: transparent; }
 QMenuBar::item:selected { background: @hover; border-radius: 3px; }
 QMenu { color: @text; background: @panel; border: 1px solid @outline; padding: 2px; }
 QMenu::item { padding: 4px 24px 4px 24px; }
-QMenu::item:selected { background: @accent; color: @onSelect; border-radius: 2px; }
+QMenu::item:selected { background: @gloss; color: @accent; border-radius: 2px; }
 QMenu::item:disabled { color: #6c707a; }
 QMenu::separator { height: 1px; background: @edge; margin: 3px 6px; }
 
@@ -109,7 +109,7 @@ QTabBar::tab:selected {
     color: #ffffff; margin-bottom: -1px;
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4c515c, stop:0.5 #3d414a, stop:0.51 #33363e, stop:1 @panel);
 }
-QLabel#wordmark { color: @glow; font-size: 22px; font-weight: bold; padding: 0 10px 2px 0; }
+QLabel#wordmark { color: @accent; font-size: 22px; font-weight: bold; padding: 0 10px 2px 0; }
 
 QPushButton {
     color: @text; padding: 4px 14px; border: 1px solid @outline; border-radius: 3px;
@@ -119,9 +119,9 @@ QPushButton:hover { border-color: @accent; background: @wash; }
 QPushButton:pressed { border-color: @accent; background: @sunk; }
 QPushButton:disabled { color: #6c707a; }
 
-/* Download: the one button that matters, in the green so it's found at a glance */
-QPushButton#primary { color: @onAccent; font-weight: bold; padding: 4px 16px; border-color: @outline; background: @gloss; }
-QPushButton#primary:hover { border-color: @glow; background: @glossLit; }
+/* Download: the one button that matters, lime text and outline so it's found at a glance */
+QPushButton#primary { color: @accent; font-weight: bold; padding: 4px 16px; border-color: @accentDim; background: @gloss; }
+QPushButton#primary:hover { border-color: @accent; background: @glossLit; }
 QPushButton#primary:pressed { background: @glossSunk; }
 QPushButton#primary:disabled {
     color: #6c707a; border-color: @outline;
@@ -141,6 +141,9 @@ QLineEdit, QPlainTextEdit {
     padding: 3px 5px; selection-background-color: @accent; selection-color: @onSelect;
 }
 QLineEdit:focus { border-color: @accent; }
+/* the link box: bigger, lighter and outlined, so it's the first thing you see */
+QLineEdit#link { font-size: 15px; padding: 6px 8px; background: #202227; border-color: @accentDim; }
+QLineEdit#link:focus { border-color: @accent; }
 QLineEdit:read-only { color: @dim; }
 QComboBox { color: @text; padding: 3px 5px; }
 QComboBox QAbstractItemView {
@@ -155,7 +158,7 @@ QTreeWidget, QListWidget {
     border: 1px solid @outline; outline: 0;
 }
 QTreeWidget::item, QListWidget::item { padding: 2px 3px; }
-QTreeWidget::item:selected, QListWidget::item:selected { color: @onSelect; background: @gloss; }
+QTreeWidget::item:selected, QListWidget::item:selected { color: @accent; background: @gloss; }
 QHeaderView::section {
     color: #cfd3da; padding: 3px 6px;
     border: none; border-right: 1px solid #1a1b1f; border-bottom: 1px solid @outline;
@@ -164,7 +167,7 @@ QHeaderView::section {
 
 QFrame#box { background: @field; border: 1px solid @outline; }
 QLabel#boxHeader {
-    color: @onSelect; font-weight: bold; padding: 2px 6px; qproperty-alignment: AlignCenter;
+    color: @accent; font-weight: bold; padding: 2px 6px; qproperty-alignment: AlignCenter;
     border-bottom: 1px solid @outline; background: @gloss;
 }
 /* a box that doesn't apply (Quality for audio) greys out completely */
@@ -218,12 +221,12 @@ QString themedStyleSheet()
 {
     // Longer names first so @field doesn't eat @fieldAlt, or @gloss @glossLit.
     const std::pair<const char *, QString> names[] = {
-        {"@glossLit", gloss(Theme::accent.lighter(118))}, {"@glossSunk", gloss(Theme::accent.darker(125))},
-        {"@gloss", gloss(Theme::accent)}, {"@wash", gloss(Theme::hover)}, {"@sunk", gloss(Theme::hover.darker(140))},
-        {"@fieldAlt", Theme::fieldAlt.name()}, {"@onAccent", Theme::onAccent.name()}, {"@onSelect", Theme::onSelect.name()},
+        {"@glossLit", gloss(Theme::surface.lighter(118))}, {"@glossSunk", gloss(Theme::surface.darker(125))},
+        {"@gloss", gloss(Theme::surface)}, {"@accentDim", Theme::accentDim.name()}, {"@wash", gloss(Theme::hover)}, {"@sunk", gloss(Theme::hover.darker(140))},
+        {"@fieldAlt", Theme::fieldAlt.name()}, {"@onSelect", Theme::onSelect.name()},
         {"@outline", Theme::outline.name()}, {"@window", Theme::window.name()}, {"@accent", Theme::accent.name()},
         {"@field", Theme::field.name()}, {"@panel", Theme::panel.name()}, {"@hover", Theme::hover.name()},
-        {"@glow", Theme::glow.name()}, {"@edge", Theme::edge.name()}, {"@text", Theme::text.name()},
+        {"@edge", Theme::edge.name()}, {"@text", Theme::text.name()},
         {"@dim", Theme::dim.name()},
     };
     QString css = styleSheet;
@@ -254,7 +257,7 @@ void apply(QApplication &app)
     pal.setColor(QPalette::Dark, outline);
     pal.setColor(QPalette::Shadow, outline);
     pal.setColor(QPalette::PlaceholderText, dim.darker(120));
-    pal.setColor(QPalette::Link, glow);
+    pal.setColor(QPalette::Link, accent);
     for (auto role : {QPalette::ButtonText, QPalette::WindowText, QPalette::Text})
         pal.setColor(QPalette::Disabled, role, QColor(0x6c, 0x70, 0x7a));
     app.setPalette(pal);
@@ -326,7 +329,7 @@ void drawBar(QPainter &p, const QRect &r, double fraction, BarState state)
         p.setFont(f);
         const QRect filled(inner.topLeft(), QSize(width, inner.height()));
         p.setClipRect(filled);
-        p.setPen(onAccent);
+        p.setPen(onSelect);
         p.drawText(r, Qt::AlignCenter, label);
         p.setClipRegion(QRegion(r).subtracted(filled));
         p.setPen(text);
