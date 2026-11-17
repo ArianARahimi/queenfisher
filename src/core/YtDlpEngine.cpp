@@ -80,6 +80,16 @@ void YtDlpEngine::checkDaily()
     });
 }
 
+void YtDlpEngine::updateNow()
+{
+    run(QFile::exists(managedPath()) ? stamp_.channel : Stable, true, [](bool, const QString &) {});
+}
+
+void YtDlpEngine::switchChannel(Channel channel)
+{
+    run(channel, true, [](bool, const QString &) {});
+}
+
 // Update the current channel; if that changes nothing, try nightly, which gets site fixes first.
 void YtDlpEngine::repair(Done done)
 {

@@ -22,6 +22,7 @@ public:
     void start();
     void cancel();
     const Options &options() const { return options_; }
+    QString file() const { return file_; }   // the finished file, once yt-dlp has named it
 
 signals:
     void logLine(const QString &line);
@@ -45,6 +46,7 @@ private:
     double speed_ = -1, eta_ = -1;   // smoothed, so the numbers don't flicker
     bool sidecar_ = false;           // a subtitle or thumbnail is downloading, not the video
     QString title_;
+    QString file_;
     QStringList problems_;   // ERROR and WARNING lines of the current attempt
     bool triedRepair_ = false;
     bool cancelled_ = false;

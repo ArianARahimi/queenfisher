@@ -4,14 +4,14 @@
 #include <QMediaPlayer>
 #include <QMouseEvent>
 #include <QPainter>
-#include <QPolygon>
+#include <QPolygonF>
 #include <QUrl>
 #include <QVideoFrame>
 #include <QVideoSink>
 
 Thumbnail::Thumbnail(QWidget *parent) : QWidget(parent)
 {
-    setFixedSize(292, 166);  // 288x162 picture + frame
+    setFixedSize(386, 218);  // 384x216 picture + frame
 
     // No audio output is attached, so clips always play silently.
     player_ = new QMediaPlayer(this);
@@ -94,7 +94,9 @@ void Thumbnail::mouseReleaseEvent(QMouseEvent *event)
 void Thumbnail::paintEvent(QPaintEvent *)
 {
     QPainter p(this);
-    Theme::drawSunken(p, rect().adjusted(0, 0, -1, -1), Qt::black);
+    p.fillRect(rect(), Qt::black);
+    p.setPen(Theme::outline);
+    p.drawRect(rect().adjusted(0, 0, -1, -1));
     const QRect area = rect().adjusted(2, 2, -2, -2);
 
     if (picture_.isNull() && frame_.isNull()) {
@@ -135,21 +137,17 @@ void Thumbnail::paintEvent(QPaintEvent *)
     }
 }
 
-// A bevelled Windows 3.1 style button with a play triangle, bottom left.
+// A glossy round play button, bottom left, like the media buttons of the time.
 void Thumbnail::drawPlayButton(QPainter &p, const QRect &area) const
 {
-    const QRect b(area.left() + 8, area.bottom() - 8 - 26, 34, 26);
-    p.fillRect(b, Theme::face);
-    p.setPen(Theme::outline);
-    p.drawRect(b.adjusted(0, 0, -1, -1));
-    p.setPen(Theme::light);
-    p.drawLine(b.left() + 1, b.top() + 1, b.right() - 2, b.top() + 1);
-    p.drawLine(b.left() + 1, b.top() + 1, b.left() + 1, b.bottom() - 2);
-    p.setPen(Theme::shadow);
-    p.drawLine(b.left() + 1, b.bottom() - 2, b.right() - 1, b.bottom() - 2);
-    p.drawLine(b.right() - 2, b.top() + 1, b.right() - 2, b.bottom() - 2);
-    const QPoint c = b.center() + QPoint(1, 0);
+    const QRect b(area.left() + 8, area.bottom() - 8 - 30, 30, 30);
+    p.setRenderHint(QPainter::Antialiasing);
+    p.setPen(QPen(Theme::outline, 1));
+    p.setBrush(Qt::NoBrush);
+    Theme::drawGloss(p, b, QColor(0x2d, 0x6b, 0xc8), 15);
+    p.drawEllipse(QRectF(b).adjusted(0.5, 0.5, -0.5, -0.5));
+    const QPointF c = QRectF(b).center() + QPointF(1.5, 0);
     p.setPen(Qt::NoPen);
-    p.setBrush(Theme::text);
-    p.drawPolygon(QPolygon({c + QPoint(-5, -7), c + QPoint(6, 0), c + QPoint(-5, 7)}));
+    p.setBrush(Qt::white);
+    p.drawPolygon(QPolygonF({c + QPointF(-5, -7), c + QPointF(7, 0), c + QPointF(-5, 7)}));
 }

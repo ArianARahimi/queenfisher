@@ -22,7 +22,12 @@ qt_add_executable(qfisher
     src/core/PreviewJob.cpp src/core/PreviewJob.h
     src/core/ProgressTracker.cpp src/core/ProgressTracker.h
     src/core/YtDlpEngine.cpp src/core/YtDlpEngine.h
+    src/core/Library.cpp src/core/Library.h
+    src/ui/DownloadPage.cpp src/ui/DownloadPage.h
+    src/ui/EnginePage.cpp src/ui/EnginePage.h
+    src/ui/LibraryPage.cpp src/ui/LibraryPage.h
     src/ui/MainWindow.cpp src/ui/MainWindow.h
+    src/ui/Widgets.cpp src/ui/Widgets.h
     src/ui/ProgressDelegate.cpp src/ui/ProgressDelegate.h
     src/ui/Thumbnail.cpp src/ui/Thumbnail.h
     src/ui/Theme.cpp src/ui/Theme.h
@@ -33,6 +38,9 @@ target_compile_options(qfisher PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wex
 target_link_libraries(qfisher PRIVATE Qt6::Widgets Qt6::Network Qt6::Multimedia OpenSSL::Crypto)
 # yt-dlp's signing key (fingerprint AC0CBBE6848D6A873464AF4E57CF65933B5A7581), same as yt-dlp's public.key.
 qt_add_resources(qfisher keys PREFIX "/" BASE resources FILES resources/ytdlp-public.key)
+# Tango Desktop Project icons (public domain), see resources/icons/COPYING-tango.txt.
+file(GLOB ICONS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} resources/icons/*.png)
+qt_add_resources(qfisher icons PREFIX "/" BASE resources FILES ${ICONS})
 set_target_properties(qfisher PROPERTIES WIN32_EXECUTABLE ON MACOSX_BUNDLE ON)
 
 install(TARGETS qfisher BUNDLE DESTINATION . RUNTIME DESTINATION bin)

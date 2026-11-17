@@ -6,27 +6,27 @@ class QApplication;
 class QPainter;
 class QRect;
 
-// Windows 3.1 shapes (bevels, black outlines, navy title strips) in night colours.
-// Every colour lives here; the style sheet refers to them by name.
+// Windows Vista era look (glossy gradients, rounded tabs, blue selection, gold section
+// headers) in night colours. Every colour lives here; the style sheet refers to them by name.
 namespace Theme {
 
-inline const QColor face{0x2d, 0x2f, 0x36};     // panels and buttons
-inline const QColor light{0x55, 0x58, 0x64};    // raised edge
-inline const QColor shadow{0x16, 0x17, 0x1b};   // sunken edge
-inline const QColor outline{0x00, 0x00, 0x00};
-inline const QColor text{0xdc, 0xdc, 0xdc};
-inline const QColor dim{0x8e, 0x91, 0x9c};
-inline const QColor field{0x17, 0x18, 0x1c};    // text boxes, list
-inline const QColor fieldAlt{0x1d, 0x1e, 0x23}; // every other list row, read-only boxes
-inline const QColor strip{0x10, 0x22, 0x8c};    // title strips
-inline const QColor select{0x1f, 0x3a, 0xa8};
-inline const QColor running{0x7c, 0xc4, 0xff}; // progress bar while downloading (light blue)
+inline const QColor window{0x1d, 0x1f, 0x24};
+inline const QColor panel{0x24, 0x26, 0x2c};
+inline const QColor field{0x16, 0x17, 0x1b};    // text boxes, lists
+inline const QColor fieldAlt{0x1b, 0x1c, 0x21}; // every other list row
+inline const QColor outline{0x0b, 0x0c, 0x0f};
+inline const QColor edge{0x3c, 0x3f, 0x48};     // inner highlight line
+inline const QColor text{0xe6, 0xe6, 0xe6};
+inline const QColor dim{0x9a, 0xa0, 0xab};
+inline const QColor accent{0x3c, 0x7f, 0xd9};   // Vista blue: focus, hover, selection
+inline const QColor running{0x7c, 0xc4, 0xff};  // progress while downloading (light blue)
 inline const QColor done{0x4c, 0xcf, 0x5a};     // finished
 inline const QColor failed{0xe0, 0x4a, 0x4a};   // something went wrong
 
-void apply(QApplication &app);                // style, palette, style sheet
-void drawSunken(QPainter &p, const QRect &r, const QColor &fill);
+void apply(QApplication &app);   // style, palette, style sheet
+
 enum class BarState { Waiting, Running, Done, Failed };
-void drawBar(QPainter &p, const QRect &r, double fraction, BarState state);
+void drawBar(QPainter &p, const QRect &r, double fraction, BarState state);   // glossy progress bar
+void drawGloss(QPainter &p, const QRect &r, const QColor &base, int radius);  // Vista two-tone fill
 
 }

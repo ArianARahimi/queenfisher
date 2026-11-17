@@ -44,6 +44,7 @@ void DownloadJob::start()
         return;
     }
     problems_.clear();
+    file_.clear();
     tracker_.reset();
     speed_ = eta_ = -1;
     sidecar_ = false;
@@ -103,11 +104,23 @@ void DownloadJob::trackLine(const QString &line)
         tracker_.setPartCount(int(m.captured(1).count('+')) + 1);
     else if (line.startsWith("[download] Destination: ")) {
         sidecar_ = sidecar.match(line).hasMatch();   // subtitles and thumbnails aren't parts of the video
-        if (!sidecar_)
+        if (!sidecar_) {
             tracker_.startPart();
+            file_ = line.mid(24);
+        }
     }
-    else if (line.startsWith("[download] ") && line.endsWith("has already been downloaded"))
+    else if (line.startsWith("[download] ") && line.endsWith(" has already been downloaded")) {
         tracker_.finishPart();
+        file_ = line.mid(11).chopped(28);
+    }
+
+    // Later steps rename the file: merged, converted to audio, or remuxed.
+    static const QRegularExpression merged(R"re(^\[Merger\] Merging formats into "(.+)"$)re");
+    static const QRegularExpression moved(R"re(^\[(ExtractAudio|VideoRemuxer|VideoConvertor)\] .*Destination: (.+)$)re");
+    if (const auto m = merged.match(line); m.hasMatch())
+        file_ = m.captured(1);
+    else if (const auto m = moved.match(line); m.hasMatch())
+        file_ = m.captured(2);
 }
 
 // downloaded|total|estimate|speed|eta|fragment|fragments|title, missing numbers come as "NA".

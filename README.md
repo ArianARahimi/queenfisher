@@ -37,8 +37,12 @@ cmake --build build
 - ffmpeg must be installed on Linux and macOS.
 - When a site asks for a sign-in, QFisher retries once with your default browser's cookies. That only works on Linux so far.
 - Before the sound part of a video starts, its size is guessed, so the bar can pause briefly when it starts.
-- Only checked on Linux (KDE); the look on Windows and macOS is untested.
+- Only checked on Linux (KDE); the look on Windows and macOS is untested. The window frame and title bar are the system's own.
 - Previews and preview clips take a few seconds, since yt-dlp has to ask the site. Clips need a site that allows downloading part of a video.
+
+## Credits
+
+Icons from the [Tango Desktop Project](http://tango.freedesktop.org/) (public domain), see `resources/icons/COPYING-tango.txt`.
 
 ## License
 
