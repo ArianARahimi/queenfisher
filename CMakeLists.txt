@@ -17,6 +17,7 @@ qt_add_executable(queenfisher
     src/core/DownloadJob.cpp src/core/DownloadJob.h
     src/core/Engine.h
     src/core/ErrorRules.cpp src/core/ErrorRules.h
+    src/core/Ffmpeg.cpp src/core/Ffmpeg.h
     src/core/Options.cpp src/core/Options.h
     src/core/PgpVerify.cpp src/core/PgpVerify.h
     src/core/PreviewJob.cpp src/core/PreviewJob.h
@@ -42,6 +43,16 @@ qt_add_resources(queenfisher keys PREFIX "/" BASE resources FILES resources/ytdl
 file(GLOB ICONS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} resources/icons/*.png)
 qt_add_resources(queenfisher icons PREFIX "/" BASE resources FILES ${ICONS})
 set_target_properties(queenfisher PROPERTIES WIN32_EXECUTABLE ON MACOSX_BUNDLE ON)
+# Windows: icon, version details and manifest inside the .exe, like any regular program.
+if(WIN32)
+    set(ICON_PATH ${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/queenfisher.ico)
+    set(MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/queenfisher.manifest)
+    configure_file(packaging/windows/queenfisher.rc.in queenfisher.rc @ONLY)
+    target_sources(queenfisher PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/queenfisher.rc)
+    if(MSVC)
+        target_link_options(queenfisher PRIVATE /MANIFEST:NO)   # ours is in the .rc
+    endif()
+endif()
 
 install(TARGETS queenfisher BUNDLE DESTINATION . RUNTIME DESTINATION bin)
 if(UNIX AND NOT APPLE)

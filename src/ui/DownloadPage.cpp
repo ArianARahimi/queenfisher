@@ -5,6 +5,7 @@
 #include "Widgets.h"
 #include "core/ClipJob.h"
 #include "core/DownloadJob.h"
+#include "core/Ffmpeg.h"
 #include "core/Library.h"
 #include "core/PreviewJob.h"
 #include "core/YtDlpEngine.h"
@@ -90,8 +91,8 @@ QHBoxLayout *actionRow(std::initializer_list<QWidget *> widgets)
 
 }
 
-DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, QWidget *parent)
-    : QWidget(parent), engine_(engine), library_(library)
+DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg, QWidget *parent)
+    : QWidget(parent), engine_(engine), library_(library), ffmpeg_(ffmpeg)
 {
     setObjectName("page");
     net_ = new QNetworkAccessManager(this);
@@ -121,6 +122,13 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, QWidget *paren
             banner_->setNotice(text);
     });
     connect(engine_, &Engine::logLine, this, [this](const QString &line) { log(line); });
+    if (ffmpeg_) {
+        connect(ffmpeg_, &Ffmpeg::statusChanged, this, [this](const QString &text) {
+            banner_->setNotice(ffmpeg_->busy() ? text : QString());
+        });
+        connect(ffmpeg_, &Ffmpeg::logLine, this, [this](const QString &line) { log(line); });
+        connect(ffmpeg_, &Ffmpeg::readyChanged, this, &DownloadPage::startNext);
+    }
 
     linkChanged({});
     engineChanged();
@@ -543,6 +551,8 @@ void DownloadPage::fetchClip(bool play)
     // Start a little way into longer videos, past intros and black frames.
     const int start = previewSeconds_ > 60 ? qMin(previewSeconds_ / 10, 60) : 0;
     clip_ = new ClipJob(url, start, clipDir_.path(), url == signInUrl_ ? signInCookies_ : QString(), engine_, this);
+    if (ffmpeg_)
+        clip_->setFfmpeg(ffmpeg_->location());
     connect(clip_, &ClipJob::logLine, this, [this](const QString &line) { log(line); });
     connect(clip_, &ClipJob::ready, this, [this, job = clip_.data()](const QString &file) {
         clips_.insert(job->url(), file);
@@ -571,6 +581,8 @@ Options DownloadPage::currentOptions() const
     o.playlist = playlist_->isChecked();
     if (o.url == signInUrl_)
         o.cookies = signInCookies_;   // the preview already found a sign-in is needed
+    if (ffmpeg_)
+        o.ffmpeg = ffmpeg_->location();
     return o;
 }
 
@@ -625,10 +637,10 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
     });
 }
 
-// Downloads run one at a time, top to bottom, and wait while yt-dlp is being installed or updated.
+// Downloads run one at a time, top to bottom, and wait while yt-dlp or ffmpeg is being fetched.
 void DownloadPage::startNext()
 {
-    if (!running_ && !engine_->busy()) {
+    if (!running_ && !engine_->busy() && !(ffmpeg_ && ffmpeg_->busy())) {
         for (int i = 0; i < list_->topLevelItemCount(); ++i) {
             QTreeWidgetItem *item = list_->topLevelItem(i);
             if (stateOf(item) != State::Waiting || !jobs_.value(item))
@@ -638,8 +650,11 @@ void DownloadPage::startNext()
             running_->start();
             break;
         }
-        if (!running_)
+        if (!running_) {
             engine_->checkDaily();   // idle: a good moment for the once-a-day update check
+            if (ffmpeg_)
+                ffmpeg_->ensure();   // Windows: fetches ffmpeg the first time
+        }
     }
     refreshButtons();
     reportActivity();

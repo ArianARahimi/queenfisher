@@ -19,7 +19,9 @@ public:
     QString url() const { return url_; }
 
     static constexpr int lengthSeconds = 12;
-    static QStringList args(const QString &url, int startSeconds, const QString &folder, const QString &cookies);
+    static QStringList args(const QString &url, int startSeconds, const QString &folder, const QString &cookies,
+                            const QString &ffmpeg = {});
+    void setFfmpeg(const QString &folder) { ffmpeg_ = folder; }   // Queenfisher's own, when it has one
 
 signals:
     void ready(const QString &file);
@@ -33,6 +35,7 @@ private:
     int start_;
     QString folder_;
     QString cookies_;
+    QString ffmpeg_;
     Engine *engine_;
     QProcess process_;
     QTimer timeout_;

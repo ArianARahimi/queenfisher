@@ -24,7 +24,7 @@ Get the newest version from [Releases](https://github.com/ArianARahimi/queenfish
 - **Windows:** download the `-windows.zip`, unpack it and run `Queenfisher.exe`.
 - **macOS:** download the `-macos.zip` (Apple Silicon) or `-macos-intel.zip` (Intel), open it and open Queenfisher. The first time, macOS blocks it: System Settings → Privacy & Security → **Open Anyway**.
 
-Queenfisher needs [ffmpeg](https://ffmpeg.org/) installed to join video and sound and to make MP3s. YouTube also needs [Deno](https://deno.com/).
+Queenfisher uses [ffmpeg](https://ffmpeg.org/) to join video and sound and to make MP3s. On Windows it fetches yt-dlp's own build the first time (about 90 MB, checked against the release's SHA-256 checksums); on Linux and macOS, install ffmpeg yourself. YouTube also needs [Deno](https://deno.com/).
 
 ## Building
 
@@ -53,7 +53,7 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 
 - Fetching and updating yt-dlp has only been tested on Linux. Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
 - YouTube needs Deno installed to unlock most videos. Queenfisher tells you when it's missing but doesn't install it yet.
-- ffmpeg must be installed on every system; Queenfisher doesn't bring its own yet.
+- On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows. That copy isn't updated yet once it's there.
 - The Windows and macOS builds come from GitHub Actions and haven't been tried on a real Windows PC or Mac yet. Windows is a zip, not an installer. The Mac apps aren't signed by Apple.
 - The Linux AppImage hasn't been tried on a Wayland desktop yet (it bundles the parts Wayland needs, but that's unconfirmed).
 - The app icon is a placeholder.

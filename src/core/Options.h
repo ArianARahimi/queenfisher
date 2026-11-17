@@ -15,6 +15,7 @@ struct Options
     bool subtitles = false;
     bool playlist = false;
     QString cookies;     // --cookies-from-browser value, only set after a site asks for a sign-in
+    QString ffmpeg;      // folder with Queenfisher's own ffmpeg (Windows); empty = yt-dlp finds one
 
     bool audioOnly() const { return format == Mp3 || format == AudioOriginal; }
     QString label() const;   // short text for the list, e.g. "MP4 1080p"

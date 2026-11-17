@@ -3,6 +3,7 @@
 #include "DownloadPage.h"
 #include "LibraryPage.h"
 #include "Theme.h"
+#include "core/Ffmpeg.h"
 #include "core/Library.h"
 #include "core/YtDlpEngine.h"
 
@@ -23,7 +24,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     engine_ = new YtDlpEngine(data, this);
     library_ = new Library(data + "/library.json", this);
 
-    downloads_ = new DownloadPage(engine_, library_);
+    auto *ffmpeg = new Ffmpeg(data, this);
+    downloads_ = new DownloadPage(engine_, library_, ffmpeg);
     tabs_ = new QTabWidget;
     tabs_->setDocumentMode(false);
     tabs_->setIconSize({22, 22});

@@ -51,6 +51,8 @@ QStringList ytDlpArgs(const Options &o)
 
     if (!o.cookies.isEmpty())
         a << "--cookies-from-browser" << o.cookies;
+    if (!o.ffmpeg.isEmpty())
+        a << "--ffmpeg-location" << o.ffmpeg;
 
     a << "--" << o.url;  // the link can never be read as an option
     return a;

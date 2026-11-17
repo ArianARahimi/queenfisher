@@ -28,7 +28,8 @@ ClipJob::~ClipJob()
     }
 }
 
-QStringList ClipJob::args(const QString &url, int startSeconds, const QString &folder, const QString &cookies)
+QStringList ClipJob::args(const QString &url, int startSeconds, const QString &folder, const QString &cookies,
+                          const QString &ffmpeg)
 {
     QStringList a = {
         "--ignore-config", "--color", "never", "--no-playlist", "--no-part",
@@ -42,6 +43,8 @@ QStringList ClipJob::args(const QString &url, int startSeconds, const QString &f
     };
     if (!cookies.isEmpty())
         a << "--cookies-from-browser" << cookies;
+    if (!ffmpeg.isEmpty())
+        a << "--ffmpeg-location" << ffmpeg;
     a << "--" << url;
     return a;
 }
@@ -52,7 +55,7 @@ void ClipJob::start()
         emit failed("yt-dlp isn't available yet");
         return;
     }
-    process_.start(engine_->path(), args(url_, start_, folder_, cookies_));
+    process_.start(engine_->path(), args(url_, start_, folder_, cookies_, ffmpeg_));
     timeout_.start();
 }
 
