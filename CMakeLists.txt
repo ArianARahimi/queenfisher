@@ -44,3 +44,7 @@ qt_add_resources(qfisher icons PREFIX "/" BASE resources FILES ${ICONS})
 set_target_properties(qfisher PROPERTIES WIN32_EXECUTABLE ON MACOSX_BUNDLE ON)
 
 install(TARGETS qfisher BUNDLE DESTINATION . RUNTIME DESTINATION bin)
+if(UNIX AND NOT APPLE)
+    install(FILES packaging/linux/qfisher.desktop DESTINATION share/applications)
+    install(FILES packaging/linux/qfisher.png DESTINATION share/icons/hicolor/32x32/apps)
+endif()

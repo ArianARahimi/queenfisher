@@ -2,3 +2,6 @@ build/
 *.user
 compile_commands.json
 .cache/
+.claude/
+.mcp.json
+dist/
