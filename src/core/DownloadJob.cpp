@@ -72,9 +72,14 @@ void DownloadJob::start()
 
 void DownloadJob::cancel()
 {
-    if (process_.state() == QProcess::NotRunning)
+    if (cancelled_)
         return;
     cancelled_ = true;
+    if (process_.state() == QProcess::NotRunning) {   // between attempts, e.g. while yt-dlp updates
+        discardPartial();
+        emit finished(false, "Stopped");
+        return;
+    }
     stopAll(false);
     QTimer::singleShot(5000, this, [this] {   // still going after 5 s: force it
         if (process_.state() != QProcess::NotRunning)
@@ -227,8 +232,8 @@ void DownloadJob::recover()
         emit stage("Updating yt-dlp");
         QPointer<DownloadJob> self(this);   // the row may be removed while yt-dlp updates
         engine_->repair([self, d](bool changed, const QString &message) {
-            if (!self)
-                return;
+            if (!self || self->cancelled_)
+                return;   // removed or stopped while yt-dlp updated
             emit self->logLine(message);
             if (changed)
                 self->start();
