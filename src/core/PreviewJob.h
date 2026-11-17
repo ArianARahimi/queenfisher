@@ -36,8 +36,9 @@ struct PreviewInfo
     QList<Stream> streams;   // empty for playlists
 };
 
-// The tallest picture the video has; 0 if unknown.
-int bestHeight(const PreviewInfo &info);
+// The tallest picture this format can get from the video (MP4: H.264 only, WebM: WebM only);
+// 0 if unknown.
+int bestHeight(const PreviewInfo &info, Options::Format format);
 
 // Roughly how big the download will be with these choices, picking streams the way yt-dlp
 // does for them (H.264 and AAC for MP4, WebM for WebM); -1 if the sizes aren't known.

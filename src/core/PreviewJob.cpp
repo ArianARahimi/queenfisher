@@ -74,13 +74,28 @@ PreviewInfo parsePreview(const QByteArray &json)
     return info;
 }
 
-int bestHeight(const PreviewInfo &info)
+namespace {
+
+// The pictures yt-dlp would choose from for this format, the way Options asks for them:
+// MP4 wants H.264 and WebM wants WebM when the video has any; otherwise anything goes.
+bool wantedPicture(const Stream &s, Options::Format format)
 {
-    int best = 0;
-    for (const Stream &s : info.streams)
-        if (s.picture())
-            best = qMax(best, s.height);
-    return best;
+    return format == Options::Mp4 ? s.vcodec.startsWith("avc1") : format == Options::Webm ? s.ext == "webm" : true;
+}
+
+}
+
+int bestHeight(const PreviewInfo &info, Options::Format format)
+{
+    int best = 0, bestWanted = 0;
+    for (const Stream &s : info.streams) {
+        if (!s.picture())
+            continue;
+        best = qMax(best, s.height);
+        if (wantedPicture(s, format))
+            bestWanted = qMax(bestWanted, s.height);
+    }
+    return bestWanted ? bestWanted : best;
 }
 
 namespace {
@@ -127,9 +142,7 @@ qint64 estimateSize(const PreviewInfo &info, Options::Format format, int maxHeig
         return a ? a->bytes : -1;
     }
     const auto fits = [maxHeight](const Stream &s) { return s.picture() && (!maxHeight || s.height <= maxHeight); };
-    const auto likedPicture = [format](const Stream &s) {
-        return format == Options::Mp4 ? s.vcodec.startsWith("avc1") : format == Options::Webm ? s.ext == "webm" : true;
-    };
+    const auto likedPicture = [format](const Stream &s) { return wantedPicture(s, format); };
     const auto likedSound = [format](const Stream &s) {
         return format == Options::Mp4 ? s.ext == "m4a" : format == Options::Webm ? s.ext == "webm" : true;
     };

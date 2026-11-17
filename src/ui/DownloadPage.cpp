@@ -558,7 +558,8 @@ void DownloadPage::showNotice()
 // are greyed out. Nothing for playlists or before a preview.
 void DownloadPage::showQuality()
 {
-    const int best = bestHeight(lastPreview_);
+    const auto format = Options::Format(qMax(0, format_->currentRow()));
+    const int best = bestHeight(lastPreview_, format);
     for (int row = 1; row < quality_->count(); ++row) {   // "Best available" always applies
         QListWidgetItem *item = quality_->item(row);
         const bool offered = !best || heights[row] <= best;
@@ -568,7 +569,6 @@ void DownloadPage::showQuality()
         qualityInfo_->setVisible(false);
         return;
     }
-    const auto format = Options::Format(qMax(0, format_->currentRow()));
     const bool audio = format == Options::Mp3 || format == Options::AudioOriginal;
     QStringList parts;
     if (best)

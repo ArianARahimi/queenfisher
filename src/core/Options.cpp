@@ -25,10 +25,12 @@ QStringList ytDlpArgs(const Options &o)
     };
 
     // Format sorting picks the best stream within the limits instead of failing on exact matches.
-    const QString res = o.maxHeight ? QString("res:%1,").arg(o.maxHeight) : QString();
+    // The picture's size always outranks the sound's codec: otherwise a 360p file that happens
+    // to include AAC sound beats the 1080p picture.
+    const QString res = o.maxHeight ? QString("res:%1").arg(o.maxHeight) : QString("res");
     switch (o.format) {
-    case Options::Mp4:
-        a << "-S" << res + "vcodec:h264,acodec:aac,ext:mp4:m4a" << "--merge-output-format" << "mp4";
+    case Options::Mp4:   // H.264 so it plays everywhere (on YouTube that tops out at 1080p)
+        a << "-S" << "vcodec:h264," + res + ",acodec:aac,ext:mp4:m4a" << "--merge-output-format" << "mp4";
         break;
     case Options::Mkv:
         if (o.maxHeight)
@@ -36,7 +38,7 @@ QStringList ytDlpArgs(const Options &o)
         a << "--merge-output-format" << "mkv";
         break;
     case Options::Webm:
-        a << "-S" << res + "ext:webm:webm" << "--merge-output-format" << "webm";
+        a << "-S" << "ext:webm:webm," + res << "--merge-output-format" << "webm";
         break;
     case Options::Mp3:
         a << "-f" << "ba/b" << "-x" << "--audio-format" << "mp3" << "--audio-quality" << "0";
