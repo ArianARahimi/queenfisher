@@ -5,8 +5,10 @@
 #include <QHash>
 #include <QMainWindow>
 #include <QPointer>
+#include <QTemporaryDir>
 #include <QTimer>
 
+class ClipJob;
 class DownloadJob;
 class PreviewJob;
 class QNetworkAccessManager;
@@ -36,6 +38,7 @@ private:
     void linkChanged(const QString &text);
     void startPreview();
     void showPreview(const PreviewInfo &info);
+    void toggleClip();
     void chooseFolder();
     void download();
     void startNext();
@@ -69,4 +72,9 @@ private:
     QNetworkAccessManager *net_ = nullptr;
     QString previewTitle_;             // for the list once the download starts
     QString signInUrl_, signInCookies_;   // the preview needed a sign-in: reuse it for the download
+
+    QPointer<ClipJob> clip_;
+    QTemporaryDir clipDir_;             // short preview clips, deleted when QFisher closes
+    QHash<QString, QString> clips_;     // link -> clip file already downloaded
+    int previewSeconds_ = -1;
 };

@@ -2,6 +2,7 @@
 #include "ProgressDelegate.h"
 #include "Theme.h"
 #include "Thumbnail.h"
+#include "core/ClipJob.h"
 #include "core/DownloadJob.h"
 #include "core/PreviewJob.h"
 #include "core/YtDlpEngine.h"
@@ -11,6 +12,7 @@
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDir>
+#include <QFile>
 #include <QFileDialog>
 #include <QFontDatabase>
 #include <QGridLayout>
@@ -132,6 +134,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     previewDelay_.setInterval(500);
     connect(&previewDelay_, &QTimer::timeout, this, &MainWindow::startPreview);
     connect(playlist_, &QCheckBox::toggled, this, [this] { if (isWebLink(link_->text())) previewDelay_.start(); });
+    connect(thumbnail_, &Thumbnail::clicked, this, &MainWindow::toggleClip);
 
     linkChanged({});
     startNext();
@@ -287,7 +290,9 @@ void MainWindow::linkChanged(const QString &text)
     const bool ok = isWebLink(text);
     download_->setEnabled(ok);
     delete preview_;   // a new link makes the old answer useless
+    delete clip_;
     previewTitle_.clear();
+    previewSeconds_ = -1;
     previewDelay_.stop();
     if (ok) {
         title_->setText(QUrl(text.trimmed()).host());
@@ -332,6 +337,8 @@ void MainWindow::startPreview()
 void MainWindow::showPreview(const PreviewInfo &info)
 {
     previewTitle_ = info.title;
+    previewSeconds_ = info.seconds;
+    const bool clipOk = info.playlistCount < 0 && !info.live && info.seconds > 0;
     title_->setText(info.title);
     QStringList meta;
     if (!info.channel.isEmpty())
@@ -350,6 +357,7 @@ void MainWindow::showPreview(const PreviewInfo &info)
                         : info.live ? QString("LIVE") : info.seconds >= 0 ? clock(info.seconds) : QString();
     if (info.thumbnail.isEmpty()) {
         thumbnail_->setHint("No picture");
+        thumbnail_->setClipAvailable(clipOk);
         return;
     }
     thumbnail_->setHint("Loading picture...");
@@ -362,7 +370,7 @@ void MainWindow::showPreview(const PreviewInfo &info)
             reply->abort();   // a thumbnail is never this big
     });
     const QString url = link_->text().trimmed();
-    connect(reply, &QNetworkReply::finished, this, [this, reply, url, badge] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, url, badge, clipOk] {
         reply->deleteLater();
         if (link_->text().trimmed() != url)
             return;   // the link changed while the picture loaded
@@ -371,7 +379,41 @@ void MainWindow::showPreview(const PreviewInfo &info)
             thumbnail_->setHint("No picture");
         else
             thumbnail_->setPicture(picture, badge);
+        thumbnail_->setClipAvailable(clipOk);
     });
+}
+
+// Click on the preview: play a short silent clip, or stop it.
+void MainWindow::toggleClip()
+{
+    if (thumbnail_->playing()) {
+        thumbnail_->stopClip();
+        return;
+    }
+    if (clip_)
+        return;   // still loading
+    const QString url = link_->text().trimmed();
+    if (QFile::exists(clips_.value(url))) {
+        thumbnail_->playClip(clips_.value(url));
+        return;
+    }
+    // Start a little way into longer videos, past intros and black frames.
+    const int start = previewSeconds_ > 60 ? qMin(previewSeconds_ / 10, 60) : 0;
+    clip_ = new ClipJob(url, start, clipDir_.path(), url == signInUrl_ ? signInCookies_ : QString(), engine_, this);
+    thumbnail_->setLoadingClip("Loading clip...");
+    connect(clip_, &ClipJob::logLine, this, [this](const QString &line) { log(line); });
+    connect(clip_, &ClipJob::ready, this, [this, job = clip_.data()](const QString &file) {
+        clips_.insert(job->url(), file);
+        job->deleteLater();
+        if (link_->text().trimmed() == job->url())
+            thumbnail_->playClip(file);
+    });
+    connect(clip_, &ClipJob::failed, this, [this, job = clip_.data()](const QString &message) {
+        job->deleteLater();
+        thumbnail_->setLoadingClip(message);
+        QTimer::singleShot(3000, thumbnail_, [this] { thumbnail_->setLoadingClip({}); });
+    });
+    clip_->start();
 }
 
 void MainWindow::chooseFolder()
