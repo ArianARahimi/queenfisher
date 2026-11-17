@@ -21,6 +21,7 @@ inline const QColor fieldAlt{0x1d, 0x1e, 0x23}; // every other list row, read-on
 inline const QColor strip{0x10, 0x22, 0x8c};    // title strips
 inline const QColor select{0x1f, 0x3a, 0xa8};
 inline const QColor bar{0x5b, 0x8d, 0xef};      // progress blocks
+inline const QColor done{0x4c, 0xcf, 0x5a};     // finished download, solid bar
 
 void apply(QApplication &app);                // style, palette, style sheet
 void drawSunken(QPainter &p, const QRect &r, const QColor &fill);
