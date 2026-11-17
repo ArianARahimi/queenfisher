@@ -13,6 +13,19 @@
 #include <unistd.h>
 #endif
 
+namespace {
+
+// The part of a file name every file of one video shares: "Title [id]".
+QString stemOf(const QString &path)
+{
+    const QFileInfo info(path);
+    const QString name = info.fileName();
+    const qsizetype id = name.lastIndexOf(']');
+    return id > 0 ? name.left(id + 1) : info.completeBaseName();
+}
+
+}
+
 DownloadJob::DownloadJob(Options options, Engine *engine, QObject *parent)
     : QObject(parent), options_(std::move(options)), engine_(engine)
 {
@@ -99,17 +112,15 @@ void DownloadJob::stopAll(bool hard)
 }
 
 // Only files named after this video (title [id]) that were written since it started,
-// so files that were there before, or belong to other videos, are never touched.
+// so files that were there before, or belong to other videos, are never touched. Playlist
+// videos that already finished stay too.
 void DownloadJob::discardPartial()
 {
     for (const QString &path : std::as_const(created_)) {
-        const QFileInfo info(path);
-        const QString name = info.fileName();
-        const qsizetype id = name.lastIndexOf(']');
-        const QString stem = id > 0 ? name.left(id + 1) : info.completeBaseName();
-        if (stem.size() < 3)
+        const QString stem = stemOf(path);
+        if (stem.size() < 3 || finishedStems_.contains(stem))
             continue;
-        const QDir dir = info.absoluteDir();
+        const QDir dir = QFileInfo(path).absoluteDir();
         for (const QFileInfo &f : dir.entryInfoList(QDir::Files | QDir::Hidden)) {
             if (f.fileName().startsWith(stem) && f.lastModified() >= startedAt_ && QFile::remove(f.absoluteFilePath()))
                 emit logLine("Deleted leftover " + f.fileName());
@@ -156,8 +167,11 @@ void DownloadJob::trackLine(const QString &line)
     static const QRegularExpression formats(R"(^\[info\] .*Downloading \d+ format\(s\): (\S+))");
     static const QRegularExpression sidecar(R"(\.(vtt|srt|ass|lrc|json|jpe?g|png|webp)$)", QRegularExpression::CaseInsensitiveOption);
 
-    if (const auto m = item.match(line); m.hasMatch())
+    if (const auto m = item.match(line); m.hasMatch()) {
+        if (!file_.isEmpty())
+            finishedStems_.insert(stemOf(file_));   // the playlist moved on: the last video is done
         tracker_.startItem(m.captured(1).toInt(), m.captured(2).toInt());
+    }
     else if (const auto m = formats.match(line); m.hasMatch())
         tracker_.setPartCount(int(m.captured(1).count('+')) + 1);
     else if (line.startsWith("[download] Destination: ")) {

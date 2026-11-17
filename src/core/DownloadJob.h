@@ -7,6 +7,7 @@
 #include <QDateTime>
 #include <QObject>
 #include <QProcess>
+#include <QSet>
 
 // Runs yt-dlp for one link and reports progress, log lines and the result.
 // When it fails, it tries the fixes ErrorRules points to before giving up.
@@ -51,6 +52,7 @@ private:
     QString title_;
     QString file_;
     QStringList created_;      // every file yt-dlp named during this download
+    QSet<QString> finishedStems_;   // playlist videos already done: never cleaned up
     QDateTime startedAt_;
     QStringList problems_;   // ERROR and WARNING lines of the current attempt
     bool triedRepair_ = false;
