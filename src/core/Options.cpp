@@ -17,7 +17,8 @@ QStringList ytDlpArgs(const Options &o)
         "--progress", "--progress-template",
         "download:" + progressMarker
             + "%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|"
-              "%(progress.speed)s|%(progress.eta)s|%(info.title)s",
+              "%(progress.speed)s|%(progress.eta)s|%(progress.fragment_index)s|%(progress.fragment_count)s|"
+              "%(info.title)s",
         "-P", o.folder,
         "-o", o.playlist ? "%(playlist_index)03d - %(title)s [%(id)s].%(ext)s" : "%(title)s [%(id)s].%(ext)s",
         o.playlist ? "--yes-playlist" : "--no-playlist",

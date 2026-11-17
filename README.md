@@ -25,8 +25,8 @@ cmake --build build
 
 - The preview (picture, title, length) isn't built yet.
 - Uses the yt-dlp installed on your computer; QFisher doesn't fetch or update it yet.
-- When a site asks for a sign-in, QFisher retries once with your default browser's cookies. That only works on Linux so far, and hasn't been tested with a real sign-in yet.
-- Videos with separate picture and sound download in two parts, so the progress bar fills twice.
+- When a site asks for a sign-in, QFisher retries once with your default browser's cookies. That only works on Linux so far.
+- Before the sound part of a video starts, its size is guessed, so the bar can pause briefly when it starts.
 - Only checked on Linux (KDE); the look on Windows and macOS is untested.
 
 ## License

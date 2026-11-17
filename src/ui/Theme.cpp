@@ -206,24 +206,25 @@ void drawSunken(QPainter &p, const QRect &r, const QColor &fill)
     p.drawLine(r.topRight(), r.bottomRight());
 }
 
-void drawBlocks(QPainter &p, const QRect &r, double fraction)
+void drawBar(QPainter &p, const QRect &r, double fraction, BarState state)
 {
     p.fillRect(r, field);
     p.setPen(light);
     p.drawRect(r.adjusted(0, 0, -1, -1));
     const QRect inner = r.adjusted(2, 2, -2, -2);
-    if (fraction >= 1) {   // finished: one solid green bar
+    switch (state) {
+    case BarState::Waiting:
+        return;
+    case BarState::Done:
         p.fillRect(inner, done);
         return;
-    }
-    // Blocks are spread over the full width, so the last one ends flush with the frame.
-    constexpr int block = 6, gap = 2;
-    const int count = qMax(1, (inner.width() + gap) / (block + gap));
-    const int lit = fraction < 0 ? 0 : int(fraction * count);
-    for (int i = 0; i < lit; ++i) {
-        const int x = inner.left() + i * (inner.width() + gap) / count;
-        const int next = inner.left() + (i + 1) * (inner.width() + gap) / count;
-        p.fillRect(x, inner.top(), next - x - gap, inner.height(), bar);
+    case BarState::Failed:
+        p.fillRect(inner, failed);
+        return;
+    case BarState::Running:
+        if (fraction > 0)
+            p.fillRect(QRect(inner.topLeft(), QSize(int(inner.width() * qMin(fraction, 1.0) + 0.5), inner.height())), running);
+        return;
     }
 }
 

@@ -1,6 +1,8 @@
 #include "DownloadJob.h"
 #include "Cookies.h"
 
+#include <QRegularExpression>
+
 DownloadJob::DownloadJob(Options options, QObject *parent) : QObject(parent), options_(std::move(options))
 {
     connect(&process_, &QProcess::readyReadStandardOutput, this, [this] { readOutput(QProcess::StandardOutput); });
@@ -35,6 +37,9 @@ void DownloadJob::start(const QString &ytDlp)
 {
     ytDlp_ = ytDlp;
     lastError_.clear();
+    tracker_.reset();
+    speed_ = eta_ = -1;
+    sidecar_ = false;
     const QStringList args = ytDlpArgs(options_);
     emit logLine("> yt-dlp " + args.join(' '));
     process_.start(ytDlp, args);
@@ -67,6 +72,7 @@ void DownloadJob::handleLine(const QString &line)
         return;
     }
     emit logLine(line);
+    trackLine(line);
     if (line.startsWith("ERROR:"))
         lastError_ = line.mid(6).trimmed();
     else if (line.startsWith("[Merger]"))
@@ -77,22 +83,51 @@ void DownloadJob::handleLine(const QString &line)
         emit stage("Adding subtitles");
 }
 
-// downloaded|total|estimate|speed|eta|title, missing numbers come as "NA".
+// Lines that tell the tracker a new playlist video, a new file or a finished file has begun.
+void DownloadJob::trackLine(const QString &line)
+{
+    static const QRegularExpression item(R"(^\[download\] Downloading item (\d+) of (\d+))");
+    static const QRegularExpression formats(R"(^\[info\] .*Downloading \d+ format\(s\): (\S+))");
+    static const QRegularExpression sidecar(R"(\.(vtt|srt|ass|lrc|json|jpe?g|png|webp)$)", QRegularExpression::CaseInsensitiveOption);
+
+    if (const auto m = item.match(line); m.hasMatch())
+        tracker_.startItem(m.captured(1).toInt(), m.captured(2).toInt());
+    else if (const auto m = formats.match(line); m.hasMatch())
+        tracker_.setPartCount(int(m.captured(1).count('+')) + 1);
+    else if (line.startsWith("[download] Destination: ")) {
+        sidecar_ = sidecar.match(line).hasMatch();   // subtitles and thumbnails aren't parts of the video
+        if (!sidecar_)
+            tracker_.startPart();
+    }
+    else if (line.startsWith("[download] ") && line.endsWith("has already been downloaded"))
+        tracker_.finishPart();
+}
+
+// downloaded|total|estimate|speed|eta|fragment|fragments|title, missing numbers come as "NA".
 void DownloadJob::handleProgress(const QString &fields)
 {
     const QStringList f = fields.split('|');
-    if (f.size() < 6)
+    if (f.size() < 8)
         return;
-    const QString title = f.mid(5).join('|');
+    const QString title = f.mid(7).join('|');
     if (title != title_ && title != "NA") {
         title_ = title;
         emit titleKnown(title);
     }
-    const double done = f[0].toDouble();
-    double total = f[1].toDouble();
-    if (total <= 0)
-        total = f[2].toDouble();
-    emit progress(total > 0 ? done / total : -1, qint64(total), f[3].toDouble(), f[4] == "NA" ? -1 : f[4].toInt());
+    if (sidecar_)
+        return;
+    const auto number = [](const QString &s) { return s == "NA" ? -1.0 : s.toDouble(); };
+    const double total = number(f[1]) > 0 ? number(f[1]) : number(f[2]);
+    const double fraction = tracker_.update(qint64(number(f[0])), qint64(total), int(number(f[5])), int(number(f[6])));
+
+    // Moving averages: a new reading only nudges the shown speed and time left.
+    const auto smooth = [](double &shown, double reading) {
+        if (reading >= 0)
+            shown = shown < 0 ? reading : shown * 0.8 + reading * 0.2;
+    };
+    smooth(speed_, number(f[3]));
+    smooth(eta_, number(f[4]));
+    emit progress(fraction, tracker_.knownBytes(), speed_, eta_ < 0 ? -1 : int(eta_ + 0.5));
 }
 
 bool DownloadJob::needsSignIn() const

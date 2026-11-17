@@ -20,11 +20,13 @@ inline const QColor field{0x17, 0x18, 0x1c};    // text boxes, list
 inline const QColor fieldAlt{0x1d, 0x1e, 0x23}; // every other list row, read-only boxes
 inline const QColor strip{0x10, 0x22, 0x8c};    // title strips
 inline const QColor select{0x1f, 0x3a, 0xa8};
-inline const QColor bar{0x5b, 0x8d, 0xef};      // progress blocks
-inline const QColor done{0x4c, 0xcf, 0x5a};     // finished download, solid bar
+inline const QColor running{0x7c, 0xc4, 0xff}; // progress bar while downloading (light blue)
+inline const QColor done{0x4c, 0xcf, 0x5a};     // finished
+inline const QColor failed{0xe0, 0x4a, 0x4a};   // something went wrong
 
 void apply(QApplication &app);                // style, palette, style sheet
 void drawSunken(QPainter &p, const QRect &r, const QColor &fill);
-void drawBlocks(QPainter &p, const QRect &r, double fraction);  // segmented progress bar
+enum class BarState { Waiting, Running, Done, Failed };
+void drawBar(QPainter &p, const QRect &r, double fraction, BarState state);
 
 }

@@ -9,7 +9,8 @@ void ProgressDelegate::paint(QPainter *p, const QStyleOptionViewItem &option, co
     const double fraction = index.data(Qt::UserRole).toDouble();
     const QRect bar = option.rect.adjusted(4, (option.rect.height() - 12) / 2, -4, 0);
     p->save();
-    Theme::drawBlocks(*p, QRect(bar.topLeft(), QSize(bar.width(), 12)), fraction);
+    const auto state = Theme::BarState(index.data(stateRole).toInt());
+    Theme::drawBar(*p, QRect(bar.topLeft(), QSize(bar.width(), 12)), fraction, state);
     p->restore();
 }
 

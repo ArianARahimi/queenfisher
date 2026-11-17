@@ -14,6 +14,7 @@ qt_add_executable(qfisher
     src/core/Cookies.cpp src/core/Cookies.h
     src/core/DownloadJob.cpp src/core/DownloadJob.h
     src/core/Options.cpp src/core/Options.h
+    src/core/ProgressTracker.cpp src/core/ProgressTracker.h
     src/ui/MainWindow.cpp src/ui/MainWindow.h
     src/ui/ProgressDelegate.cpp src/ui/ProgressDelegate.h
     src/ui/Thumbnail.cpp src/ui/Thumbnail.h

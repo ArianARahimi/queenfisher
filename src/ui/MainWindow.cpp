@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "ProgressDelegate.h"
+#include "Theme.h"
 #include "Thumbnail.h"
 #include "core/DownloadJob.h"
 
@@ -295,6 +296,7 @@ void MainWindow::download()
     const Options o = currentOptions();
     auto *item = new QTreeWidgetItem(list_, {QUrl(o.url).host(), o.label(), "", "", "Waiting"});
     item->setData(Progress, Qt::UserRole, -1.0);
+    item->setData(Progress, ProgressDelegate::stateRole, int(Theme::BarState::Waiting));
     item->setToolTip(Title, o.url);
     const int number = list_->indexOfTopLevelItem(item) + 1;
 
@@ -305,6 +307,7 @@ void MainWindow::download()
     connect(job, &DownloadJob::stage, this, [item](const QString &s) { item->setText(State, s + "..."); });
     connect(job, &DownloadJob::progress, this, [item](double fraction, qint64 total, double speed, int left) {
         item->setData(Progress, Qt::UserRole, fraction);
+        item->setData(Progress, ProgressDelegate::stateRole, int(Theme::BarState::Running));
         if (total > 0)
             item->setText(Size, megabytes(total));
         QString text = fraction >= 0 ? QString::number(int(fraction * 100)) + "%" : "Downloading";
@@ -316,8 +319,7 @@ void MainWindow::download()
     });
     connect(job, &DownloadJob::finished, this, [this, item, job, number](bool ok, const QString &message) {
         item->setText(State, message);
-        if (ok)
-            item->setData(Progress, Qt::UserRole, 1.0);
+        item->setData(Progress, ProgressDelegate::stateRole, int(ok ? Theme::BarState::Done : Theme::BarState::Failed));
         log(ok ? "Finished" : "Stopped: " + message, number);
         if (running_ == job)
             running_ = nullptr;
@@ -343,6 +345,7 @@ void MainWindow::startNext()
             continue;
         if (ytDlp.isEmpty()) {
             item->setText(State, "yt-dlp isn't installed");
+            item->setData(Progress, ProgressDelegate::stateRole, int(Theme::BarState::Failed));
             log("yt-dlp wasn't found on this computer. Install it and try again.", i + 1);
             continue;
         }
