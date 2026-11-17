@@ -1,5 +1,6 @@
 The app icon (packaging/linux/queenfisher.png, packaging/windows/queenfisher.ico) is the "Fish"
 3D emoji from Microsoft's Fluent UI Emoji, https://github.com/microsoft/fluentui-emoji
+recoloured from blue to Queenfisher's lime (same shading, new hue).
 Used under the MIT License:
 
 MIT License
