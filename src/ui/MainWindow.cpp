@@ -50,7 +50,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     auto *corner = new QWidget;
     auto *cornerLayout = new QHBoxLayout(corner);
     cornerLayout->setContentsMargins(0, 0, 0, 0);
-    cornerLayout->setSpacing(6);
+    cornerLayout->setSpacing(1);   // the picture has its own clear margin
     cornerLayout->addWidget(fish);
     cornerLayout->addWidget(wordmark);
     tabs_->setCornerWidget(corner, Qt::TopRightCorner);
