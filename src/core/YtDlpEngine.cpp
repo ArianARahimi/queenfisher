@@ -110,7 +110,10 @@ void YtDlpEngine::repair(Done done)
 void YtDlpEngine::run(Channel channel, bool force, Done done)
 {
     if (busy_) {
-        waiting_.append(done);
+        if (force)
+            queued_.append({channel, done});   // asked for on purpose: its own turn after this one
+        else
+            waiting_.append(done);             // automatic checks share the one running
         return;
     }
     const bool installed = QFile::exists(managedPath());
@@ -260,6 +263,10 @@ void YtDlpEngine::finish(bool changed, const QString &message)
     emit readyChanged();
     for (const Done &done : std::exchange(waiting_, {}))
         done(changed, message);
+    while (!busy_ && !queued_.isEmpty()) {   // a waiting callback may have started a run already
+        const Request next = queued_.takeFirst();
+        run(next.channel, true, next.done);
+    }
 }
 
 QString YtDlpEngine::assetName()

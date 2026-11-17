@@ -52,7 +52,9 @@ private:
     Stamp stamp_;
     bool busy_ = false;
     qint64 lastTry_ = 0;   // when the last check started, ms since epoch
-    QList<Done> waiting_;
+    struct Request { Channel channel; Done done; };
+    QList<Done> waiting_;     // callers sharing the run in progress
+    QList<Request> queued_;   // runs asked for on purpose while busy, each after the last
     QNetworkAccessManager net_;
     QByteArray sums_;
 };
