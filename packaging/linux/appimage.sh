@@ -34,7 +34,22 @@ export QMAKE
 export LD_LIBRARY_PATH="$("$QMAKE" -query QT_INSTALL_LIBS)${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export LDAI_OUTPUT="dist/Queenfisher-$version-x86_64.AppImage"
 export EXTRA_PLATFORM_PLUGINS="libqwayland-generic.so"
-"$tools/linuxdeploy-x86_64.AppImage" --appdir build/AppDir --plugin qt --output appimage \
+"$tools/linuxdeploy-x86_64.AppImage" --appdir build/AppDir --plugin qt \
     --desktop-file build/AppDir/usr/share/applications/queenfisher.desktop \
     --icon-file build/AppDir/usr/share/icons/hicolor/32x32/apps/queenfisher.png
+
+# The Qt plugin leaves out what the Wayland platform needs to open a window (xdg-shell and
+# friends), so Wayland desktops couldn't start it. Copy those in and bundle what they use.
+plugins=$("$QMAKE" -query QT_INSTALL_PLUGINS)
+deps=""
+for dir in wayland-shell-integration wayland-decoration-client wayland-graphics-integration-client; do
+    [ -d "$plugins/$dir" ] || { echo "Missing $plugins/$dir"; exit 1; }
+    cp -r "$plugins/$dir" build/AppDir/usr/plugins/
+    deps="$deps --deploy-deps-only=build/AppDir/usr/plugins/$dir"
+done
+ls build/AppDir/usr/plugins/wayland-shell-integration/libxdg-shell.so
+
+# shellcheck disable=SC2086  # $deps is a list of options
+"$tools/linuxdeploy-x86_64.AppImage" --appdir build/AppDir $deps --output appimage \
+    --desktop-file build/AppDir/usr/share/applications/queenfisher.desktop
 echo "Built $LDAI_OUTPUT"
