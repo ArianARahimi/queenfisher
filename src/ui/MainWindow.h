@@ -3,6 +3,7 @@
 #include <QMainWindow>
 
 class DownloadPage;
+class Ffmpeg;
 class Library;
 class QLabel;
 class QTabWidget;
@@ -21,11 +22,15 @@ private:
     void buildStatusBar();
     void showActivity(int downloading, int waiting, double bytesPerSecond);
     void showEngine();
+    void checkTools();
+    void askToContinue(const QString &title, const QString &message);
 
     YtDlpEngine *engine_ = nullptr;
     Library *library_ = nullptr;
     QTabWidget *tabs_ = nullptr;
     DownloadPage *downloads_ = nullptr;
+    Ffmpeg *ffmpeg_ = nullptr;
+    bool ffmpegFailureShown_ = false;
     QLabel *engineLight_ = nullptr;
     QLabel *activity_ = nullptr;
     QLabel *engineCell_ = nullptr;

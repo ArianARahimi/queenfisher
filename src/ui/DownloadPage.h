@@ -61,7 +61,6 @@ private:
     void fetchClip(bool play);
     void engineChanged();
     void showNotice();
-    QString toolWarning() const;
 
     Options currentOptions() const;
     void download();

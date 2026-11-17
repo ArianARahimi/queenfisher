@@ -400,8 +400,8 @@ void DownloadPage::log(const QString &line, int number)
                                  : QString("%1  %2").arg(time, line));
 }
 
-// The notice bar, most pressing first: yt-dlp or ffmpeg being fetched (their own messages),
-// yt-dlp missing, then tools a download will need. Nothing when all is well.
+// The notice bar: yt-dlp or ffmpeg being fetched (their own messages), or yt-dlp missing.
+// Missing tools get a popup when the window opens instead (MainWindow).
 void DownloadPage::engineChanged()
 {
     if (engine_->busy())
@@ -576,32 +576,11 @@ void DownloadPage::showNotice()
     const bool noYtDlp = engine_->version().isEmpty();
     const bool ffmpegFailed = ffmpeg_ && !ffmpeg_->lastError().isEmpty();
     banner_->setNotice(noYtDlp ? QString("yt-dlp isn't available yet. Check your connection; Queenfisher will try again.")
-                               : toolWarning());
+                               : QString());
     if (noYtDlp || ffmpegFailed)
         engineRetry_.start();   // startNext() asks again when nothing is downloading
     else
         engineRetry_.stop();
-}
-
-// What a download would trip over: ffmpeg (joins picture and sound, makes MP3s) and Deno
-// (YouTube). Queenfisher's own ffmpeg counts; on Windows it fetches one, so only a failed
-// fetch is worth saying.
-QString DownloadPage::toolWarning() const
-{
-    QStringList lines;
-    const bool ffmpegHere = (ffmpeg_ && !ffmpeg_->location().isEmpty())
-        || (!QStandardPaths::findExecutable("ffmpeg").isEmpty() && !QStandardPaths::findExecutable("ffprobe").isEmpty());
-    if (!ffmpegHere) {
-#ifdef Q_OS_WIN
-        if (ffmpeg_ && !ffmpeg_->lastError().isEmpty())
-            lines << ffmpeg_->lastError() + ". Queenfisher will try again; until then most downloads can't join picture and sound.";
-#else
-        lines << "ffmpeg isn't installed: it's needed to join picture and sound and to make MP3s.";
-#endif
-    }
-    if (QStandardPaths::findExecutable("deno").isEmpty())
-        lines << "Deno isn't installed: YouTube needs it to unlock most videos.";
-    return lines.join('\n');
 }
 
 Options DownloadPage::currentOptions() const
