@@ -159,6 +159,7 @@ QTreeWidget, QListWidget {
 }
 QTreeWidget::item, QListWidget::item { padding: 2px 3px; }
 QTreeWidget::item:selected, QListWidget::item:selected { color: @accent; background: @gloss; }
+QListWidget::item:hover:!selected { background: @wash; }   /* shows what a click would pick */
 QHeaderView::section {
     color: @label; padding: 3px 6px;
     border: none; border-right: 1px solid #1a1b1f; border-bottom: 1px solid @outline;

@@ -161,6 +161,7 @@ QWidget *DownloadPage::buildSidebar()
     for (QListWidget *l : {format_, quality_}) {   // tall enough for every row, no scroll bar
         l->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         l->setFixedHeight(l->sizeHintForRow(0) * l->count() + 2 * l->frameWidth() + 2);
+        Widgets::pickOnClick(l);
     }
 
     const QString movies = QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);

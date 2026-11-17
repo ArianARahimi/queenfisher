@@ -3,6 +3,7 @@
 #include <QFrame>
 #include <QToolButton>
 
+class QAbstractItemView;
 class QLabel;
 class QLayout;
 
@@ -14,6 +15,10 @@ QFrame *sideBox(const QString &title, QLayout *content);
 
 // Big icon with its label underneath, for the rows of actions under each list.
 QToolButton *action(const QString &icon, const QString &text, const QString &tip);
+
+// A list where a row is picked only by pressing and releasing on that same row: dragging
+// across rows, or letting go somewhere else, picks nothing. Rows light up under the mouse.
+void pickOnClick(QAbstractItemView *list);
 
 // Icon for a list row: the film for video; for audio the music note, white, lime when selected.
 QIcon formatIcon(bool audio);

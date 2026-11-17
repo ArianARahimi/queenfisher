@@ -1,7 +1,9 @@
 #include "Widgets.h"
 #include "Theme.h"
 
+#include <QAbstractItemView>
 #include <QHBoxLayout>
+#include <QMouseEvent>
 #include <QLabel>
 #include <QVBoxLayout>
 
@@ -33,6 +35,45 @@ QToolButton *action(const QString &icon, const QString &text, const QString &tip
     b->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     b->setMinimumWidth(72);
     return b;
+}
+
+namespace {
+
+class PickOnClick : public QObject
+{
+public:
+    explicit PickOnClick(QAbstractItemView *list) : QObject(list), list_(list) {}
+
+    bool eventFilter(QObject *, QEvent *e) override
+    {
+        if (e->type() != QEvent::MouseButtonPress && e->type() != QEvent::MouseButtonRelease
+            && e->type() != QEvent::MouseMove && e->type() != QEvent::MouseButtonDblClick)
+            return false;
+        auto *m = static_cast<QMouseEvent *>(e);
+        const QModelIndex at = list_->indexAt(m->position().toPoint());
+        if (e->type() == QEvent::MouseMove)
+            return m->buttons() != Qt::NoButton;          // no picking while dragging; hover still shows
+        if (m->button() != Qt::LeftButton)
+            return true;                                  // only the left button picks
+        if (e->type() == QEvent::MouseButtonPress || e->type() == QEvent::MouseButtonDblClick)
+            pressed_ = at;
+        else if (at.isValid() && at == pressed_ && (at.flags() & Qt::ItemIsEnabled))
+            list_->setCurrentIndex(at);                   // pressed and released on the same row
+        return true;
+    }
+
+private:
+    QAbstractItemView *list_;
+    QPersistentModelIndex pressed_;
+};
+
+}
+
+void pickOnClick(QAbstractItemView *list)
+{
+    list->setMouseTracking(true);
+    list->viewport()->setAttribute(Qt::WA_Hover);
+    list->viewport()->installEventFilter(new PickOnClick(list));
 }
 
 QIcon formatIcon(bool audio)
