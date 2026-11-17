@@ -150,7 +150,7 @@ void Thumbnail::drawPlayButton(QPainter &p, const QRect &area) const
     p.setRenderHint(QPainter::Antialiasing);
     p.setPen(QPen(Theme::outline, 1));
     p.setBrush(Qt::NoBrush);
-    Theme::drawGloss(p, b, QColor(0x2d, 0x6b, 0xc8), 15);
+    Theme::drawGloss(p, b, Theme::accent, 15);
     p.drawEllipse(QRectF(b).adjusted(0.5, 0.5, -0.5, -0.5));
     const QPointF c = QRectF(b).center() + QPointF(1.5, 0);
     p.setPen(Qt::NoPen);

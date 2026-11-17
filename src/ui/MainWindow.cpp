@@ -2,6 +2,7 @@
 #include "AboutPage.h"
 #include "DownloadPage.h"
 #include "LibraryPage.h"
+#include "Theme.h"
 #include "core/Library.h"
 #include "core/YtDlpEngine.h"
 
@@ -101,7 +102,7 @@ void MainWindow::showEngine()
 {
     const bool busy = engine_->busy();
     const bool ready = !engine_->version().isEmpty();
-    const QString colour = busy ? "#e3b341" : ready ? "#4ccf5a" : "#e04a4a";
+    const QString colour = busy ? "#e3b341" : ready ? Theme::glow.name() : Theme::failed.name();
     engineLight_->setText(QString("<span style='color:%1'>●</span> %2")
                               .arg(colour, busy ? "Updating" : ready ? "Ready" : "No yt-dlp"));
     engineCell_->setText(ready ? "yt-dlp " + engine_->version() : QString("yt-dlp not installed"));
