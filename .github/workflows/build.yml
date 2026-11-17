@@ -1,13 +1,13 @@
 name: Build
 
-# Builds Queenfisher for Linux (AppImage), Windows (zip) and macOS (zip) on every push to
-# main. Pushing a version tag (v0.1.0) also puts them on a draft release, which nobody
-# sees until it's checked and published by hand.
+# Every push to main: builds Queenfisher for Linux (AppImage), Windows (zip) and macOS (zips),
+# checks every file on VirusTotal, and puts them on the "latest-build" pre-release for testing.
+# A commit titled "Release vX.Y.Z" (matching the version in CMakeLists.txt) also publishes
+# release vX.Y.Z. Nothing is published that VirusTotal flags.
 
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -29,14 +29,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Check the tag matches the version
-        if: github.ref_type == 'tag'
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          version=$(sed -n 's/^project(Queenfisher VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
-          [ "$TAG" = "v$version" ] || { echo "Tag $TAG doesn't match version $version in CMakeLists.txt"; exit 1; }
 
       - name: Install build tools
         run: |
@@ -148,41 +140,73 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  release:
-    if: github.ref_type == 'tag'
+  publish:
     needs: [linux, windows, macos]
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 90   # VirusTotal can take a while with new files
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           path: dist
           merge-multiple: true
 
-      # Stays a draft until the files are checked on VirusTotal and it's published by hand.
-      - name: Draft release
+      - name: Check every file on VirusTotal
+        env:
+          VT_API_KEY: ${{ secrets.VT_API_KEY }}
+        run: python3 -I tools/vt-check.py dist/*
+
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum -- * > "$RUNNER_TEMP/SHA256SUMS"
+          mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
+          cat SHA256SUMS
+
+      # For trying a change before it's released; replaced on every push.
+      - name: Latest build (pre-release)
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
         run: |
-          v=${TAG#v}
+          gh release delete latest-build --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create latest-build dist/* --repo "$GITHUB_REPOSITORY" --prerelease \
+            --target "$GITHUB_SHA" --title "Latest build (for testing)" \
+            --notes "Built from $GITHUB_SHA and checked on VirusTotal. Not tested yet: use the newest regular release instead."
+
+      - name: Release
+        if: github.event_name == 'push' && startsWith(github.event.head_commit.message, 'Release v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUBJECT: ${{ github.event.head_commit.message }}
+        run: |
+          v=$(sed -n 's/^project(Queenfisher VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+          tag="v$v"
+          [ "$(printf '%s' "$SUBJECT" | head -n 1)" = "Release $tag" ] ||
+            { echo "The commit says '$SUBJECT' but CMakeLists.txt has version $v"; exit 1; }
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "$tag is already released; bump the version first."; exit 1
+          fi
+          # A tag without a release never shipped (pushed too early): it moves to this commit.
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$tag" >/dev/null 2>&1 || true
           # Fixed names too, for the website's download buttons (releases/latest/download/<name>).
           cp "dist/Queenfisher-$v-x86_64.AppImage" dist/Queenfisher-Linux.AppImage
           cp "dist/Queenfisher-$v-windows.zip" dist/Queenfisher-Windows.zip
           cp "dist/Queenfisher-$v-macos.zip" dist/Queenfisher-macOS.zip
           cp "dist/Queenfisher-$v-macos-intel.zip" dist/Queenfisher-macOS-Intel.zip
           cd dist
-          sha256sum -- * > "$RUNNER_TEMP/SHA256SUMS"
+          sha256sum -- $(ls | grep -vx SHA256SUMS) > "$RUNNER_TEMP/SHA256SUMS"
           mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
-          cat SHA256SUMS
-          gh release create "$TAG" * --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "Queenfisher $v" --notes-file - <<EOF
+          gh release create "$tag" * --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Queenfisher $v" --notes-file - <<EOF
           **Linux:** download \`Queenfisher-$v-x86_64.AppImage\`, make it executable (\`chmod +x\`) and run it. Needs ffmpeg installed; YouTube also needs Deno.
 
-          **Windows (untested):** download \`Queenfisher-$v-windows.zip\`, unpack it and run \`Queenfisher.exe\`.
+          **Windows:** download \`Queenfisher-$v-windows.zip\`, unpack it and run \`Queenfisher.exe\`.
 
-          **macOS (untested):** download \`Queenfisher-$v-macos.zip\` (Apple Silicon) or \`Queenfisher-$v-macos-intel.zip\` (Intel), open it and open **Queenfisher**. The first time, macOS blocks it: System Settings → Privacy & Security → **Open Anyway**. Needs ffmpeg (\`brew install ffmpeg\`).
+          **macOS:** download \`Queenfisher-$v-macos.zip\` (Apple Silicon) or \`Queenfisher-$v-macos-intel.zip\` (Intel), open it and open **Queenfisher**. The first time, macOS blocks it: System Settings → Privacy & Security → **Open Anyway**. Needs ffmpeg (\`brew install ffmpeg\`).
 
-          SHA-256 checksums are in \`SHA256SUMS\`.
+          Every file was checked on VirusTotal before this was published. SHA-256 checksums are in \`SHA256SUMS\`.
           EOF

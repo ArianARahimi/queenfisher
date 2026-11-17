@@ -42,6 +42,13 @@ To build the Linux AppImage (into `dist/`):
 ./packaging/linux/appimage.sh
 ```
 
+## Releases
+
+GitHub Actions builds every push to `main`, checks each file on VirusTotal and puts it on the
+"Latest build" pre-release for testing. A commit titled `Release vX.Y.Z`, with the same version in
+`CMakeLists.txt`, also publishes that release. Nothing VirusTotal flags is published. The check
+needs a VirusTotal API key in the repository secret `VT_API_KEY`.
+
 ## Known issues
 
 - Fetching and updating yt-dlp has only been tested on Linux. Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
