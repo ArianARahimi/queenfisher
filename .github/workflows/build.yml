@@ -89,6 +89,12 @@ jobs:
           cp build/Release/queenfisher.exe "$out/Queenfisher.exe"
           "$qt/bin/windeployqt.exe" --release --no-translations "$out/Queenfisher.exe"
           cp "$ssl"/bin/libcrypto-3-x64.dll "$ssl"/bin/libssl-3-x64.dll "$out/"
+          # Microsoft's C++ runtime next to the exe, so it starts on PCs that never installed it
+          vs=$("/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest -property installationPath)
+          crt=$(ls -d "$(cygpath -u "$vs")"/VC/Redist/MSVC/*/x64/Microsoft.VC14*.CRT | tail -n 1)
+          echo "C++ runtime from $crt"
+          cp "$crt"/*.dll "$out/"
+          ls "$out"/vcruntime140.dll "$out"/msvcp140.dll
           cp LICENSE "$out/LICENSE.txt"
           cd dist && 7z a "Queenfisher-$version-windows.zip" "Queenfisher-$version-windows"
 
