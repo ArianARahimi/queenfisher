@@ -81,15 +81,14 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 
 ## Known issues
 
-- Fetching and updating yt-dlp has only been tested on Linux. Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
+- Updating yt-dlp to a newer version has only been tested on Linux (fetching it the first time works on Windows too). Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
 - YouTube needs Deno installed to unlock most videos. Queenfisher tells you when it's missing but doesn't install it yet.
 - On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows. That copy isn't updated yet once it's there.
 - The Mac apps aren't signed by Apple, and haven't been tried on a real Mac yet.
 - The Linux AppImage hasn't been tried on a Wayland desktop yet (it bundles the parts Wayland needs, but that's unconfirmed).
-- Stopping a download stops yt-dlp and everything it started (like ffmpeg). On Windows this uses `taskkill` and hasn't been tried on a real PC yet.
 - When a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. That only works on Linux so far.
 - Before the sound part of a video starts, its size is guessed, so the bar can pause briefly when it starts.
-- Only checked on Linux (KDE); the look on Windows and macOS is untested. The window frame and title bar are the system's own.
+- Checked on Linux (KDE) and Windows 11; the look on macOS is untested. The window frame and title bar are the system's own.
 - YouTube previews show the picture and title right away, but the qualities and size still take a few seconds. Other sites take a few seconds for everything, since yt-dlp has to ask the site.
 - The tray icon has only been tried on KDE. GNOME shows tray icons only with an extension; without one, minimizing works as usual.
 - AVI is re-encoded so old players can open it, which is slow for long videos. GIF is offered only for videos up to a minute, and even those make big files.
