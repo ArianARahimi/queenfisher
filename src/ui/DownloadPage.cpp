@@ -473,10 +473,9 @@ void DownloadPage::engineChanged()
 void DownloadPage::linkChanged(const QString &text)
 {
     const bool ok = isWebLink(text);
-    download_->setEnabled(ok);
     lastPreview_ = {};
     previewPending_ = ok;
-    showQuality();
+    showQuality();   // also enables Download for a web link
     delete preview_;   // a new link makes the old answer useless
     previewTitle_.clear();
     previewDelay_.stop();
@@ -834,10 +833,12 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
     });
 }
 
-// Downloads run one at a time, top to bottom, and wait while yt-dlp or ffmpeg is being fetched.
+// Downloads run one at a time, top to bottom, and wait while yt-dlp or ffmpeg is being fetched,
+// or while there's no yt-dlp at all yet (offline on the first run): they start once it's there.
 void DownloadPage::startNext()
 {
-    if (!running_ && !engine_->busy() && !(ffmpeg_ && ffmpeg_->busy())) {
+    const bool ready = !engine_->path().isEmpty();
+    if (!running_ && ready && !engine_->busy() && !(ffmpeg_ && ffmpeg_->busy())) {
         for (int i = 0; i < list_->topLevelItemCount(); ++i) {
             QTreeWidgetItem *item = list_->topLevelItem(i);
             if (stateOf(item) != State::Waiting || !jobs_.value(item))
@@ -847,11 +848,11 @@ void DownloadPage::startNext()
             running_->start();
             break;
         }
-        if (!running_) {
-            engine_->checkDaily();   // idle: a good moment for the once-a-day update check
-            if (ffmpeg_)
-                ffmpeg_->ensure();   // Windows: fetches ffmpeg the first time
-        }
+    }
+    if (!running_ && !engine_->busy()) {
+        engine_->checkDaily();   // idle: the once-a-day update check, or another try at fetching yt-dlp
+        if (ffmpeg_)
+            ffmpeg_->ensure();   // Windows: fetches ffmpeg the first time
     }
     refreshButtons();
     reportActivity();
