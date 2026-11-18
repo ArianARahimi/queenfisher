@@ -2,6 +2,8 @@
 #include "AboutPage.h"
 #include "DownloadPage.h"
 #include "LibraryPage.h"
+#include "AppSettings.h"
+#include "SettingsPage.h"
 #include "Theme.h"
 #include "core/Deno.h"
 #include "core/Ffmpeg.h"
@@ -50,6 +52,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     tabs_->setIconSize({22, 22});
     tabs_->addTab(downloads_, QIcon(":/icons/tab-home.png"), "Home");
     tabs_->addTab(new LibraryPage(library_), QIcon(":/icons/tab-library.png"), "Library");
+    tabs_->addTab(new SettingsPage(downloads_, engine_, QSystemTrayIcon::isSystemTrayAvailable()),
+                  QIcon(":/icons/tab-settings.png"), "Settings");
     tabs_->addTab(new AboutPage, QIcon(":/icons/info.png"), "About");
     // The fish and the name, top right.
     auto *fish = new QLabel;
@@ -125,29 +129,50 @@ void MainWindow::buildMenus()
     file->addAction("E&xit", QKeySequence::Quit, qApp, &QApplication::quit);
 
     QMenu *view = menuBar()->addMenu("&View");
-    const char *names[] = {"&Download", "&Library", "&About"};
-    for (int i = 0; i < 3; ++i)
-        view->addAction(names[i], QKeySequence(QString("Ctrl+%1").arg(i + 1)), this, [this, i] { tabs_->setCurrentIndex(i); });
+    for (int i = 0; i < tabs_->count(); ++i)
+        view->addAction("&" + tabs_->tabText(i), QKeySequence(QString("Ctrl+%1").arg(i + 1)), this,
+                        [this, i] { tabs_->setCurrentIndex(i); });
     view->addSeparator();
     view->addAction(downloads_->logAction());
     view->addAction(toTray_);
 
-    QMenu *tools = menuBar()->addMenu("&Tools");
-    tools->addAction(QIcon(":/icons/retry.png"), "&Check for yt-dlp Updates", engine_, &YtDlpEngine::updateNow);
-    tools->addAction("Use &Nightly yt-dlp", this, [this] { engine_->switchChannel(YtDlpEngine::Nightly); });
-    tools->addAction("Use &Regular yt-dlp", this, [this] { engine_->switchChannel(YtDlpEngine::Stable); });
-    tools->addSeparator();
-    QMenu *atOnce = tools->addMenu("&Downloads at Once");
+    // The same settings as the Settings tab, ticked to match whenever the menu opens.
+    AppSettings &s = AppSettings::get();
+    QMenu *settings = menuBar()->addMenu("&Settings");
+    settings->addAction(QIcon(":/icons/tab-settings.png"), "&Settings...", QKeySequence::Preferences, this,
+                        [this] { tabs_->setCurrentIndex(settingsTab); });
+    settings->addSeparator();
+    QMenu *atOnce = settings->addMenu("&Downloads at Once");
     auto *atOnceGroup = new QActionGroup(atOnce);
-    for (int n = 1; n <= DownloadPage::maxAtOnce; ++n) {
+    for (int n = 1; n <= AppSettings::maxAtOnce; ++n) {
         QAction *a = atOnce->addAction(QString::number(n), this, [this, n] { downloads_->setDownloadsAtOnce(n); });
         a->setCheckable(true);
-        a->setChecked(n == downloads_->downloadsAtOnce());
+        a->setData(n);
         atOnceGroup->addAction(a);
     }
+    QAction *signIn = settings->addAction("Use Browser &Sign-in", &s, &AppSettings::setBrowserSignIn);
+    signIn->setCheckable(true);
+    QAction *trayOnMinimize = settings->addAction("&Hide in Tray When Minimized", &s, &AppSettings::setMinimizeToTray);
+    trayOnMinimize->setCheckable(true);
+    trayOnMinimize->setEnabled(tray_ != nullptr);
+    settings->addSeparator();
+    settings->addAction(QIcon(":/icons/retry.png"), "&Check for yt-dlp Updates", engine_, &YtDlpEngine::updateNow);
+    QAction *nightly = settings->addAction("Use &Nightly yt-dlp", this, [this](bool on) {
+        engine_->switchChannel(on ? YtDlpEngine::Nightly : YtDlpEngine::Stable);
+    });
+    nightly->setCheckable(true);
+    connect(settings, &QMenu::aboutToShow, this, [this, atOnceGroup, signIn, trayOnMinimize, nightly] {
+        const AppSettings &s = AppSettings::get();
+        for (QAction *a : atOnceGroup->actions())
+            a->setChecked(a->data().toInt() == s.downloadsAtOnce());
+        signIn->setChecked(s.browserSignIn());
+        trayOnMinimize->setChecked(s.minimizeToTray());
+        nightly->setChecked(engine_->channel() == YtDlpEngine::Nightly);
+        nightly->setEnabled(!engine_->busy());
+    });
 
     QMenu *help = menuBar()->addMenu("&Help");
-    help->addAction("&About Queenfisher", this, [this] { tabs_->setCurrentIndex(2); });
+    help->addAction("&About Queenfisher", this, [this] { tabs_->setCurrentIndex(tabs_->count() - 1); });
 }
 
 // Sunken cells left and right, like the status bars of the time.
@@ -237,7 +262,7 @@ void MainWindow::changeEvent(QEvent *event)
     if (event->type() != QEvent::WindowStateChange)
         return;
     updateShowHide();
-    if (isMinimized() && tray_)
+    if (isMinimized() && tray_ && AppSettings::get().minimizeToTray())
         QTimer::singleShot(0, this, &QWidget::hide);   // after the minimize finishes
 }
 

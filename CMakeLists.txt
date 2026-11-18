@@ -29,6 +29,8 @@ qt_add_executable(queenfisher
     src/core/Library.cpp src/core/Library.h
     src/ui/DownloadPage.cpp src/ui/DownloadPage.h
     src/ui/AboutPage.cpp src/ui/AboutPage.h
+    src/ui/AppSettings.cpp src/ui/AppSettings.h
+    src/ui/SettingsPage.cpp src/ui/SettingsPage.h
     src/ui/LibraryPage.cpp src/ui/LibraryPage.h
     src/ui/MainWindow.cpp src/ui/MainWindow.h
     src/ui/Widgets.cpp src/ui/Widgets.h

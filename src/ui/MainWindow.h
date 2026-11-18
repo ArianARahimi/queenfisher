@@ -12,7 +12,7 @@ class QSystemTrayIcon;
 class QTabWidget;
 class YtDlpEngine;
 
-// Menu bar, the Download / Library / About tabs, and the status bar.
+// Menu bar, the Home / Library / Settings / About tabs, and the status bar.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -27,6 +27,7 @@ protected:
     void hideEvent(QHideEvent *event) override;
 
 private:
+    static constexpr int settingsTab = 2;
     void buildMenus();
     void buildStatusBar();
     void showActivity(int downloading, int waiting, double bytesPerSecond);

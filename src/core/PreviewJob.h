@@ -73,6 +73,7 @@ public:
     QString url() const { return url_; }
     QString cookies() const { return cookies_; }   // set when the sign-in was needed
     void setDeno(const QString &program) { deno_ = program; }   // Queenfisher's own, if any
+    void setBrowserSignIn(bool on) { browserSignIn_ = on; }      // off: never the browser's cookies
 
 signals:
     void ready(const PreviewInfo &info);
@@ -87,6 +88,7 @@ private:
     Engine *engine_;
     QString cookies_;
     QString deno_;
+    bool browserSignIn_ = true;
     QProcess process_;
     QTimer timeout_;   // restarted for each attempt
 };

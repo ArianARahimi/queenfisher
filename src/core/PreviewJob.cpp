@@ -307,7 +307,7 @@ void PreviewJob::finishedRun(int code, QProcess::ExitStatus status)
     for (const QString &line : problems)
         emit logLine("Preview: " + line);
     const Diagnosis d = diagnose(problems);
-    if (d.problem == Problem::SignIn && cookies_.isEmpty()) {
+    if (d.problem == Problem::SignIn && cookies_.isEmpty() && browserSignIn_) {
         cookies_ = defaultBrowserCookies();
         if (!cookies_.isEmpty()) {
             emit logLine("Preview: the site wants a sign-in, trying with your browser's sign-in.");

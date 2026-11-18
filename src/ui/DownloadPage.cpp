@@ -1,4 +1,5 @@
 #include "DownloadPage.h"
+#include "AppSettings.h"
 #include "ProgressDelegate.h"
 #include "Theme.h"
 #include "Thumbnail.h"
@@ -117,6 +118,7 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg
     engineRetry_.setSingleShot(true);
     engineRetry_.setInterval(65000);   // safely past the engine's own minute between automatic checks
     connect(&engineRetry_, &QTimer::timeout, this, &DownloadPage::startNext);
+    connect(&AppSettings::get(), &AppSettings::changed, this, &DownloadPage::startNext);   // more at once: start them
     connect(engine_, &Engine::readyChanged, this, &DownloadPage::engineChanged);
     connect(engine_, &Engine::statusChanged, this, [this](const QString &text) {
         if (engine_->busy())
@@ -172,7 +174,6 @@ void DownloadPage::restoreSettings()
     playlist_->setChecked(s.value("playlist", false).toBool());
     sponsors_->setChecked(s.value("sponsors", false).toBool());
     split_->restoreState(s.value("split").toByteArray());
-    atOnce_ = std::clamp(s.value("atOnce", maxAtOnce).toInt(), 1, maxAtOnce);
 
     connect(format_, &QListWidget::currentRowChanged, this, [this] { QSettings().setValue("format", Options::key(currentFormat())); });
     connect(quality_, &QListWidget::currentRowChanged, this, [](int row) { QSettings().setValue("quality", row); });
@@ -441,6 +442,7 @@ void DownloadPage::chooseFolder()
     folder_->setText(Widgets::shortPath(dir));
     folder_->setToolTip(dir);
     QSettings().setValue("folder", dir);
+    emit folderChanged(dir);
 }
 
 void DownloadPage::openFolder()
@@ -581,6 +583,7 @@ void DownloadPage::startPreview()
     preview_ = new PreviewJob(url, playlist_->isChecked(), engine_, this);
     if (deno_)
         preview_->setDeno(deno_->program());
+    preview_->setBrowserSignIn(AppSettings::get().browserSignIn());
     connect(preview_, &PreviewJob::logLine, this, [this](const QString &line) { log(line); });
     connect(preview_, &PreviewJob::ready, this, [this, job = preview_.data()](const PreviewInfo &info) {
         if (!job->cookies().isEmpty()) {
@@ -770,7 +773,9 @@ Options DownloadPage::currentOptions() const
     o.skipSponsors = sponsors_->isChecked();
     if (!o.playlist && lastPreview_.playlistCount < 0)
         o.expectedParts = estimateParts(lastPreview_, o.format, o.maxHeight);
-    if (o.url == signInUrl_)
+    o.overwrite = AppSettings::get().existing() == AppSettings::Existing::Replace;
+    o.browserSignIn = AppSettings::get().browserSignIn();
+    if (o.browserSignIn && o.url == signInUrl_)
         o.cookies = signInCookies_;   // the preview already found a sign-in is needed
     if (ffmpeg_)
         o.ffmpeg = ffmpeg_->location();
@@ -829,7 +834,8 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
         running_.remove(job);
         refreshButtons();
         startNext();
-        if (ok && job->alreadyHad() && !job->options().overwrite)   // asked once the job is done with
+        if (ok && job->alreadyHad() && !job->options().overwrite   // asked once the job is done with
+            && AppSettings::get().existing() == AppSettings::Existing::Ask)
             QTimer::singleShot(0, this, [this, item, job] {
                 if (jobs_.value(item) != job || !askOverwrite(job->file()))
                     return;   // the row went or was redone meanwhile, or the user keeps the file
@@ -841,7 +847,7 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
     });
 }
 
-// Up to atOnce_ downloads run side by side, top to bottom, and wait while yt-dlp or ffmpeg is
+// Up to "downloads at once" run side by side, top to bottom, and wait while yt-dlp or ffmpeg is
 // being fetched, or while there's no yt-dlp at all yet (offline on the first run). The same link
 // in the same format waits for the one already running, so the two never share a file.
 void DownloadPage::startNext()
@@ -854,7 +860,7 @@ void DownloadPage::startNext()
     };
     const bool ready = !engine_->path().isEmpty();
     if (ready && !toolsBusy()) {
-        for (int i = 0; i < list_->topLevelItemCount() && running_.size() < atOnce_; ++i) {
+        for (int i = 0; i < list_->topLevelItemCount() && running_.size() < AppSettings::get().downloadsAtOnce(); ++i) {
             QTreeWidgetItem *item = list_->topLevelItem(i);
             DownloadJob *job = jobs_.value(item);
             if (stateOf(item) != State::Waiting || !job || sameAsRunning(job->options()))
@@ -875,10 +881,11 @@ void DownloadPage::startNext()
     reportActivity();
 }
 
+int DownloadPage::downloadsAtOnce() const { return AppSettings::get().downloadsAtOnce(); }
+
 void DownloadPage::setDownloadsAtOnce(int n)
 {
-    atOnce_ = std::clamp(n, 1, maxAtOnce);
-    QSettings().setValue("atOnce", atOnce_);
+    AppSettings::get().setDownloadsAtOnce(n);
     startNext();   // more room: waiting downloads start now; less: running ones finish first
 }
 
