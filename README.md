@@ -81,7 +81,7 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 
 ## Known issues
 
-- Updating yt-dlp to a newer version has only been tested on Linux (fetching it the first time works on Windows too). Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
+- Fetching and updating yt-dlp has been tested on Linux and Windows, not yet on macOS. Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
 - On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows.
 - Fetching Queenfisher's own Deno has been tried on Windows; on Linux and macOS (used only when no Deno is installed) it hasn't been tried yet.
 - The Mac apps aren't signed by Apple, and haven't been tried on a real Mac yet.
