@@ -9,6 +9,7 @@
 #include "core/Tools.h"
 #include "core/YtDlpEngine.h"
 
+#include <QActionGroup>
 #include <QApplication>
 #include <memory>
 #include <QHBoxLayout>
@@ -119,7 +120,7 @@ void MainWindow::buildMenus()
     QMenu *file = menuBar()->addMenu("&File");
     file->addAction(QIcon(":/icons/paste.png"), "&Paste Link", QKeySequence("Ctrl+Shift+V"), downloads_, &DownloadPage::pasteLink);
     file->addAction("&Choose Download Folder...", downloads_, &DownloadPage::chooseFolder);
-    file->addAction(QIcon(":/icons/explore.png"), "&Open Download Folder", downloads_, &DownloadPage::openFolder);
+    file->addAction(QIcon(":/icons/explore.png"), "&Open Downloads Directory", downloads_, &DownloadPage::openFolder);
     file->addSeparator();
     file->addAction("E&xit", QKeySequence::Quit, qApp, &QApplication::quit);
 
@@ -135,6 +136,15 @@ void MainWindow::buildMenus()
     tools->addAction(QIcon(":/icons/retry.png"), "&Check for yt-dlp Updates", engine_, &YtDlpEngine::updateNow);
     tools->addAction("Use &Nightly yt-dlp", this, [this] { engine_->switchChannel(YtDlpEngine::Nightly); });
     tools->addAction("Use &Regular yt-dlp", this, [this] { engine_->switchChannel(YtDlpEngine::Stable); });
+    tools->addSeparator();
+    QMenu *atOnce = tools->addMenu("&Downloads at Once");
+    auto *atOnceGroup = new QActionGroup(atOnce);
+    for (int n = 1; n <= 5; ++n) {
+        QAction *a = atOnce->addAction(QString::number(n), this, [this, n] { downloads_->setDownloadsAtOnce(n); });
+        a->setCheckable(true);
+        a->setChecked(n == downloads_->downloadsAtOnce());
+        atOnceGroup->addAction(a);
+    }
 
     QMenu *help = menuBar()->addMenu("&Help");
     help->addAction("&About Queenfisher", this, [this] { tabs_->setCurrentIndex(2); });

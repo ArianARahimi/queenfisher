@@ -11,6 +11,7 @@
 #include "core/YtDlpEngine.h"
 
 #include <QAction>
+#include <algorithm>
 #include <QCheckBox>
 #include <QClipboard>
 #include <QDesktopServices>
@@ -171,6 +172,7 @@ void DownloadPage::restoreSettings()
     playlist_->setChecked(s.value("playlist", false).toBool());
     sponsors_->setChecked(s.value("sponsors", false).toBool());
     split_->restoreState(s.value("split").toByteArray());
+    atOnce_ = std::clamp(s.value("atOnce", 3).toInt(), 1, 5);
 
     connect(format_, &QListWidget::currentRowChanged, this, [this] { QSettings().setValue("format", Options::key(currentFormat())); });
     connect(quality_, &QListWidget::currentRowChanged, this, [](int row) { QSettings().setValue("quality", row); });
@@ -222,15 +224,12 @@ QWidget *DownloadPage::buildSidebar()
     auto *qualityBox = new QVBoxLayout;
     qualityBox->addWidget(quality_);
 
-    auto *openFolder = new QPushButton("Open Download Folder");
+    auto *openFolder = new QPushButton("Open Downloads Directory");
     auto *side = new QWidget;
     side->setFixedWidth(210);
     auto *layout = new QVBoxLayout(side);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(6);
-    auto *title = new QLabel("Download Options:");
-    title->setObjectName("sideTitle");
-    layout->addWidget(title);
     qualityBox_ = Widgets::sideBox("Quality", qualityBox);
     layout->addWidget(Widgets::sideBox("Format", formatBox), 1);
     layout->addWidget(qualityBox_);
@@ -827,8 +826,7 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
         if (ok)
             library_->add({item->text(Name), job->options().url, job->file(), job->options().label(),
                            QFileInfo(job->file()).size(), QDateTime::currentDateTime()});
-        if (running_ == job)
-            running_ = nullptr;
+        running_.remove(job);
         refreshButtons();
         startNext();
         if (ok && job->alreadyHad() && !job->options().overwrite)   // asked once the job is done with
@@ -843,23 +841,30 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
     });
 }
 
-// Downloads run one at a time, top to bottom, and wait while yt-dlp or ffmpeg is being fetched,
-// or while there's no yt-dlp at all yet (offline on the first run): they start once it's there.
+// Up to atOnce_ downloads run side by side, top to bottom, and wait while yt-dlp or ffmpeg is
+// being fetched, or while there's no yt-dlp at all yet (offline on the first run). The same link
+// in the same format waits for the one already running, so the two never share a file.
 void DownloadPage::startNext()
 {
+    const auto sameAsRunning = [this](const Options &o) {
+        for (const DownloadJob *r : std::as_const(running_))
+            if (r->options().url == o.url && r->options().label() == o.label())
+                return true;
+        return false;
+    };
     const bool ready = !engine_->path().isEmpty();
-    if (!running_ && ready && !toolsBusy()) {
-        for (int i = 0; i < list_->topLevelItemCount(); ++i) {
+    if (ready && !toolsBusy()) {
+        for (int i = 0; i < list_->topLevelItemCount() && running_.size() < atOnce_; ++i) {
             QTreeWidgetItem *item = list_->topLevelItem(i);
-            if (stateOf(item) != State::Waiting || !jobs_.value(item))
+            DownloadJob *job = jobs_.value(item);
+            if (stateOf(item) != State::Waiting || !job || sameAsRunning(job->options()))
                 continue;
-            running_ = jobs_.value(item);
+            running_.insert(job);
             setState(item, State::Running, "Starting...");
-            running_->start();
-            break;
+            job->start();
         }
     }
-    if (!running_ && !engine_->busy()) {
+    if (running_.isEmpty() && !engine_->busy()) {
         engine_->checkDaily();   // idle: the once-a-day update check, or another try at fetching yt-dlp
         if (ffmpeg_)
             ffmpeg_->ensure();   // Windows: fetches ffmpeg the first time, refreshes it monthly
@@ -870,11 +875,17 @@ void DownloadPage::startNext()
     reportActivity();
 }
 
+void DownloadPage::setDownloadsAtOnce(int n)
+{
+    atOnce_ = std::clamp(n, 1, 5);
+    QSettings().setValue("atOnce", atOnce_);
+    startNext();   // more room: waiting downloads start now; less: running ones finish first
+}
+
 void DownloadPage::removeRow(QTreeWidgetItem *item)
 {
     DownloadJob *job = jobs_.take(item);
-    if (job == running_)
-        running_ = nullptr;
+    running_.remove(job);
     if (job && (stateOf(item) == State::Failed || stateOf(item) == State::Stopped))
         job->discardPartial();   // a stopped or failed download leaves nothing behind
     delete job;                  // a running one is stopped first, then cleans up after itself

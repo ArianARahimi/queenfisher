@@ -178,7 +178,7 @@ QLabel#boxHeader:disabled {
 }
 QListWidget:disabled { color: @faint; background: @panel; }
 QListWidget::item:selected:disabled { color: @muted; background: #2c2e34; }
-QLabel#sideTitle, QLabel#paneTitle { color: @dim; }
+QLabel#paneTitle { color: @dim; }
 QFrame#banner {
     border: 1px solid @outline; border-radius: 2px;
     background: @bar;
