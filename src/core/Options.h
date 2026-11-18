@@ -15,6 +15,7 @@ struct Options
     static QString name(Format f);                  // "MP4", "Original audio"...
     static QString key(Format f);                   // for settings: "mp4", "original"...
     static Format fromKey(const QString &key);      // unknown: MP4
+    static bool isAudioLabel(const QString &label); // a label() of a sound-only download: "FLAC", "Audio"
 
     QString url;
     QString folder;

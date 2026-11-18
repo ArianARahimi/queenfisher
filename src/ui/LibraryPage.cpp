@@ -1,6 +1,7 @@
 #include "LibraryPage.h"
 #include "Widgets.h"
 #include "core/Library.h"
+#include "core/Options.h"
 
 #include <QDesktopServices>
 #include <QFileInfo>
@@ -93,7 +94,7 @@ void LibraryPage::refill()
         auto *item = new QTreeWidgetItem(list_, {e.title, e.format, e.bytes > 0 ? Widgets::sizeText(e.bytes) : QString(),
                                                  QLocale().toString(e.finished, QLocale::ShortFormat),
                                                  Widgets::shortPath(QFileInfo(e.file).absolutePath())});
-        item->setIcon(Name, Widgets::formatIcon(e.format.startsWith("MP3") || e.format.startsWith("Audio")));
+        item->setIcon(Name, Widgets::formatIcon(Options::isAudioLabel(e.format)));
         item->setData(Name, indexRole, i);
         item->setToolTip(Name, e.file);
     }

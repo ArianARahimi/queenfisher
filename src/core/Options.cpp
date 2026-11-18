@@ -26,6 +26,15 @@ Options::Format Options::fromKey(const QString &key)
     return Mp4;
 }
 
+bool Options::isAudioLabel(const QString &label)
+{
+    const QString first = label.section(' ', 0, 0);
+    for (int f = Mp3; f < FormatCount; ++f)
+        if (first == Options{.format = Format(f)}.label())
+            return true;
+    return false;
+}
+
 QString Options::label() const
 {
     QString text = format == AudioOriginal ? QString("Audio") : name(format);
