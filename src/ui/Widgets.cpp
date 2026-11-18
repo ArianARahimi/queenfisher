@@ -92,14 +92,14 @@ public:
     {
         if (!index.data(dividerRole).toBool())
             return QStyledItemDelegate::paint(p, option, index);
-        const int y = option.rect.center().y();
+        const int y = option.rect.top() + 5;   // rows have more room above their text than below: evens it out
         p->setPen(Theme::outline);
         p->drawLine(option.rect.left() + 6, y, option.rect.right() - 6, y);
     }
 
     QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override
     {
-        return index.data(dividerRole).toBool() ? QSize(0, 9) : QStyledItemDelegate::sizeHint(option, index);
+        return index.data(dividerRole).toBool() ? QSize(0, 10) : QStyledItemDelegate::sizeHint(option, index);
     }
 };
 

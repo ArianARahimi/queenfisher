@@ -155,45 +155,66 @@ void MainWindow::showActivity(int downloading, int waiting, double bytesPerSecon
         tray_->setToolTip("Queenfisher\n" + text);
 }
 
-// Tray icon: click to show or hide the window; minimizing hides it there when that's on.
+// Tray icon: click it (or its first menu item) to show or hide the window. Minimizing, or
+// View > Minimize to Tray, puts the window there.
 void MainWindow::buildTray()
 {
     toTray_ = new QAction("Minimize to &Tray", this);
-    toTray_->setCheckable(true);
-    toTray_->setChecked(QSettings().value("minimizeToTray", true).toBool());
-    connect(toTray_, &QAction::toggled, this, [](bool on) { QSettings().setValue("minimizeToTray", on); });
+    toTray_->setShortcut(QKeySequence("Ctrl+M"));
+    connect(toTray_, &QAction::triggered, this, &QWidget::hide);
     if (!QSystemTrayIcon::isSystemTrayAvailable()) {
         toTray_->setEnabled(false);   // nowhere to go: minimizing works as usual
         return;
     }
     tray_ = new QSystemTrayIcon(windowIcon(), this);
     auto *menu = new QMenu(this);
-    menu->addAction("&Show Queenfisher", this, &MainWindow::showFromTray);
+    showHide_ = menu->addAction("&Hide Queenfisher", this, &MainWindow::toggleWindow);
     menu->addSeparator();
     menu->addAction("&Quit", qApp, &QApplication::quit);
     tray_->setContextMenu(menu);
     connect(tray_, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason why) {
-        if (why != QSystemTrayIcon::Trigger)
-            return;
-        if (isVisible() && !isMinimized())
-            hide();
-        else
-            showFromTray();
+        if (why == QSystemTrayIcon::Trigger)
+            toggleWindow();
     });
     tray_->show();
 }
 
-void MainWindow::showFromTray()
+void MainWindow::toggleWindow()
 {
+    if (isVisible() && !isMinimized()) {
+        hide();
+        return;
+    }
     showNormal();
     raise();
     activateWindow();
 }
 
+void MainWindow::updateShowHide()
+{
+    if (showHide_)
+        showHide_->setText(isVisible() && !isMinimized() ? "&Hide Queenfisher" : "&Show Queenfisher");
+}
+
+void MainWindow::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    updateShowHide();
+}
+
+void MainWindow::hideEvent(QHideEvent *event)
+{
+    QMainWindow::hideEvent(event);
+    updateShowHide();
+}
+
 void MainWindow::changeEvent(QEvent *event)
 {
     QMainWindow::changeEvent(event);
-    if (event->type() == QEvent::WindowStateChange && isMinimized() && tray_ && toTray_->isChecked())
+    if (event->type() != QEvent::WindowStateChange)
+        return;
+    updateShowHide();
+    if (isMinimized() && tray_)
         QTimer::singleShot(0, this, &QWidget::hide);   // after the minimize finishes
 }
 

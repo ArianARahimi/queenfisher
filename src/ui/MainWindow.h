@@ -21,6 +21,8 @@ public:
 protected:
     void closeEvent(QCloseEvent *event) override;
     void changeEvent(QEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
 
 private:
     void buildMenus();
@@ -30,7 +32,8 @@ private:
     void checkTools();
     void askToContinue(const QString &title, const QString &message);
     void buildTray();
-    void showFromTray();
+    void toggleWindow();
+    void updateShowHide();   // the tray menu says what clicking it will do
 
     YtDlpEngine *engine_ = nullptr;
     Library *library_ = nullptr;
@@ -42,5 +45,6 @@ private:
     QLabel *activity_ = nullptr;
     QLabel *engineCell_ = nullptr;
     QSystemTrayIcon *tray_ = nullptr;
-    QAction *toTray_ = nullptr;   // View > Minimize to Tray
+    QAction *toTray_ = nullptr;     // View > Minimize to Tray
+    QAction *showHide_ = nullptr;   // the tray menu's first item
 };
