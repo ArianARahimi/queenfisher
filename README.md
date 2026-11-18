@@ -7,7 +7,7 @@ Free media downloader for Windows, macOS and Linux. Paste a link, pick a quality
 Queenfisher is a window around [yt-dlp](https://github.com/yt-dlp/yt-dlp), which does the actual downloading.
 
 - Free and open source (GPLv3)
-- No ads, no tracking, no account, nothing bundled
+- No ads, no tracking, no account, nothing bundled. Once a day it asks GitHub for the newest version number (Settings can turn that off)
 - Video as MP4, MKV, WebM, MOV, AVI, FLV or GIF; sound as MP3, WAV, FLAC, OGG, M4A, ALAC or the site's original
 
 ## How to use it
