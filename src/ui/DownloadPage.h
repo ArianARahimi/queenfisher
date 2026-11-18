@@ -11,7 +11,9 @@
 
 class Banner;
 class DownloadJob;
+class Deno;
 class Ffmpeg;
+class FetchedTool;
 class Library;
 class PreviewJob;
 class QAction;
@@ -37,7 +39,7 @@ class DownloadPage : public QWidget
     Q_OBJECT
 
 public:
-    DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg = nullptr, QWidget *parent = nullptr);
+    DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg = nullptr, Deno *deno = nullptr, QWidget *parent = nullptr);
     ~DownloadPage() override;
 
     QAction *logAction() const { return logAction_; }
@@ -88,6 +90,8 @@ private:
     YtDlpEngine *engine_;
     Library *library_;
     Ffmpeg *ffmpeg_;
+    Deno *deno_;
+    bool toolsBusy() const;   // yt-dlp, ffmpeg or Deno being fetched
 
     QListWidget *format_ = nullptr;
     QListWidget *quality_ = nullptr;

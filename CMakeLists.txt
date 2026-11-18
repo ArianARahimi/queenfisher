@@ -18,6 +18,8 @@ qt_add_executable(queenfisher
     src/core/Engine.h
     src/core/ErrorRules.cpp src/core/ErrorRules.h
     src/core/Ffmpeg.cpp src/core/Ffmpeg.h
+    src/core/FetchedTool.cpp src/core/FetchedTool.h
+    src/core/Deno.cpp src/core/Deno.h
     src/core/Options.cpp src/core/Options.h
     src/core/PgpVerify.cpp src/core/PgpVerify.h
     src/core/PreviewJob.cpp src/core/PreviewJob.h

@@ -263,6 +263,8 @@ void PreviewJob::start()
     args << (playlist_ ? QStringList{"--yes-playlist", "--flat-playlist"} : QStringList{"--no-playlist"});
     if (!cookies_.isEmpty())
         args << "--cookies-from-browser" << cookies_;
+    if (!deno_.isEmpty())
+        args << "--js-runtimes" << "deno:" + deno_;
     args << "--" << url_;
     process_.start(engine_->path(), args);
     timeout_.start();

@@ -3,7 +3,9 @@
 #include <QMainWindow>
 
 class DownloadPage;
+class Deno;
 class Ffmpeg;
+class FetchedTool;
 class Library;
 class QLabel;
 class QSystemTrayIcon;
@@ -40,7 +42,7 @@ private:
     QTabWidget *tabs_ = nullptr;
     DownloadPage *downloads_ = nullptr;
     Ffmpeg *ffmpeg_ = nullptr;
-    bool ffmpegFailureShown_ = false;
+    Deno *deno_ = nullptr;
     QLabel *engineLight_ = nullptr;
     QLabel *activity_ = nullptr;
     QLabel *engineCell_ = nullptr;

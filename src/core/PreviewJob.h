@@ -68,6 +68,7 @@ public:
     void start();
     QString url() const { return url_; }
     QString cookies() const { return cookies_; }   // set when the sign-in was needed
+    void setDeno(const QString &program) { deno_ = program; }   // Queenfisher's own, if any
 
 signals:
     void ready(const PreviewInfo &info);
@@ -81,6 +82,7 @@ private:
     bool playlist_;
     Engine *engine_;
     QString cookies_;
+    QString deno_;
     QProcess process_;
     QTimer timeout_;   // restarted for each attempt
 };

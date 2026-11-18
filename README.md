@@ -48,7 +48,7 @@ Get the newest version from [Releases](https://github.com/ArianARahimi/queenfish
 - **Windows:** download `Queenfisher-<version>-windows.exe` and run it. It's the whole program; nothing to install or unpack.
 - **macOS:** download the `-macos.zip` (Apple Silicon) or `-macos-intel.zip` (Intel), open it and open Queenfisher. The first time, macOS blocks it: System Settings → Privacy & Security → **Open Anyway**.
 
-Queenfisher uses [ffmpeg](https://ffmpeg.org/) to join video and sound and to convert between formats. On Windows it fetches yt-dlp's own build the first time (about 90 MB, checked against the release's SHA-256 checksums); on Linux and macOS, install ffmpeg yourself. YouTube also needs [Deno](https://deno.com/).
+Queenfisher uses [ffmpeg](https://ffmpeg.org/) to join video and sound and to convert between formats. On Windows it fetches yt-dlp's own build the first time (about 90 MB, checked against the release's SHA-256 checksums) and refreshes it every month; on Linux and macOS, install ffmpeg yourself. YouTube also needs [Deno](https://deno.com/): one you have installed is used, otherwise Queenfisher fetches the official build (about 45 MB, checked the same way) and keeps it up to date.
 
 ## Building
 
@@ -82,8 +82,8 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 ## Known issues
 
 - Updating yt-dlp to a newer version has only been tested on Linux (fetching it the first time works on Windows too). Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
-- YouTube needs Deno installed to unlock most videos. Queenfisher tells you when it's missing but doesn't install it yet.
-- On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows. That copy isn't updated yet once it's there.
+- On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows.
+- Queenfisher's own Deno has been tried on Windows and Linux builds; the macOS one hasn't been tried yet.
 - The Mac apps aren't signed by Apple, and haven't been tried on a real Mac yet.
 - The Linux AppImage hasn't been tried on a Wayland desktop yet (it bundles the parts Wayland needs, but that's unconfirmed).
 - When a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. That only works on Linux so far.

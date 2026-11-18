@@ -190,7 +190,7 @@ jobs:
           { cat ../packaging/release-notes.md; echo; cat <<EOF
           ## Download
 
-          **Linux:** download \`Queenfisher-$v-x86_64.AppImage\`, make it executable (\`chmod +x\`) and run it. Needs ffmpeg installed; YouTube also needs Deno.
+          **Linux:** download \`Queenfisher-$v-x86_64.AppImage\`, make it executable (\`chmod +x\`) and run it. Needs ffmpeg installed.
 
           **Windows:** download \`Queenfisher-$v-windows.exe\` and run it. It's the whole program, nothing to install.
 

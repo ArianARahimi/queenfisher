@@ -3,8 +3,9 @@
 #include <QList>
 #include <QString>
 
-// Programs yt-dlp leans on that Queenfisher doesn't bring: ffmpeg (joins picture and sound,
-// makes MP3s) and Deno (YouTube). Each missing one comes with a short message for a popup.
+// Programs yt-dlp leans on that Queenfisher doesn't bring: ffmpeg on Linux and macOS (joins
+// picture and sound, converts). Deno, and ffmpeg on Windows, Queenfisher fetches itself.
+// Each missing one comes with a short message for a popup.
 struct MissingTool
 {
     QString name;

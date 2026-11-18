@@ -3,12 +3,14 @@
 #include "DownloadPage.h"
 #include "LibraryPage.h"
 #include "Theme.h"
+#include "core/Deno.h"
 #include "core/Ffmpeg.h"
 #include "core/Library.h"
 #include "core/Tools.h"
 #include "core/YtDlpEngine.h"
 
 #include <QApplication>
+#include <memory>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMenu>
@@ -35,7 +37,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     library_ = new Library(data + "/library.json", this);
 
     ffmpeg_ = new Ffmpeg(data, this);
-    downloads_ = new DownloadPage(engine_, library_, ffmpeg_);
+    deno_ = new Deno(data, this);
+    downloads_ = new DownloadPage(engine_, library_, ffmpeg_, deno_);
     tabs_ = new QTabWidget;
     tabs_->setDocumentMode(false);
     tabs_->setIconSize({22, 22});
@@ -68,12 +71,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     // Queenfisher's own yt-dlp: installed on first run, updated once a day, repaired when a site changes.
     engine_->checkDaily();
 
-    // Once the window is up: a popup for each missing tool, and for a failed ffmpeg fetch (once).
+    // Once the window is up: a popup for each missing tool, and for a failed fetch (once each).
     QTimer::singleShot(0, this, &MainWindow::checkTools);
-    connect(ffmpeg_, &Ffmpeg::readyChanged, this, [this] {
-        if (!ffmpeg_->busy() && !ffmpeg_->lastError().isEmpty() && !std::exchange(ffmpegFailureShown_, true))
-            askToContinue("ffmpeg", ffmpeg_->lastError() + ".\nQueenfisher will try again; until then most downloads can't join picture and sound.");
-    });
+    const auto failurePopup = [this](FetchedTool *tool, const QString &title, const QString &without) {
+        auto shown = std::make_shared<bool>(false);
+        connect(tool, &FetchedTool::readyChanged, this, [this, tool, title, without, shown] {
+            if (!tool->busy() && !tool->lastError().isEmpty() && !std::exchange(*shown, true))
+                askToContinue(title, tool->lastError() + ".\nQueenfisher will try again; " + without);
+        });
+    };
+    failurePopup(ffmpeg_, "ffmpeg", "until then most downloads can't join picture and sound.");
+    failurePopup(deno_, "Deno", "until then YouTube offers only low qualities.");
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

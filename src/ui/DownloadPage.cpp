@@ -4,6 +4,7 @@
 #include "Thumbnail.h"
 #include "Widgets.h"
 #include "core/DownloadJob.h"
+#include "core/Deno.h"
 #include "core/Ffmpeg.h"
 #include "core/Library.h"
 #include "core/PreviewJob.h"
@@ -89,8 +90,8 @@ QHBoxLayout *actionRow(std::initializer_list<QWidget *> widgets)
 
 }
 
-DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg, QWidget *parent)
-    : QWidget(parent), engine_(engine), library_(library), ffmpeg_(ffmpeg)
+DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg, Deno *deno, QWidget *parent)
+    : QWidget(parent), engine_(engine), library_(library), ffmpeg_(ffmpeg), deno_(deno)
 {
     setObjectName("page");
     net_ = new QNetworkAccessManager(this);
@@ -121,14 +122,15 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg
             banner_->setNotice(text);
     });
     connect(engine_, &Engine::logLine, this, [this](const QString &line) { log(line); });
-    if (ffmpeg_) {
-        connect(ffmpeg_, &Ffmpeg::statusChanged, this, [this](const QString &text) {
-            if (ffmpeg_->busy() && !engine_->busy())
+    for (FetchedTool *tool : {static_cast<FetchedTool *>(ffmpeg_), static_cast<FetchedTool *>(deno_)}) {
+        if (!tool)
+            continue;
+        connect(tool, &FetchedTool::statusChanged, this, [this, tool](const QString &text) {
+            if (tool->busy() && !engine_->busy())
                 banner_->setNotice(text);
         });
-        connect(ffmpeg_, &Ffmpeg::logLine, this, [this](const QString &line) { log(line); });
-        connect(ffmpeg_, &Ffmpeg::readyChanged, this, &DownloadPage::showNotice);
-        connect(ffmpeg_, &Ffmpeg::readyChanged, this, &DownloadPage::startNext);
+        connect(tool, &FetchedTool::logLine, this, [this](const QString &line) { log(line); });
+        connect(tool, &FetchedTool::readyChanged, this, &DownloadPage::engineChanged);   // waiting work goes on
     }
 
     linkChanged({});
@@ -453,9 +455,14 @@ void DownloadPage::log(const QString &line, int number)
 
 // The notice bar: yt-dlp or ffmpeg being fetched (their own messages), or yt-dlp missing.
 // Missing tools get a popup when the window opens instead (MainWindow).
+bool DownloadPage::toolsBusy() const
+{
+    return engine_->busy() || (ffmpeg_ && ffmpeg_->busy()) || (deno_ && deno_->busy());
+}
+
 void DownloadPage::engineChanged()
 {
-    if (engine_->busy())
+    if (toolsBusy())
         return;   // statusChanged shows the progress
     showNotice();
     if (isWebLink(link_->text()) && previewTitle_.isEmpty() && !preview_)
@@ -565,12 +572,14 @@ void DownloadPage::startPreview()
     const QString url = link_->text().trimmed();
     if (!isWebLink(url))
         return;
-    if (engine_->busy()) {
-        meta_->setText("Waiting for yt-dlp...");
+    if (toolsBusy()) {   // without Deno, YouTube shows only low qualities
+        meta_->setText(engine_->busy() ? "Waiting for yt-dlp..." : "Waiting for Queenfisher's tools...");
         return;   // engineChanged() retries
     }
     delete preview_;
     preview_ = new PreviewJob(url, playlist_->isChecked(), engine_, this);
+    if (deno_)
+        preview_->setDeno(deno_->program());
     connect(preview_, &PreviewJob::logLine, this, [this](const QString &line) { log(line); });
     connect(preview_, &PreviewJob::ready, this, [this, job = preview_.data()](const PreviewInfo &info) {
         if (!job->cookies().isEmpty()) {
@@ -647,13 +656,13 @@ void DownloadPage::showPreview(const PreviewInfo &info)
 
 void DownloadPage::showNotice()
 {
-    if (engine_->busy() || (ffmpeg_ && ffmpeg_->busy()))
+    if (toolsBusy())
         return;   // they show their own progress
     const bool noYtDlp = engine_->version().isEmpty();
-    const bool ffmpegFailed = ffmpeg_ && !ffmpeg_->lastError().isEmpty();
+    const bool fetchFailed = (ffmpeg_ && !ffmpeg_->lastError().isEmpty()) || (deno_ && !deno_->lastError().isEmpty());
     banner_->setNotice(noYtDlp ? QString("yt-dlp isn't available yet. Check your connection; Queenfisher will try again.")
                                : QString());
-    if (noYtDlp || ffmpegFailed)
+    if (noYtDlp || fetchFailed)
         engineRetry_.start();   // startNext() asks again when nothing is downloading
     else
         engineRetry_.stop();
@@ -762,6 +771,8 @@ Options DownloadPage::currentOptions() const
         o.cookies = signInCookies_;   // the preview already found a sign-in is needed
     if (ffmpeg_)
         o.ffmpeg = ffmpeg_->location();
+    if (deno_)
+        o.deno = deno_->program();
     return o;
 }
 
@@ -833,7 +844,7 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
 void DownloadPage::startNext()
 {
     const bool ready = !engine_->path().isEmpty();
-    if (!running_ && ready && !engine_->busy() && !(ffmpeg_ && ffmpeg_->busy())) {
+    if (!running_ && ready && !toolsBusy()) {
         for (int i = 0; i < list_->topLevelItemCount(); ++i) {
             QTreeWidgetItem *item = list_->topLevelItem(i);
             if (stateOf(item) != State::Waiting || !jobs_.value(item))
@@ -847,7 +858,9 @@ void DownloadPage::startNext()
     if (!running_ && !engine_->busy()) {
         engine_->checkDaily();   // idle: the once-a-day update check, or another try at fetching yt-dlp
         if (ffmpeg_)
-            ffmpeg_->ensure();   // Windows: fetches ffmpeg the first time
+            ffmpeg_->ensure();   // Windows: fetches ffmpeg the first time, refreshes it monthly
+        if (deno_)
+            deno_->ensure();     // where no Deno is installed: the same
     }
     refreshButtons();
     reportActivity();

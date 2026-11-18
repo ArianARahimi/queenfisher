@@ -8,4 +8,5 @@ The first release of Queenfisher.
 - Optional subtitles, whole playlists and skipping sponsor segments.
 - Keeps its own yt-dlp up to date and checks the developers' signature before using a new one.
 - Windows: one .exe, nothing to install. It fetches ffmpeg by itself the first time.
+- Fetches Deno, which YouTube needs for its better qualities, when it isn't installed.
 - Remembers your choices, keeps a searchable Library of finished downloads and sits in the tray when minimized.
