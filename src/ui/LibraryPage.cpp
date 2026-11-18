@@ -92,7 +92,7 @@ void LibraryPage::refill()
         const Library::Entry &e = entries[i];
         auto *item = new QTreeWidgetItem(list_, {e.title, e.format, e.bytes > 0 ? Widgets::sizeText(e.bytes) : QString(),
                                                  QLocale().toString(e.finished, QLocale::ShortFormat),
-                                                 QFileInfo(e.file).absolutePath()});
+                                                 Widgets::shortPath(QFileInfo(e.file).absolutePath())});
         item->setIcon(Name, Widgets::formatIcon(e.format.startsWith("MP3") || e.format.startsWith("Audio")));
         item->setData(Name, indexRole, i);
         item->setToolTip(Name, e.file);

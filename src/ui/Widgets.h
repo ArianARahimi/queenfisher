@@ -29,6 +29,7 @@ void addDivider(QListWidget *list);
 
 // File sizes as the lists show them: "820 KB", "33.3 MB", "1.21 GB".
 QString sizeText(double bytes);
+QString shortPath(const QString &path);   // the home folder as ~, so long paths stay readable
 
 }
 

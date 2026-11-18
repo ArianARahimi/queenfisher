@@ -54,13 +54,6 @@ bool isWebLink(const QString &text)
     return url.isValid() && (url.scheme() == "https" || url.scheme() == "http") && !url.host().isEmpty();
 }
 
-// Shows the home folder as ~ so long paths stay readable.
-QString shortPath(const QString &path)
-{
-    const QString home = QDir::homePath();
-    return path.startsWith(home) ? "~" + path.mid(home.size()) : path;
-}
-
 QString clock(int seconds)
 {
     return QTime(0, 0).addSecs(seconds).toString(seconds >= 3600 ? "h:mm:ss" : "m:ss");
@@ -142,7 +135,7 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg
     restoreSettings();
     askOverwrite = [this](const QString &file) {
         QMessageBox box(QMessageBox::Question, "Already downloaded",
-                        QString("\"%1\" is already in %2.").arg(QFileInfo(file).fileName(), shortPath(QFileInfo(file).path())),
+                        QString("\"%1\" is already in %2.").arg(QFileInfo(file).fileName(), Widgets::shortPath(QFileInfo(file).path())),
                         QMessageBox::NoButton, window());
         QPushButton *replace = box.addButton("Overwrite", QMessageBox::AcceptRole);
         box.setDefaultButton(box.addButton("Keep", QMessageBox::RejectRole));   // Enter and Esc keep it
@@ -169,7 +162,7 @@ void DownloadPage::restoreSettings()
         quality_->setCurrentRow(quality);
     const QString folder = s.value("folder").toString();
     if (!folder.isEmpty() && QFileInfo(folder).isDir()) {   // a folder that's gone falls back to Downloads
-        folder_->setText(shortPath(folder));
+        folder_->setText(Widgets::shortPath(folder));
         folder_->setToolTip(folder);
     }
     subtitles_->setChecked(s.value("subtitles", false).toBool());
@@ -280,7 +273,7 @@ QWidget *DownloadPage::buildTop()
 
     // Where it goes and the extras, above the title, in two compact lines.
     const QString downloads = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
-    folder_ = new QLineEdit(shortPath(downloads));
+    folder_ = new QLineEdit(Widgets::shortPath(downloads));
     folder_->setToolTip(downloads);
     folder_->setReadOnly(true);
     auto *change = new QPushButton("Change...");
@@ -441,7 +434,7 @@ void DownloadPage::chooseFolder()
     const QString dir = QFileDialog::getExistingDirectory(this, "Save downloads to", folder_->toolTip());
     if (dir.isEmpty())
         return;
-    folder_->setText(shortPath(dir));
+    folder_->setText(Widgets::shortPath(dir));
     folder_->setToolTip(dir);
     QSettings().setValue("folder", dir);
 }
@@ -813,6 +806,8 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
         const bool stopped = message == "Stopped";
         const QString done = job->alreadyHad() ? "Already downloaded" : "Complete";   // never a silent skip
         setState(item, ok ? State::Done : stopped ? State::Stopped : State::Failed, ok ? done : message);
+        if (const QFileInfo file(job->file()); ok && file.exists())
+            item->setText(Size, Widgets::sizeText(double(file.size())));   // the finished file, after any conversion
         log(ok ? done + ": " + job->file() : "Stopped: " + message, number);
         if (ok)
             library_->add({item->text(Name), job->options().url, job->file(), job->options().label(),

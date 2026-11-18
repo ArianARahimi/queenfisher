@@ -2,6 +2,7 @@
 #include "Theme.h"
 
 #include <QAbstractItemView>
+#include <QDir>
 #include <QHBoxLayout>
 #include <QMouseEvent>
 #include <QLabel>
@@ -121,6 +122,12 @@ QIcon formatIcon(bool audio)
     QIcon note(Theme::recolour(":/icons/audio.png", Theme::text, true));                   // white in a list
     note.addPixmap(Theme::recolour(":/icons/audio.png", Theme::accent, true), QIcon::Selected);   // lime when picked
     return note;
+}
+
+QString shortPath(const QString &path)
+{
+    const QString home = QDir::homePath();
+    return path.startsWith(home) ? "~" + path.mid(home.size()) : path;
 }
 
 QString sizeText(double bytes)
