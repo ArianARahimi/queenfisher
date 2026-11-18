@@ -82,12 +82,13 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 ## Known issues
 
 - Fetching yt-dlp has been tested on Linux, Windows and macOS; updating it on Linux and Windows. Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
-- On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows.
+- On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows. On macOS it also looks in Homebrew's and MacPorts' folders, since apps opened from the Dock or Finder don't get the Terminal's search path. That's been checked, but not yet with a real Homebrew ffmpeg.
 - Fetching Queenfisher's own Deno has been tried on Windows and macOS (Intel); on Linux (used only when no Deno is installed) it hasn't been tried yet.
 - The Mac apps aren't signed by Apple. The Intel build has been tried on macOS 26 (in a virtual machine); the Apple Silicon build hasn't been tried yet.
 - When a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. Finding the default browser works on Linux and Windows; on macOS it hasn't been tried yet, and Safari's cookies need Full Disk Access for Queenfisher (System Settings, Privacy & Security). On Windows, Chrome and Edge often lock their cookies away from other programs, so yt-dlp can't use them; Firefox-based browsers work.
+- If fetching yt-dlp, ffmpeg or Deno fails (say, the network isn't up yet right after logging in), Queenfisher tries again a minute later and only then reports it. The retry hasn't been tried with a real outage yet.
 - Clicking Download before the preview is in leaves the sound part's size to a guess, so the bar can jump a little when the sound starts.
-- Checked on Linux (KDE) and Windows 11; the look on macOS is untested. The window frame and title bar are the system's own.
+- Checked on Linux (KDE), Windows 11 and macOS 26 (Intel, in a virtual machine). The window frame and title bar are the system's own.
 - YouTube previews show the picture and title right away, but the qualities and size still take a few seconds. Other sites take a few seconds for everything, since yt-dlp has to ask the site.
 - The tray icon has been tried on KDE and Windows 11 (where it starts in the hidden icons, under the ^). GNOME shows tray icons only with an extension; without one, minimizing works as usual.
 - AVI is re-encoded so old players can open it, which is slow for long videos. GIF is offered only for videos up to a minute, and even those make big files.
