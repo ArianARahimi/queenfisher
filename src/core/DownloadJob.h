@@ -59,5 +59,6 @@ private:
     QDateTime startedAt_;
     QStringList problems_;   // ERROR and WARNING lines of the current attempt
     bool triedRepair_ = false;
+    bool triedAgain_ = false;   // one plain retry after a refused (403) download
     bool cancelled_ = false;
 };

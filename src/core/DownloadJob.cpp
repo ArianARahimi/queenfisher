@@ -242,6 +242,15 @@ void DownloadJob::recover()
         emit logLine("The site wants a sign-in, but Queenfisher couldn't find your default browser's cookies.");
     }
 
+    // A refused download (HTTP 403) is often a one-off on YouTube: one plain retry before
+    // deciding yt-dlp needs updating, which could switch it to nightly for nothing.
+    if (d.problem == Problem::Outdated && !triedAgain_ && problems_.join('\n').contains("HTTP Error 403")) {
+        triedAgain_ = true;
+        emit logLine("The site refused the download. Trying once more.");
+        start();
+        return;
+    }
+
     if (d.problem == Problem::Outdated && !triedRepair_) {
         triedRepair_ = true;
         emit logLine("This looks like a site change. Checking for a newer yt-dlp before trying again.");
