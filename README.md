@@ -90,7 +90,7 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 - Clicking Download before the preview is in leaves the sound part's size to a guess, so the bar can jump a little when the sound starts.
 - Checked on Linux (KDE) and Windows 11; the look on macOS is untested. The window frame and title bar are the system's own.
 - YouTube previews show the picture and title right away, but the qualities and size still take a few seconds. Other sites take a few seconds for everything, since yt-dlp has to ask the site.
-- The tray icon has only been tried on KDE. GNOME shows tray icons only with an extension; without one, minimizing works as usual.
+- The tray icon has been tried on KDE and Windows 11 (where it starts in the hidden icons, under the ^). GNOME shows tray icons only with an extension; without one, minimizing works as usual.
 - AVI is re-encoded so old players can open it, which is slow for long videos. GIF is offered only for videos up to a minute, and even those make big files.
 - Skip sponsors only works on YouTube, and only for segments the SponsorBlock community has marked.
 

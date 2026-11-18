@@ -12,6 +12,8 @@
 #include <QApplication>
 #include <memory>
 #include <QHBoxLayout>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QLabel>
 #include <QMenu>
 #include <QMenuBar>
@@ -28,9 +30,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
     setWindowTitle("Queenfisher");
     setWindowIcon(QIcon(":/queenfisher.png"));
-    resize(1100, 760);
-    setMinimumSize(900, 640);
-    restoreGeometry(QSettings().value("window").toByteArray());   // size and place from last time
+    setMinimumSize(900, 600);
+    if (!restoreGeometry(QSettings().value("window").toByteArray())) {   // size and place from last time
+        // First run: 1100 x 760, or less on a small screen so the whole window fits.
+        const QRect screen = QGuiApplication::primaryScreen()->availableGeometry();
+        resize(qMin(1100, screen.width() - 40), qMin(760, screen.height() - 60));
+    }
 
     const QString data = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
     engine_ = new YtDlpEngine(data, this);
