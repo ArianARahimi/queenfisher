@@ -29,5 +29,5 @@ private:
     QPixmap original_;
     QPixmap scaled_;   // original_ fitted to the current size, redone only when that changes
     QString badge_;
-    QString hint_ = "Paste a link to see a preview";
+    QString hint_ = "Paste link to see preview";
 };

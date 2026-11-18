@@ -500,7 +500,7 @@ void DownloadPage::linkChanged(const QString &text)
         title_->setText("No video yet");
         meta_->setText(text.trimmed().isEmpty() ? "Paste a link above, then choose a format on the left."
                                                 : "That doesn't look like a web link.");
-        thumbnail_->setHint("Paste a link to see a preview");
+        thumbnail_->setHint("Paste link to see preview");
     }
 }
 
