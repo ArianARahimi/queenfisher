@@ -48,6 +48,10 @@ QString originalAudioName(const PreviewInfo &info);
 // does for them (H.264 and AAC for MP4, WebM for WebM); -1 if the sizes aren't known.
 qint64 estimateSize(const PreviewInfo &info, Options::Format format, int maxHeight);
 
+// Picture then sound for a two-part video download, as estimateSize reckons them; empty when
+// it comes as one file or the sizes aren't known. Lets the bar weigh the parts from the start.
+QList<qint64> estimateParts(const PreviewInfo &info, Options::Format format, int maxHeight);
+
 // The 11-character video ID in a YouTube link (watch, youtu.be, shorts, embed, live, music);
 // empty for anything else. Lets the picture and title come straight from YouTube while yt-dlp
 // works out the rest.

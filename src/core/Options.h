@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QList>
 #include <QString>
 #include <QStringList>
 
@@ -23,7 +24,8 @@ struct Options
     bool subtitles = false;
     bool playlist = false;
     bool skipSponsors = false;   // cut sponsor segments out (SponsorBlock, YouTube only)
-    bool overwrite = false;   // replace a file that's already there instead of keeping it
+    bool overwrite = false;
+    QList<qint64> expectedParts;   // the preview's picture and sound sizes, for the bar; not for yt-dlp   // replace a file that's already there instead of keeping it
     QString cookies;     // --cookies-from-browser value, only set after a site asks for a sign-in
     QString deno;        // Queenfisher's own Deno for YouTube; empty = yt-dlp finds an installed one
     QString ffmpeg;      // folder with Queenfisher's own ffmpeg (Windows); empty = yt-dlp finds one

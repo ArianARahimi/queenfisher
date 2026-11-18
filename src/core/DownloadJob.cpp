@@ -77,6 +77,7 @@ void DownloadJob::start()
     if (!startedAt_.isValid())
         startedAt_ = QDateTime::currentDateTime().addSecs(-2);   // a little slack for coarse file times
     tracker_.reset();
+    tracker_.setExpected(options_.playlist ? QList<qint64>() : options_.expectedParts);
     speed_ = eta_ = -1;
     sidecar_ = skipped_ = downloaded_ = false;
     const QStringList args = ytDlpArgs(options_);

@@ -767,6 +767,8 @@ Options DownloadPage::currentOptions() const
     o.subtitles = subtitles_->isChecked();
     o.playlist = playlist_->isChecked();
     o.skipSponsors = sponsors_->isChecked();
+    if (!o.playlist && lastPreview_.playlistCount < 0)
+        o.expectedParts = estimateParts(lastPreview_, o.format, o.maxHeight);
     if (o.url == signInUrl_)
         o.cookies = signInCookies_;   // the preview already found a sign-in is needed
     if (ffmpeg_)

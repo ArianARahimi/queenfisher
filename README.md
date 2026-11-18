@@ -87,7 +87,7 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 - The Mac apps aren't signed by Apple, and haven't been tried on a real Mac yet.
 - The Linux AppImage hasn't been tried on a Wayland desktop yet (it bundles the parts Wayland needs, but that's unconfirmed).
 - When a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. Finding the default browser works on Linux and Windows; on macOS it hasn't been tried yet. On Windows, Chrome and Edge often lock their cookies away from other programs, so yt-dlp can't use them; Firefox-based browsers work.
-- Before the sound part of a video starts, its size is guessed, so the bar can pause briefly when it starts.
+- Clicking Download before the preview is in leaves the sound part's size to a guess, so the bar can jump a little when the sound starts.
 - Checked on Linux (KDE) and Windows 11; the look on macOS is untested. The window frame and title bar are the system's own.
 - YouTube previews show the picture and title right away, but the qualities and size still take a few seconds. Other sites take a few seconds for everything, since yt-dlp has to ask the site.
 - The tray icon has only been tried on KDE. GNOME shows tray icons only with an extension; without one, minimizing works as usual.

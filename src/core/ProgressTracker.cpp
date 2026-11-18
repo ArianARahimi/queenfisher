@@ -11,7 +11,9 @@ constexpr double guessedLaterPartShare = 0.1;
 
 void ProgressTracker::reset()
 {
+    const QList<qint64> expected = expected_;   // known before the download, so it survives a retry
     *this = ProgressTracker{};
+    expected_ = expected;
 }
 
 void ProgressTracker::startItem(int index, int count)
@@ -94,6 +96,14 @@ double ProgressTracker::partWeight(int part) const
 {
     if (parts_ == 1)
         return 1;
+    // Sizes from the preview fill in parts that haven't started (sound is sometimes the bigger one).
+    if (items_ == 1 && expected_.size() == parts_) {
+        double total = 0;
+        for (int p = 0; p < parts_; ++p)
+            total += sizes_.value(p) > 0 ? sizes_.value(p) : expected_.value(p);
+        if (total > 0)
+            return (sizes_.value(part) > 0 ? sizes_.value(part) : expected_.value(part)) / total;
+    }
     qint64 known = 0;
     int knownCount = 0;
     for (qint64 s : sizes_)

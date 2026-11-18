@@ -233,6 +233,25 @@ qint64 estimateSize(const PreviewInfo &info, Options::Format format, int maxHeig
     return a && a->bytes >= 0 ? v->bytes + a->bytes : -1;
 }
 
+QList<qint64> estimateParts(const PreviewInfo &info, Options::Format format, int maxHeight)
+{
+    // Only video downloads come in two parts (picture, then sound); the rest is one file.
+    if (!Options::hasQuality(format) || info.streams.isEmpty())
+        return {};
+    QList<Stream> streams;
+    for (const Stream &s : info.streams)
+        if (!s.hls)
+            streams << s;
+    if (streams.isEmpty())
+        streams = info.streams;
+    const auto fits = [maxHeight](const Stream &s) { return s.picture() && (!maxHeight || s.height <= maxHeight); };
+    const Stream *v = pick(streams, fits, [format](const Stream &s) { return wantedPicture(s, format); });
+    if (!v || v->bytes <= 0 || v->sound())
+        return {};
+    const qint64 total = estimateSize(info, format, maxHeight);
+    return total > v->bytes ? QList<qint64>{v->bytes, total - v->bytes} : QList<qint64>{};
+}
+
 PreviewJob::PreviewJob(QString url, bool playlist, Engine *engine, QObject *parent)
     : QObject(parent), url_(std::move(url)), playlist_(playlist), engine_(engine)
 {
