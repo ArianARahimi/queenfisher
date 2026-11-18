@@ -139,7 +139,7 @@ void MainWindow::buildMenus()
     tools->addSeparator();
     QMenu *atOnce = tools->addMenu("&Downloads at Once");
     auto *atOnceGroup = new QActionGroup(atOnce);
-    for (int n = 1; n <= 5; ++n) {
+    for (int n = 1; n <= DownloadPage::maxAtOnce; ++n) {
         QAction *a = atOnce->addAction(QString::number(n), this, [this, n] { downloads_->setDownloadsAtOnce(n); });
         a->setCheckable(true);
         a->setChecked(n == downloads_->downloadsAtOnce());

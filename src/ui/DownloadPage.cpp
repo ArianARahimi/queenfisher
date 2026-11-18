@@ -172,7 +172,7 @@ void DownloadPage::restoreSettings()
     playlist_->setChecked(s.value("playlist", false).toBool());
     sponsors_->setChecked(s.value("sponsors", false).toBool());
     split_->restoreState(s.value("split").toByteArray());
-    atOnce_ = std::clamp(s.value("atOnce", 3).toInt(), 1, 5);
+    atOnce_ = std::clamp(s.value("atOnce", maxAtOnce).toInt(), 1, maxAtOnce);
 
     connect(format_, &QListWidget::currentRowChanged, this, [this] { QSettings().setValue("format", Options::key(currentFormat())); });
     connect(quality_, &QListWidget::currentRowChanged, this, [](int row) { QSettings().setValue("quality", row); });
@@ -877,7 +877,7 @@ void DownloadPage::startNext()
 
 void DownloadPage::setDownloadsAtOnce(int n)
 {
-    atOnce_ = std::clamp(n, 1, 5);
+    atOnce_ = std::clamp(n, 1, maxAtOnce);
     QSettings().setValue("atOnce", atOnce_);
     startNext();   // more room: waiting downloads start now; less: running ones finish first
 }

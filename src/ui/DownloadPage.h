@@ -51,7 +51,8 @@ public:
     void chooseFolder();
     void openFolder();
     void log(const QString &line, int number = 0);
-    // How many downloads run side by side (1 to 5); the rest wait their turn. Remembered.
+    // How many downloads run side by side (1 to 10); the rest wait their turn. Remembered.
+    static constexpr int maxAtOnce = 10;
     int downloadsAtOnce() const { return atOnce_; }
     void setDownloadsAtOnce(int n);
 
@@ -122,7 +123,7 @@ private:
 
     QHash<QTreeWidgetItem *, DownloadJob *> jobs_;   // every row has one
     QSet<DownloadJob *> running_;
-    int atOnce_ = 3;
+    int atOnce_ = maxAtOnce;
 
     QTimer previewDelay_;   // waits for typing or pasting to settle
     QTimer engineRetry_;    // tries to get yt-dlp again while there is none
