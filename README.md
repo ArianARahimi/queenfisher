@@ -45,7 +45,7 @@ Queenfisher keeps its own copy of yt-dlp and updates it for you.
 Get the newest version from [Releases](https://github.com/ArianARahimi/queenfisher/releases).
 
 - **Linux:** download `Queenfisher-<version>-x86_64.AppImage`, make it executable (`chmod +x`) and run it.
-- **Windows:** download the `-windows.zip`, unpack it and run `Queenfisher.exe`.
+- **Windows:** download `Queenfisher-<version>-windows.exe` and run it. It's the whole program; nothing to install or unpack.
 - **macOS:** download the `-macos.zip` (Apple Silicon) or `-macos-intel.zip` (Intel), open it and open Queenfisher. The first time, macOS blocks it: System Settings → Privacy & Security → **Open Anyway**.
 
 Queenfisher uses [ffmpeg](https://ffmpeg.org/) to join video and sound and to convert between formats. On Windows it fetches yt-dlp's own build the first time (about 90 MB, checked against the release's SHA-256 checksums); on Linux and macOS, install ffmpeg yourself. YouTube also needs [Deno](https://deno.com/).
@@ -66,6 +66,12 @@ To build the Linux AppImage (into `dist/`):
 ./packaging/linux/appimage.sh
 ```
 
+To build the Windows `.exe` on Linux (MinGW, host Qt 6.12; builds a static Qt the first time):
+
+```
+./packaging/windows/build-static.sh
+```
+
 ## Releases
 
 GitHub Actions builds every push to `main`, checks each file on VirusTotal and puts it on the
@@ -78,7 +84,7 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 - Fetching and updating yt-dlp has only been tested on Linux. Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
 - YouTube needs Deno installed to unlock most videos. Queenfisher tells you when it's missing but doesn't install it yet.
 - On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows. That copy isn't updated yet once it's there.
-- The Windows and macOS builds come from GitHub Actions and haven't been tried on a real Windows PC or Mac yet. Windows is a zip, not an installer. The Mac apps aren't signed by Apple.
+- The Mac apps aren't signed by Apple, and haven't been tried on a real Mac yet.
 - The Linux AppImage hasn't been tried on a Wayland desktop yet (it bundles the parts Wayland needs, but that's unconfirmed).
 - Stopping a download stops yt-dlp and everything it started (like ffmpeg). On Windows this uses `taskkill` and hasn't been tried on a real PC yet.
 - When a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. That only works on Linux so far.

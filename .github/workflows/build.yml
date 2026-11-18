@@ -1,6 +1,6 @@
 name: Build
 
-# Every push to main: builds Queenfisher for Linux (AppImage), Windows (zip) and macOS (zips),
+# Every push to main: builds Queenfisher for Linux (AppImage), Windows (one .exe) and macOS (zips),
 # checks every file on VirusTotal, and puts them on the "latest-build" pre-release for testing.
 # A commit titled "Release vX.Y.Z" (matching the version in CMakeLists.txt) also publishes
 # release vX.Y.Z. Nothing is published that VirusTotal flags.
@@ -37,7 +37,7 @@ jobs:
             libxkbcommon-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 \
             libxcb-shape0 libegl1 libpulse0
           pip install "aqtinstall==$AQT_VERSION"
-          python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 -m qtmultimedia -O "$RUNNER_TEMP/Qt"
+          python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 -O "$RUNNER_TEMP/Qt"
           echo "$RUNNER_TEMP/Qt/$QT_VERSION/gcc_64/bin" >> "$GITHUB_PATH"
           echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/Qt/$QT_VERSION/gcc_64" >> "$GITHUB_ENV"
 
@@ -53,58 +53,33 @@ jobs:
           retention-days: 30
 
   windows:
-    runs-on: windows-2022
-    timeout-minutes: 30
+    # One Queenfisher.exe and nothing else, cross-built against static Qt and OpenSSL. Arch
+    # pinned to one day's packages: the same MinGW and host Qt the build is tested with.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120   # the first run builds Qt; later runs reuse it from the cache
+    container: archlinux:base-devel
     steps:
+      - name: Install build tools
+        run: |
+          echo 'Server = https://archive.archlinux.org/repos/2026/11/16/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+          pacman -Syyuu --noconfirm --needed mingw-w64-gcc qt6-base cmake ninja perl git
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Install build tools
-        shell: bash
-        run: |
-          pip install "aqtinstall==$AQT_VERSION"
-          python -m aqt install-qt windows desktop "$QT_VERSION" win64_msvc2022_64 -m qtmultimedia -O "$RUNNER_TEMP/Qt"
-          # OpenSSL 3 from Qt's own servers: the version Qt's HTTPS is built for. (Chocolatey's
-          # moved to OpenSSL 4, which the exe then needed but the zip didn't have.)
-          python -m aqt install-tool windows desktop tools_opensslv3_x64 -O "$RUNNER_TEMP/Qt"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: build/static/prefix
+          key: static-qt-${{ hashFiles('packaging/windows/build-static.sh') }}
 
-      - name: Build and package
-        shell: bash
-        run: |
-          qt="$RUNNER_TEMP/Qt/$QT_VERSION/msvc2022_64"
-          crypto=$(find "$RUNNER_TEMP/Qt/Tools" -name libcrypto-3-x64.dll | head -n 1)
-          ssl=$(dirname "$(dirname "$crypto")")
-          echo "OpenSSL in $ssl"
-          version=$(sed -n 's/^project(Queenfisher VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
-          cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="$qt" -DOPENSSL_ROOT_DIR="$ssl"
-          cmake --build build --config Release
-          out="dist/Queenfisher-$version-windows"
-          mkdir -p "$out"
-          cp build/Release/queenfisher.exe "$out/Queenfisher.exe"
-          "$qt/bin/windeployqt.exe" --release --no-translations "$out/Queenfisher.exe"
-          cp "$ssl"/bin/libcrypto-3-x64.dll "$ssl"/bin/libssl-3-x64.dll "$out/"
-          # Microsoft's C++ runtime next to the exe, so it starts on PCs that never installed it
-          vs=$("/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest -property installationPath)
-          crt=$(ls -d "$(cygpath -u "$vs")"/VC/Redist/MSVC/*/x64/Microsoft.VC14*.CRT | tail -n 1)
-          echo "C++ runtime from $crt"
-          cp "$crt"/*.dll "$out/"
-          ls "$out"/vcruntime140.dll "$out"/msvcp140.dll
-          # Every DLL Queenfisher.exe needs ships in the zip or comes with Windows.
-          dumpbin=$(ls "$(cygpath -u "$vs")"/VC/Tools/MSVC/*/bin/Hostx64/x64/dumpbin.exe | tail -n 1)
-          missing=0
-          for dll in $("$dumpbin" -nologo -dependents "$out/Queenfisher.exe" | tr -d '\r' | grep -io '[a-z0-9_.-]*\.dll' | sort -u); do
-            case "$dll" in api-ms-*|API-MS-*|ext-ms-*) continue ;; esac   # parts of Windows itself
-            if [ -f "$out/$dll" ] || [ -f "/c/Windows/System32/$dll" ]; then echo "ok $dll"; else echo "MISSING $dll"; missing=1; fi
-          done
-          [ "$missing" = 0 ] || { echo "Queenfisher.exe needs DLLs the zip doesn't have"; exit 1; }
-          cp LICENSE "$out/LICENSE.txt"
-          cd dist && 7z a "Queenfisher-$version-windows.zip" "Queenfisher-$version-windows"
+      - name: Build Queenfisher.exe
+        run: ./packaging/windows/build-static.sh
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: windows
-          path: dist/*.zip
+          path: dist/*.exe
           if-no-files-found: error
           retention-days: 30
 
@@ -127,7 +102,7 @@ jobs:
         run: |
           brew install ninja openssl@3
           pip3 install --break-system-packages "aqtinstall==$AQT_VERSION"
-          python3 -m aqt install-qt mac desktop "$QT_VERSION" clang_64 -m qtmultimedia -O "$RUNNER_TEMP/Qt"
+          python3 -m aqt install-qt mac desktop "$QT_VERSION" clang_64 -O "$RUNNER_TEMP/Qt"
 
       - name: Build and package
         env:
@@ -206,18 +181,22 @@ jobs:
           gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$tag" >/dev/null 2>&1 || true
           # Fixed names too, for the website's download buttons (releases/latest/download/<name>).
           cp "dist/Queenfisher-$v-x86_64.AppImage" dist/Queenfisher-Linux.AppImage
-          cp "dist/Queenfisher-$v-windows.zip" dist/Queenfisher-Windows.zip
+          cp "dist/Queenfisher-$v-windows.exe" dist/Queenfisher-Windows.exe
           cp "dist/Queenfisher-$v-macos.zip" dist/Queenfisher-macOS.zip
           cp "dist/Queenfisher-$v-macos-intel.zip" dist/Queenfisher-macOS-Intel.zip
           cd dist
           sha256sum -- $(ls | grep -vx SHA256SUMS) > "$RUNNER_TEMP/SHA256SUMS"
           mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
-          gh release create "$tag" * --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Queenfisher $v" --notes-file - <<EOF
+          { cat ../packaging/release-notes.md; echo; cat <<EOF
+          ## Download
+
           **Linux:** download \`Queenfisher-$v-x86_64.AppImage\`, make it executable (\`chmod +x\`) and run it. Needs ffmpeg installed; YouTube also needs Deno.
 
-          **Windows:** download \`Queenfisher-$v-windows.zip\`, unpack it and run \`Queenfisher.exe\`.
+          **Windows:** download \`Queenfisher-$v-windows.exe\` and run it. It's the whole program, nothing to install.
 
           **macOS:** download \`Queenfisher-$v-macos.zip\` (Apple Silicon) or \`Queenfisher-$v-macos-intel.zip\` (Intel), open it and open **Queenfisher**. The first time, macOS blocks it: System Settings → Privacy & Security → **Open Anyway**. Needs ffmpeg (\`brew install ffmpeg\`).
 
           Every file was checked on VirusTotal before this was published. SHA-256 checksums are in \`SHA256SUMS\`.
           EOF
+          } > "$RUNNER_TEMP/notes.md"
+          gh release create "$tag" * --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Queenfisher $v" --notes-file "$RUNNER_TEMP/notes.md"
