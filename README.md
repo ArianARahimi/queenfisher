@@ -83,7 +83,7 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 
 - Updating yt-dlp to a newer version has only been tested on Linux (fetching it the first time works on Windows too). Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
 - On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows.
-- Queenfisher's own Deno has been tried on Windows and Linux builds; the macOS one hasn't been tried yet.
+- Fetching Queenfisher's own Deno has been tried on Windows; on Linux and macOS (used only when no Deno is installed) it hasn't been tried yet.
 - The Mac apps aren't signed by Apple, and haven't been tried on a real Mac yet.
 - The Linux AppImage hasn't been tried on a Wayland desktop yet (it bundles the parts Wayland needs, but that's unconfirmed).
 - When a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. That only works on Linux so far.
