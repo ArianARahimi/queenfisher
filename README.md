@@ -2,11 +2,34 @@
 
 Free media downloader for Windows, macOS and Linux. Paste a link, pick a quality, done.
 
+![Queenfisher downloading a few videos, with a preview of the next one](docs/screenshots/download.png)
+
 Queenfisher is a window around [yt-dlp](https://github.com/yt-dlp/yt-dlp), which does the actual downloading.
 
 - Free and open source (GPLv3)
 - No ads, no tracking, no account, nothing bundled
-- Video as MP4, MKV, WebM, MOV, AVI, FLV or GIF; sound as MP3, M4A, the site's original, WAV, FLAC, ALAC or Vorbis
+- Video as MP4, MKV, WebM, MOV, AVI, FLV or GIF; sound as MP3, WAV, FLAC, OGG, M4A, ALAC or the site's original
+
+## How to use it
+
+1. Copy a video link and click **Paste** (or press Ctrl+Shift+V). A preview shows the picture, the length, the qualities the video really has and roughly how big the file will be.
+2. Pick a format and a quality on the left. Qualities the video doesn't have are greyed out.
+3. Click **Download**. Add as many as you like; they download one after another, into your Downloads folder unless you pick another one with **Change...**.
+
+Finished downloads stay in the **Library** tab, where you can search them, open them or show them in their folder.
+
+## Features
+
+- YouTube previews appear almost at once; other sites take a few seconds.
+- Remembers your format, quality, folder and extras between sessions.
+- Extras: English subtitles, whole playlists, and skipping sponsor segments (SponsorBlock).
+- Downloading the same video again asks whether to keep the file you have or overwrite it. Another quality is saved as its own file.
+- Unfinished pieces stay out of your download folder, so only the finished file appears there.
+- Sits in the system tray when minimized, with download progress on hover.
+
+| Library | Sound formats |
+| --- | --- |
+| ![The Library tab with three finished downloads](docs/screenshots/library.png) | ![MP3 picked, with the quality options greyed out](docs/screenshots/audio.png) |
 
 ## Keeping yt-dlp working
 
@@ -57,7 +80,7 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 - On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows. That copy isn't updated yet once it's there.
 - The Windows and macOS builds come from GitHub Actions and haven't been tried on a real Windows PC or Mac yet. Windows is a zip, not an installer. The Mac apps aren't signed by Apple.
 - The Linux AppImage hasn't been tried on a Wayland desktop yet (it bundles the parts Wayland needs, but that's unconfirmed).
-- Stopping a download also stops the programs yt-dlp started (like ffmpeg) on Linux and macOS. On Windows only yt-dlp itself is stopped so far, so a merge already under way may finish on its own.
+- Stopping a download stops yt-dlp and everything it started (like ffmpeg). On Windows this uses `taskkill` and hasn't been tried on a real PC yet.
 - When a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. That only works on Linux so far.
 - Before the sound part of a video starts, its size is guessed, so the bar can pause briefly when it starts.
 - Only checked on Linux (KDE); the look on Windows and macOS is untested. The window frame and title bar are the system's own.
