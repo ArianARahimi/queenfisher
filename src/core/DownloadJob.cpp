@@ -5,8 +5,10 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QHash>
 #include <QPointer>
 #include <QRegularExpression>
+#include <QSet>
 #include <QTimer>
 
 namespace {
@@ -109,16 +111,16 @@ void DownloadJob::stopAll(bool hard)
 // videos that already finished stay too.
 void DownloadJob::discardPartial()
 {
-    for (const QString &path : std::as_const(created_)) {
-        const QString stem = stemOf(path);
-        if (stem.size() < 3 || finishedStems_.contains(stem))
-            continue;
-        const QDir dir = QFileInfo(path).absoluteDir();
-        for (const QFileInfo &f : dir.entryInfoList(QDir::Files | QDir::Hidden)) {
-            if (f.fileName().startsWith(stem) && f.lastModified() >= startedAt_ && QFile::remove(f.absoluteFilePath()))
+    QHash<QString, QSet<QString>> stems;   // folder -> videos in it; each folder is listed once
+    for (const QString &path : std::as_const(created_))
+        if (const QString stem = stemOf(path); stem.size() >= 3 && !finishedStems_.contains(stem))
+            stems[QFileInfo(path).absolutePath()].insert(stem);
+    for (auto it = stems.cbegin(); it != stems.cend(); ++it)
+        for (const QFileInfo &f : QDir(it.key()).entryInfoList(QDir::Files | QDir::Hidden)) {
+            const bool ours = std::any_of(it->cbegin(), it->cend(), [&](const QString &stem) { return f.fileName().startsWith(stem); });
+            if (ours && f.lastModified() >= startedAt_ && QFile::remove(f.absoluteFilePath()))
                 emit logLine("Deleted leftover " + f.fileName());
         }
-    }
 }
 
 void DownloadJob::readOutput(QProcess::ProcessChannel channel)
