@@ -12,6 +12,7 @@ qt_standard_project_setup()
 
 qt_add_executable(queenfisher
     src/main.cpp
+    src/core/ChildProcess.cpp src/core/ChildProcess.h
     src/core/Cookies.cpp src/core/Cookies.h
     src/core/DownloadJob.cpp src/core/DownloadJob.h
     src/core/Engine.h

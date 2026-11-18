@@ -1,4 +1,5 @@
 #include "DownloadJob.h"
+#include "ChildProcess.h"
 #include "Cookies.h"
 #include "Engine.h"
 
@@ -7,11 +8,6 @@
 #include <QPointer>
 #include <QRegularExpression>
 #include <QTimer>
-
-#ifdef Q_OS_UNIX
-#include <csignal>
-#include <unistd.h>
-#endif
 
 namespace {
 
@@ -29,10 +25,7 @@ QString stemOf(const QString &path)
 DownloadJob::DownloadJob(Options options, Engine *engine, QObject *parent)
     : QObject(parent), options_(std::move(options)), engine_(engine)
 {
-#ifdef Q_OS_UNIX
-    // yt-dlp gets its own process group, so stopping it also stops the ffmpeg it starts.
-    process_.setChildProcessModifier([] { ::setpgid(0, 0); });
-#endif
+    ChildProcess::ownGroup(process_);
     connect(&process_, &QProcess::readyReadStandardOutput, this, [this] { readOutput(QProcess::StandardOutput); });
     connect(&process_, &QProcess::readyReadStandardError, this, [this] { readOutput(QProcess::StandardError); });
     connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError e) {
@@ -108,13 +101,7 @@ void DownloadJob::cancel()
 
 void DownloadJob::stopAll(bool hard)
 {
-#ifdef Q_OS_UNIX
-    if (const qint64 pid = process_.processId(); pid > 0) {
-        ::kill(-pid_t(pid), hard ? SIGKILL : SIGTERM);   // the whole group: yt-dlp and its ffmpeg
-        return;
-    }
-#endif
-    hard ? process_.kill() : process_.terminate();
+    ChildProcess::stop(process_, hard);   // yt-dlp and the ffmpeg it started
 }
 
 // Only files named after this video (title [id]) that were written since it started,

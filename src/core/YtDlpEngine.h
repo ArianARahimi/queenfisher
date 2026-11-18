@@ -19,6 +19,7 @@ public:
     enum Channel { Stable, Nightly };
 
     explicit YtDlpEngine(const QString &dataDir, QObject *parent = nullptr);
+    ~YtDlpEngine() override;
 
     QString path() const override;
     QString version() const override;

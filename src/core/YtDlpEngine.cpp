@@ -1,4 +1,5 @@
 #include "YtDlpEngine.h"
+#include "ChildProcess.h"
 #include "PgpVerify.h"
 
 #include <QCryptographicHash>
@@ -224,11 +225,18 @@ void YtDlpEngine::install(Channel channel, const QString &tag)
     });
 }
 
+YtDlpEngine::~YtDlpEngine()
+{
+    for (QProcess *p : findChildren<QProcess *>())   // a version check still running when Queenfisher quits
+        ChildProcess::stopAndWait(*p);
+}
+
 // The new copy has to start and report the expected version before it replaces the old one.
 void YtDlpEngine::smokeTest(const QString &file, const QString &tag)
 {
     auto *p = new QProcess(this);
-    QTimer::singleShot(60000, p, [p] { p->kill(); });
+    ChildProcess::ownGroup(*p);
+    QTimer::singleShot(60000, p, [p] { ChildProcess::stop(*p, true); });
     connect(p, &QProcess::finished, this, [=, this](int code, QProcess::ExitStatus status) {
         p->deleteLater();
         const auto giveUp = [this, file](const QString &why) {

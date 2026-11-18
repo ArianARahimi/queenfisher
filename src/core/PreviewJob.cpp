@@ -1,4 +1,5 @@
 #include "PreviewJob.h"
+#include "ChildProcess.h"
 #include "Cookies.h"
 #include "Engine.h"
 #include "ErrorRules.h"
@@ -235,10 +236,11 @@ qint64 estimateSize(const PreviewInfo &info, Options::Format format, int maxHeig
 PreviewJob::PreviewJob(QString url, bool playlist, Engine *engine, QObject *parent)
     : QObject(parent), url_(std::move(url)), playlist_(playlist), engine_(engine)
 {
+    ChildProcess::ownGroup(process_);
     connect(&process_, &QProcess::finished, this, &PreviewJob::finishedRun);
     timeout_.setSingleShot(true);
     timeout_.setInterval(timeoutMs);
-    connect(&timeout_, &QTimer::timeout, &process_, &QProcess::kill);
+    connect(&timeout_, &QTimer::timeout, this, [this] { ChildProcess::stop(process_, true); });
     connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError e) {
         if (e == QProcess::FailedToStart)
             emit failed("Couldn't start yt-dlp");
@@ -247,11 +249,8 @@ PreviewJob::PreviewJob(QString url, bool playlist, Engine *engine, QObject *pare
 
 PreviewJob::~PreviewJob()
 {
-    if (process_.state() != QProcess::NotRunning) {
-        disconnect(&process_, nullptr, this, nullptr);
-        process_.kill();
-        process_.waitForFinished(2000);
-    }
+    disconnect(&process_, nullptr, this, nullptr);
+    ChildProcess::stopAndWait(process_);   // the whole tree, or yt-dlp's second copy outlives Queenfisher
 }
 
 void PreviewJob::start()
