@@ -192,7 +192,7 @@ jobs:
 
           **Linux:** download \`Queenfisher-$v-x86_64.AppImage\`, make it executable (\`chmod +x\`) and run it. Needs ffmpeg installed.
 
-          **Windows:** download \`Queenfisher-$v-windows.exe\` and run it. It's the whole program, nothing to install.
+          **Windows:** download \`Queenfisher-$v-windows.exe\` and run it. It's the whole program, nothing to install. The first time, Windows may say it protected your PC: click **More info**, then **Run anyway**.
 
           **macOS:** download \`Queenfisher-$v-macos.zip\` (Apple Silicon) or \`Queenfisher-$v-macos-intel.zip\` (Intel), open it and open **Queenfisher**. The first time, macOS blocks it: System Settings → Privacy & Security → **Open Anyway**. Needs ffmpeg (\`brew install ffmpeg\`).
 
