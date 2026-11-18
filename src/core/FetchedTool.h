@@ -55,5 +55,6 @@ private:
     bool busy_ = false;
     QString lastError_;
     qint64 lastTry_ = 0;
+    int failures_ = 0;   // in a row
     QNetworkAccessManager net_;
 };

@@ -4,9 +4,29 @@
 
 #include <QApplication>
 #include <QNetworkProxyFactory>
+#include <QStringList>
+
+namespace {
+
+// Apps opened from the Dock or Finder get only /usr/bin:/bin:/usr/sbin:/sbin, so ffmpeg from
+// Homebrew (/opt/homebrew/bin, /usr/local/bin on Intel) or MacPorts would never be found, by
+// Queenfisher or by yt-dlp. They're added once, here, for both.
+void addPackageManagerPaths()
+{
+#ifdef Q_OS_MACOS
+    QStringList path = qEnvironmentVariable("PATH").split(':', Qt::SkipEmptyParts);
+    for (const char *dir : {"/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"})
+        if (!path.contains(dir))
+            path << dir;
+    qputenv("PATH", path.join(':').toUtf8());
+#endif
+}
+
+}
 
 int main(int argc, char *argv[])
 {
+    addPackageManagerPaths();
     QApplication app(argc, argv);
     QApplication::setApplicationName("Queenfisher");
     QApplication::setOrganizationName("Queenfisher");

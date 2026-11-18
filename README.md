@@ -81,11 +81,10 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 
 ## Known issues
 
-- Fetching and updating yt-dlp has been tested on Linux and Windows, not yet on macOS. Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
+- Fetching yt-dlp has been tested on Linux, Windows and macOS; updating it on Linux and Windows. Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
 - On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows.
-- Fetching Queenfisher's own Deno has been tried on Windows; on Linux and macOS (used only when no Deno is installed) it hasn't been tried yet.
-- The Mac apps aren't signed by Apple, and haven't been tried on a real Mac yet.
-- The Linux AppImage hasn't been tried on a Wayland desktop yet (it bundles the parts Wayland needs, but that's unconfirmed).
+- Fetching Queenfisher's own Deno has been tried on Windows and macOS (Intel); on Linux (used only when no Deno is installed) it hasn't been tried yet.
+- The Mac apps aren't signed by Apple. The Intel build has been tried on macOS 26 (in a virtual machine); the Apple Silicon build hasn't been tried yet.
 - When a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. Finding the default browser works on Linux and Windows; on macOS it hasn't been tried yet, and Safari's cookies need Full Disk Access for Queenfisher (System Settings, Privacy & Security). On Windows, Chrome and Edge often lock their cookies away from other programs, so yt-dlp can't use them; Firefox-based browsers work.
 - Clicking Download before the preview is in leaves the sound part's size to a guess, so the bar can jump a little when the sound starts.
 - Checked on Linux (KDE) and Windows 11; the look on macOS is untested. The window frame and title bar are the system's own.

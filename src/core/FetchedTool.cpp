@@ -17,7 +17,8 @@
 
 namespace {
 
-constexpr qint64 retryMs = 10 * 60 * 1000;              // after a failed fetch
+constexpr qint64 retrySoonMs = 60 * 1000;               // after the first failure (often the network still waking up)
+constexpr qint64 retryMs = 10 * 60 * 1000;              // after failing again
 constexpr qint64 refreshMs = 30LL * 24 * 3600 * 1000;   // fetched again after this long
 const char *stampName = ".fetched";                      // its date is when the copy was put in place
 
@@ -143,7 +144,7 @@ bool FetchedTool::install(const QString &zip, const QString &expectedSha256, con
 void FetchedTool::ensure()
 {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    if (busy_ || !wanted() || now - lastTry_ < retryMs || (!location().isEmpty() && !stale()))
+    if (busy_ || !wanted() || now - lastTry_ < (failures_ == 1 ? retrySoonMs : retryMs) || (!location().isEmpty() && !stale()))
         return;
     Source s;
     if (!source(&s) || unzipper().isEmpty()) {
@@ -215,7 +216,10 @@ void FetchedTool::download(const Source &s, const QString &expected)
 void FetchedTool::finish(bool ok, const QString &message)
 {
     busy_ = false;
-    lastError_ = ok || !location().isEmpty() ? QString() : message;   // a failed refresh keeps the copy it has
+    failures_ = ok ? 0 : failures_ + 1;
+    // A failed refresh keeps the copy it has; a first failure is often just the network waking
+    // up (Queenfisher started with the computer), so it's reported only when the retry fails too.
+    lastError_ = ok || !location().isEmpty() || failures_ < 2 ? QString() : message;
     emit logLine(message);
     emit statusChanged(message);
     emit readyChanged();
