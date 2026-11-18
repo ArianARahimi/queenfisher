@@ -47,7 +47,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     tabs_ = new QTabWidget;
     tabs_->setDocumentMode(false);
     tabs_->setIconSize({22, 22});
-    tabs_->addTab(downloads_, Theme::recolour(":/icons/tab-download.png", Theme::accent, true), "Download");
+    tabs_->addTab(downloads_, QIcon(":/icons/tab-home.png"), "Home");
     tabs_->addTab(new LibraryPage(library_), QIcon(":/icons/tab-library.png"), "Library");
     tabs_->addTab(new AboutPage, QIcon(":/icons/info.png"), "About");
     // The fish and the name, top right.

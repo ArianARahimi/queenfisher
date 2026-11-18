@@ -27,6 +27,9 @@ QIcon formatIcon(bool audio);
 // A thin line between groups of rows; it can't be picked, hovered or reached with the keys.
 void addDivider(QListWidget *list);
 
+// A small grey label over a group of rows; like the divider, it can't be picked.
+void addHeading(QListWidget *list, const QString &text);
+
 // File sizes as the lists show them: "820 KB", "33.3 MB", "1.21 GB".
 QString sizeText(double bytes);
 QString shortPath(const QString &path);   // the home folder as ~, so long paths stay readable

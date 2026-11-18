@@ -33,7 +33,7 @@ class QTreeWidgetItem;
 class Thumbnail;
 class YtDlpEngine;
 
-// The Download tab: options on the left, link and preview on top, downloads below.
+// The Home tab: options on the left, link and preview on top, downloads below.
 class DownloadPage : public QWidget
 {
     Q_OBJECT

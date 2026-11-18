@@ -194,10 +194,13 @@ DownloadPage::~DownloadPage()
 QWidget *DownloadPage::buildSidebar()
 {
     format_ = new QListWidget;
+    Widgets::addHeading(format_, "Video");
     for (int i = 0; i < Options::FormatCount; ++i) {   // each row knows its format; video, a line, sound
         const auto f = Options::Format(i);
-        if (f == Options::Mp3)
+        if (f == Options::Mp3) {
             Widgets::addDivider(format_);
+            Widgets::addHeading(format_, "Audio");
+        }
         auto *item = new QListWidgetItem(Widgets::formatIcon(Options::isAudio(f)), Options::name(f), format_);
         item->setData(Qt::UserRole, i);
     }

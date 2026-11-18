@@ -83,6 +83,14 @@ void pickOnClick(QAbstractItemView *list)
 namespace {
 
 constexpr int dividerRole = Qt::UserRole + 100;
+constexpr int headingRole = Qt::UserRole + 101;
+
+QFont headingFont(QFont f)
+{
+    f.setBold(true);
+    f.setPointSizeF(f.pointSizeF() * 0.85);
+    return f;
+}
 
 class DividerDelegate : public QStyledItemDelegate
 {
@@ -91,6 +99,12 @@ public:
 
     void paint(QPainter *p, const QStyleOptionViewItem &option, const QModelIndex &index) const override
     {
+        if (index.data(headingRole).toBool()) {
+            p->setFont(headingFont(option.font));
+            p->setPen(Theme::dim);
+            p->drawText(option.rect.adjusted(6, 0, -6, 0), Qt::AlignLeft | Qt::AlignVCenter, index.data().toString());
+            return;
+        }
         if (!index.data(dividerRole).toBool())
             return QStyledItemDelegate::paint(p, option, index);
         const int y = option.rect.top() + 5;   // rows have more room above their text than below: evens it out
@@ -100,19 +114,32 @@ public:
 
     QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override
     {
+        if (index.data(headingRole).toBool())
+            return {0, QFontMetrics(headingFont(option.font)).height() + 6};
         return index.data(dividerRole).toBool() ? QSize(0, 10) : QStyledItemDelegate::sizeHint(option, index);
     }
 };
+
+QListWidgetItem *addPlainRow(QListWidget *list, int role)
+{
+    if (!dynamic_cast<DividerDelegate *>(list->itemDelegate()))
+        list->setItemDelegate(new DividerDelegate(list));
+    auto *row = new QListWidgetItem(list);
+    row->setFlags(Qt::NoItemFlags);
+    row->setData(role, true);
+    return row;
+}
 
 }
 
 void addDivider(QListWidget *list)
 {
-    if (!dynamic_cast<DividerDelegate *>(list->itemDelegate()))
-        list->setItemDelegate(new DividerDelegate(list));
-    auto *line = new QListWidgetItem(list);
-    line->setFlags(Qt::NoItemFlags);
-    line->setData(dividerRole, true);
+    addPlainRow(list, dividerRole);
+}
+
+void addHeading(QListWidget *list, const QString &text)
+{
+    addPlainRow(list, headingRole)->setText(text);
 }
 
 QIcon formatIcon(bool audio)
