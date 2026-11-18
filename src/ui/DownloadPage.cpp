@@ -168,7 +168,7 @@ void DownloadPage::restoreSettings()
     if (quality >= 0 && quality < quality_->count())
         quality_->setCurrentRow(quality);
     const QString folder = s.value("folder").toString();
-    if (!folder.isEmpty() && QFileInfo(folder).isDir()) {   // a folder that's gone falls back to Videos
+    if (!folder.isEmpty() && QFileInfo(folder).isDir()) {   // a folder that's gone falls back to Downloads
         folder_->setText(shortPath(folder));
         folder_->setToolTip(folder);
     }
@@ -279,9 +279,9 @@ QWidget *DownloadPage::buildTop()
     meta_->setWordWrap(true);
 
     // Where it goes and the extras, above the title, in two compact lines.
-    const QString movies = QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);
-    folder_ = new QLineEdit(shortPath(movies));
-    folder_->setToolTip(movies);
+    const QString downloads = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+    folder_ = new QLineEdit(shortPath(downloads));
+    folder_->setToolTip(downloads);
     folder_->setReadOnly(true);
     auto *change = new QPushButton("Change...");
     auto *saveLabel = new QLabel("Save to");
@@ -720,6 +720,22 @@ void DownloadPage::showQuality()
     qualityInfo_->setVisible(!parts.isEmpty());
 }
 
+// Unfinished downloads wait here, out of the download folder. Pieces left by a crash are
+// cleared after a day; younger ones may belong to another Queenfisher still downloading.
+QString DownloadPage::partialFolder()
+{
+    static const QString dir = [] {
+        const QString path = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/partial";
+        QDir().mkpath(path);
+        const QDateTime dayAgo = QDateTime::currentDateTime().addDays(-1);
+        for (const QFileInfo &f : QDir(path).entryInfoList(QDir::Files | QDir::Hidden))
+            if (f.lastModified() < dayAgo)
+                QFile::remove(f.absoluteFilePath());
+        return path;
+    }();
+    return dir;
+}
+
 Options::Format DownloadPage::currentFormat() const
 {
     const QListWidgetItem *item = format_->currentItem();
@@ -744,6 +760,7 @@ Options DownloadPage::currentOptions() const
     Options o;
     o.url = link_->text().trimmed();
     o.folder = folder_->toolTip();
+    o.tempFolder = partialFolder();
     o.format = currentFormat();
     o.maxHeight = heights[qMax(0, quality_->currentRow())];
     o.subtitles = subtitles_->isChecked();

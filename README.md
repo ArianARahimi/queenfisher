@@ -62,7 +62,6 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 - Before the sound part of a video starts, its size is guessed, so the bar can pause briefly when it starts.
 - Only checked on Linux (KDE); the look on Windows and macOS is untested. The window frame and title bar are the system's own.
 - YouTube previews show the picture and title right away, but the qualities and size still take a few seconds. Other sites take a few seconds for everything, since yt-dlp has to ask the site.
-- Overwriting a video you already have deletes the old file first, so if the new download fails, neither is left.
 - The tray icon has only been tried on KDE. GNOME shows tray icons only with an extension; without one, minimizing works as usual.
 - AVI is re-encoded so old players can open it, which is slow for long videos. GIF is offered only for videos up to a minute, and even those make big files.
 - Skip sponsors only works on YouTube, and only for segments the SponsorBlock community has marked.

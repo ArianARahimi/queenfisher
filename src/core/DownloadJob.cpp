@@ -187,10 +187,13 @@ void DownloadJob::trackLine(const QString &line)
     // Later steps rename the file: merged, converted to audio, or remuxed.
     static const QRegularExpression merged(R"re(^\[Merger\] Merging formats into "(.+)"$)re");
     static const QRegularExpression moved(R"re(^\[(ExtractAudio|VideoRemuxer|VideoConvertor)\] .*Destination: (.+)$)re");
+    static const QRegularExpression home(R"re(^\[MoveFiles\] Moving file ".+" to "(.+)"$)re");   // out of the temp folder
     if (const auto m = merged.match(line); m.hasMatch())
         created_.append(file_ = m.captured(1));
     else if (const auto m = moved.match(line); m.hasMatch())
         created_.append(file_ = m.captured(2));
+    else if (const auto m = home.match(line); m.hasMatch())
+        created_.append(file_ = m.captured(1));
 }
 
 // downloaded|total|estimate|speed|eta|fragment|fragments|title, missing numbers come as "NA".

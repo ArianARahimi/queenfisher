@@ -17,6 +17,7 @@ struct Options
 
     QString url;
     QString folder;
+    QString tempFolder;   // where pieces wait until the file is finished; empty = the folder itself
     Format format = Mp4;
     int maxHeight = 0;   // 0 = best available
     bool subtitles = false;

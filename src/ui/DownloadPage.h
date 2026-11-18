@@ -66,6 +66,7 @@ private:
     void showNotice();
     void showQuality();
     Options::Format currentFormat() const;
+    static QString partialFolder();
     QListWidgetItem *formatItem(Options::Format f) const;
     void selectFormat(Options::Format f);
     void restoreSettings();

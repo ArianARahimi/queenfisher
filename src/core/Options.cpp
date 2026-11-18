@@ -45,6 +45,9 @@ QStringList ytDlpArgs(const Options &o)
               "%(progress.speed)s|%(progress.eta)s|%(progress.fragment_index)s|%(progress.fragment_count)s|"
               "%(info.title)s",
         "-P", o.folder,
+        // Unfinished pieces stay out of the download folder, so download watchers (like
+        // vt-quarantine) only ever see the finished file arrive.
+        "-P", "temp:" + (o.tempFolder.isEmpty() ? o.folder : o.tempFolder),
         // The picture's height is in the name ("... [id] 1080p.mp4"; none for sound), so another
         // quality is another file instead of yt-dlp skipping it as already downloaded.
         // ALAC files end in .m4a too, so they're marked to stay apart from M4A ones.
