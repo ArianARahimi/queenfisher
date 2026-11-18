@@ -44,3 +44,9 @@ void AppSettings::setBrowserSignIn(bool on) { save("browserSignIn", on); }
 
 bool AppSettings::minimizeToTray() const { return QSettings().value("minimizeToTray", true).toBool(); }
 void AppSettings::setMinimizeToTray(bool on) { save("minimizeToTray", on); }
+
+bool AppSettings::updateCheck() const { return QSettings().value("updateCheck", true).toBool(); }
+void AppSettings::setUpdateCheck(bool on) { save("updateCheck", on); }
+
+QString AppSettings::skippedVersion() const { return QSettings().value("skippedVersion").toString(); }
+void AppSettings::setSkippedVersion(const QString &version) { save("skippedVersion", version); }

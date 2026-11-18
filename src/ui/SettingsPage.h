@@ -18,6 +18,9 @@ class SettingsPage : public QWidget
 public:
     SettingsPage(DownloadPage *downloads, YtDlpEngine *engine, bool trayAvailable, QWidget *parent = nullptr);
 
+signals:
+    void checkForAppUpdate();   // the Queenfisher box's Check Now
+
 private:
     void refresh();   // show what's saved now, whoever changed it
 
@@ -28,6 +31,7 @@ private:
     QComboBox *existing_ = nullptr;
     QCheckBox *signIn_ = nullptr;
     QCheckBox *tray_ = nullptr;
+    QCheckBox *updates_ = nullptr;
     QLabel *version_ = nullptr;
     QComboBox *channel_ = nullptr;
 };

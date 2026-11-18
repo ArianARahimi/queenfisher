@@ -2,6 +2,7 @@
 
 #include <QMainWindow>
 
+class AppUpdate;
 class DownloadPage;
 class Deno;
 class Ffmpeg;
@@ -37,6 +38,9 @@ private:
     void buildTray();
     void toggleWindow();
     void updateShowHide();   // the tray menu says what clicking it will do
+    void checkForAppUpdate();                  // Help menu, Settings tab: always says what it found
+    void appUpdateChecked(bool ok);
+    void offerAppUpdate(const QString &version);
 
     YtDlpEngine *engine_ = nullptr;
     Library *library_ = nullptr;
@@ -47,6 +51,9 @@ private:
     QLabel *engineLight_ = nullptr;
     QLabel *activity_ = nullptr;
     QLabel *engineCell_ = nullptr;
+    QLabel *updateCell_ = nullptr;   // "Queenfisher 0.2.0 is out", a link to the download page
+    AppUpdate *appUpdate_ = nullptr;
+    bool askedForUpdate_ = false;    // the next answer comes from a check the user started
     QSystemTrayIcon *tray_ = nullptr;
     QAction *toTray_ = nullptr;     // View > Minimize to Tray
     QAction *showHide_ = nullptr;   // the tray menu's first item

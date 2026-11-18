@@ -77,6 +77,15 @@ SettingsPage::SettingsPage(DownloadPage *downloads, YtDlpEngine *engine, bool tr
     if (!trayAvailable)
         win->addWidget(note("This desktop has no tray."));
 
+    // Queenfisher itself
+    updates_ = new QCheckBox("Check for new versions once a day");
+    auto *checkApp = new QPushButton("Check Now");
+    auto *qf = new QVBoxLayout;
+    qf->setSpacing(6);
+    qf->addWidget(updates_);
+    qf->addWidget(checkApp, 0, Qt::AlignLeft);
+    qf->addWidget(note("Only asks GitHub for the newest version number. A new version is never downloaded or installed for you."));
+
     // yt-dlp
     version_ = new QLabel;
     channel_ = new QComboBox;
@@ -100,6 +109,7 @@ SettingsPage::SettingsPage(DownloadPage *downloads, YtDlpEngine *engine, bool tr
     right->setSpacing(6);
     right->addWidget(Widgets::sideBox("yt-dlp", yt));
     right->addWidget(Widgets::sideBox("Window", win));
+    right->addWidget(Widgets::sideBox("Queenfisher", qf));
     right->addStretch(1);
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(6, 6, 6, 6);
@@ -113,6 +123,8 @@ SettingsPage::SettingsPage(DownloadPage *downloads, YtDlpEngine *engine, bool tr
     connect(existing_, &QComboBox::activated, this, [this, &s] { s.setExisting(AppSettings::Existing(existing_->currentData().toInt())); });
     connect(signIn_, &QCheckBox::toggled, &s, &AppSettings::setBrowserSignIn);
     connect(tray_, &QCheckBox::toggled, &s, &AppSettings::setMinimizeToTray);
+    connect(updates_, &QCheckBox::toggled, &s, &AppSettings::setUpdateCheck);
+    connect(checkApp, &QPushButton::clicked, this, &SettingsPage::checkForAppUpdate);
     connect(channel_, &QComboBox::activated, this, [this] { engine_->switchChannel(YtDlpEngine::Channel(channel_->currentData().toInt())); });
     connect(check, &QPushButton::clicked, engine_, &YtDlpEngine::updateNow);
 
@@ -125,13 +137,14 @@ SettingsPage::SettingsPage(DownloadPage *downloads, YtDlpEngine *engine, bool tr
 void SettingsPage::refresh()
 {
     const AppSettings &s = AppSettings::get();
-    const QSignalBlocker b1(signIn_), b2(tray_);
+    const QSignalBlocker b1(signIn_), b2(tray_), b3(updates_);
     folder_->setText(Widgets::shortPath(downloads_->folder()));
     folder_->setToolTip(downloads_->folder());
     atOnce_->setCurrentIndex(atOnce_->findData(s.downloadsAtOnce()));
     existing_->setCurrentIndex(existing_->findData(int(s.existing())));
     signIn_->setChecked(s.browserSignIn());
     tray_->setChecked(s.minimizeToTray());
+    updates_->setChecked(s.updateCheck());
     const QString v = engine_->version();
     version_->setText(engine_->busy() ? "Updating..." : v.isEmpty() ? "Not installed yet" : v);
     channel_->setCurrentIndex(channel_->findData(int(engine_->channel())));

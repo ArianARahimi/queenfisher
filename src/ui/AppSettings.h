@@ -22,6 +22,10 @@ public:
     void setBrowserSignIn(bool on);
     bool minimizeToTray() const;
     void setMinimizeToTray(bool on);
+    bool updateCheck() const;         // ask GitHub once a day for a newer Queenfisher
+    void setUpdateCheck(bool on);
+    QString skippedVersion() const;   // "don't show again" for this version; a newer one shows
+    void setSkippedVersion(const QString &version);
 
 signals:
     void changed();

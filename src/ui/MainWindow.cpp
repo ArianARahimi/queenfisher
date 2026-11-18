@@ -5,6 +5,7 @@
 #include "AppSettings.h"
 #include "SettingsPage.h"
 #include "Theme.h"
+#include "core/AppUpdate.h"
 #include "core/Deno.h"
 #include "core/Ffmpeg.h"
 #include "core/Library.h"
@@ -13,6 +14,10 @@
 
 #include <QActionGroup>
 #include <QApplication>
+#include <QCheckBox>
+#include <QDesktopServices>
+#include <QPushButton>
+#include <QUrl>
 #include <memory>
 #include <QHBoxLayout>
 #include <QGuiApplication>
@@ -52,8 +57,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     tabs_->setIconSize({22, 22});
     tabs_->addTab(downloads_, QIcon(":/icons/tab-home.png"), "Home");
     tabs_->addTab(new LibraryPage(library_), QIcon(":/icons/tab-library.png"), "Library");
-    tabs_->addTab(new SettingsPage(downloads_, engine_, QSystemTrayIcon::isSystemTrayAvailable()),
-                  QIcon(":/icons/tab-settings.png"), "Settings");
+    auto *settingsPage = new SettingsPage(downloads_, engine_, QSystemTrayIcon::isSystemTrayAvailable());
+    tabs_->addTab(settingsPage, QIcon(":/icons/tab-settings.png"), "Settings");
     tabs_->addTab(new AboutPage, QIcon(":/icons/info.png"), "About");
     // The fish and the name, top right.
     auto *fish = new QLabel;
@@ -80,6 +85,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
     // Queenfisher's own yt-dlp: installed on first run, updated once a day, repaired when a site changes.
     engine_->checkDaily();
+
+    // A newer Queenfisher: a few seconds after start, then hourly while it runs (at most one check a day).
+    appUpdate_ = new AppUpdate(QApplication::applicationVersion(), this);
+    connect(appUpdate_, &AppUpdate::checked, this, &MainWindow::appUpdateChecked);
+    connect(settingsPage, &SettingsPage::checkForAppUpdate, this, &MainWindow::checkForAppUpdate);
+    const auto daily = [this] {
+        if (AppSettings::get().updateCheck())
+            appUpdate_->checkDaily();
+    };
+    QTimer::singleShot(5000, this, daily);
+    auto *hourly = new QTimer(this);
+    connect(hourly, &QTimer::timeout, this, daily);
+    hourly->start(3600 * 1000);
 
     // Once the window is up: a popup for each missing tool, and for a failed fetch (once each).
     QTimer::singleShot(0, this, &MainWindow::checkTools);
@@ -172,6 +190,8 @@ void MainWindow::buildMenus()
     });
 
     QMenu *help = menuBar()->addMenu("&Help");
+    help->addAction("Check for Queenfisher &Updates", this, &MainWindow::checkForAppUpdate);
+    help->addSeparator();
     help->addAction("&About Queenfisher", this, [this] { tabs_->setCurrentIndex(tabs_->count() - 1); });
 }
 
@@ -188,6 +208,11 @@ void MainWindow::buildStatusBar()
     statusBar()->setSizeGripEnabled(true);
     statusBar()->addWidget(engineLight_);
     statusBar()->addWidget(activity_);
+    updateCell_ = new QLabel;
+    updateCell_->setObjectName("cell");
+    updateCell_->setOpenExternalLinks(true);
+    updateCell_->hide();
+    statusBar()->addPermanentWidget(updateCell_);
     statusBar()->addPermanentWidget(engineCell_);
 }
 
@@ -274,4 +299,49 @@ void MainWindow::showEngine()
     engineLight_->setText(QString("<span style='color:%1'>●</span> %2")
                               .arg(colour, busy ? "Updating" : ready ? "Ready" : "No yt-dlp"));
     engineCell_->setText(ready ? "yt-dlp " + engine_->version() : QString("yt-dlp not installed"));
+}
+
+void MainWindow::checkForAppUpdate()
+{
+    askedForUpdate_ = true;
+    appUpdate_->checkNow();
+}
+
+void MainWindow::appUpdateChecked(bool ok)
+{
+    const bool asked = std::exchange(askedForUpdate_, false);
+    const QString version = appUpdate_->newer();
+    const bool skipped = !version.isEmpty() && version == AppSettings::get().skippedVersion();
+    updateCell_->setText(QString("<a href='%1' style='color:%2'>Queenfisher %3 is out</a>")
+                             .arg(AppUpdate::downloadPage, Theme::accent.name(), version));
+    updateCell_->setVisible(!version.isEmpty() && !skipped);
+    if (asked && !ok)
+        QMessageBox::warning(this, "Queenfisher update", "Couldn't reach GitHub to check. Try again later.");
+    else if (asked && version.isEmpty())
+        QMessageBox::information(this, "Queenfisher update",
+                                 "You have the newest Queenfisher (" + QApplication::applicationVersion() + ").");
+    else if (!version.isEmpty() && (asked || !skipped))
+        offerAppUpdate(version);
+}
+
+// Open Download Page or Not Now; "don't show again" keeps quiet about this version only.
+void MainWindow::offerAppUpdate(const QString &version)
+{
+    QMessageBox box(this);
+    box.setWindowTitle("Queenfisher update");
+    box.setIcon(QMessageBox::Information);
+    box.setText(QString("Queenfisher %1 is out. You have %2.").arg(version, QApplication::applicationVersion()));
+    box.setInformativeText("Get it from the download page. Your settings and Library stay as they are.");
+    QPushButton *open = box.addButton("Open Download Page", QMessageBox::AcceptRole);
+    box.addButton("Not Now", QMessageBox::RejectRole);
+    box.setDefaultButton(open);
+    auto *quiet = new QCheckBox("Don't show this again until the next version");
+    box.setCheckBox(quiet);
+    box.exec();
+    if (box.clickedButton() == open) {
+        QDesktopServices::openUrl(QUrl(AppUpdate::downloadPage));
+    } else if (quiet->isChecked()) {
+        AppSettings::get().setSkippedVersion(version);
+        updateCell_->hide();
+    }
 }
