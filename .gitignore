@@ -4,3 +4,4 @@ compile_commands.json
 .cache/
 dist/
 __pycache__/
+.idea/
