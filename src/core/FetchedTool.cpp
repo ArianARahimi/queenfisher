@@ -15,6 +15,7 @@
 
 #include <memory>
 
+#pragma region Helpers and location
 namespace {
 
 constexpr qint64 retrySoonMs = 60 * 1000;               // after the first failure (often the network still waking up)
@@ -82,7 +83,9 @@ bool FetchedTool::stale() const
     const QFileInfo stamp(dir_ + "/" + stampName);
     return !stamp.exists() || stamp.lastModified().msecsTo(QDateTime::currentDateTime()) > refreshMs;
 }
+#pragma endregion
 
+#pragma region Installing
 bool FetchedTool::install(const QString &zip, const QString &expectedSha256, const QString &unzipper, QString *why)
 {
     const QString fresh = dir_ + ".new";
@@ -140,7 +143,9 @@ bool FetchedTool::install(const QString &zip, const QString &expectedSha256, con
     QDir(old).removeRecursively();
     return true;
 }
+#pragma endregion
 
+#pragma region Fetching
 void FetchedTool::ensure()
 {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
@@ -224,3 +229,4 @@ void FetchedTool::finish(bool ok, const QString &message)
     emit statusChanged(message);
     emit readyChanged();
 }
+#pragma endregion

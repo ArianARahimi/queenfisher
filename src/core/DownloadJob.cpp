@@ -11,6 +11,7 @@
 #include <QSet>
 #include <QTimer>
 
+#pragma region Starting, stopping and cleanup
 namespace {
 
 // The part of a file name every file of one video shares: "Title [id]".
@@ -123,7 +124,9 @@ void DownloadJob::discardPartial()
                 emit logLine("Deleted leftover " + f.fileName());
         }
 }
+#pragma endregion
 
+#pragma region Reading yt-dlp output
 void DownloadJob::readOutput(QProcess::ProcessChannel channel)
 {
     process_.setReadChannel(channel);
@@ -225,7 +228,9 @@ void DownloadJob::handleProgress(const QString &fields)
     smooth(eta_, number(f[4]));
     emit progress(fraction, tracker_.knownBytes(), speed_, eta_ < 0 ? -1 : qRound(eta_));
 }
+#pragma endregion
 
+#pragma region Recovering from failures
 // Each fix is tried at most once: the browser's sign-in, then a newer (or nightly) yt-dlp.
 void DownloadJob::recover()
 {
@@ -276,3 +281,4 @@ void DownloadJob::recover()
     else
         emit finished(false, d.message);
 }
+#pragma endregion

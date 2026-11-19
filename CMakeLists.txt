@@ -42,6 +42,9 @@ qt_add_executable(queenfisher
 target_include_directories(queenfisher PRIVATE src)
 target_compile_definitions(queenfisher PRIVATE QUEENFISHER_VERSION="${PROJECT_VERSION}")
 target_compile_options(queenfisher PRIVATE $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>)
+# GCC learned #pragma region in 13; the Linux build uses Ubuntu 22.04's GCC 11.
+target_compile_options(queenfisher PRIVATE
+    $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,13>>:-Wno-unknown-pragmas>)
 target_link_libraries(queenfisher PRIVATE Qt6::Widgets Qt6::Network OpenSSL::Crypto)
 # yt-dlp's signing key (fingerprint AC0CBBE6848D6A873464AF4E57CF65933B5A7581), same as yt-dlp's public.key.
 qt_add_resources(queenfisher keys PREFIX "/" BASE resources FILES resources/ytdlp-public.key)

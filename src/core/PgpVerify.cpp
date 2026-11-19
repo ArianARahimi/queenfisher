@@ -13,6 +13,7 @@
 namespace Pgp {
 namespace {
 
+#pragma region Packets and keys
 struct Packet { int tag; QByteArray body; };
 struct Key { QByteArray n, e, fingerprint; };   // fingerprint as 20 raw bytes
 
@@ -110,7 +111,9 @@ bool readKey(const Packet &p, Key &key)
     key.fingerprint = QCryptographicHash::hash(framed, QCryptographicHash::Sha1);
     return true;
 }
+#pragma endregion
 
+#pragma region RSA
 const EVP_MD *digestFor(int hashAlgo, QCryptographicHash::Algorithm &qt)
 {
     switch (hashAlgo) {
@@ -149,9 +152,10 @@ bool rsaVerify(const Key &key, const EVP_MD *md, const QByteArray &digest, QByte
         && EVP_PKEY_verify(ctx.get(), reinterpret_cast<const unsigned char *>(sig.constData()), size_t(sig.size()),
                            reinterpret_cast<const unsigned char *>(digest.constData()), size_t(digest.size())) == 1;
 }
-
+#pragma endregion
 }
 
+#pragma region Signature check
 Result verifyDetached(const QByteArray &data, const QByteArray &signature, const QByteArray &keyData,
                       const QString &fingerprint)
 {
@@ -221,5 +225,5 @@ Result verifyDetached(const QByteArray &data, const QByteArray &signature, const
             return {true, {}};
     return {false, "The file doesn't match its signature"};
 }
-
+#pragma endregion
 }

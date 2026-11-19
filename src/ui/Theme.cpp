@@ -12,6 +12,7 @@
 
 namespace {
 
+#pragma region Vista style
 // Check boxes and drop-downs drawn the Vista way; the style sheet covers the rest.
 class VistaStyle : public QProxyStyle
 {
@@ -77,7 +78,9 @@ public:
         return QProxyStyle::pixelMetric(m, opt, w);
     }
 };
+#pragma endregion
 
+#pragma region Style sheet
 // @names are swapped for colours in apply(). "Gloss" = Vista's two-tone gradient:
 // a lighter top half, then a sharp step to a darker bottom half.
 const char *styleSheet = R"(
@@ -239,7 +242,7 @@ QString themedStyleSheet()
         css.replace(name, value);
     return css;
 }
-
+#pragma endregion
 }
 
 namespace Theme {
@@ -342,5 +345,4 @@ void drawBar(QPainter &p, const QRect &r, double fraction, BarState state)
     }
     p.restore();
 }
-
 }

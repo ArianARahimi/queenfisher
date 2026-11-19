@@ -11,6 +11,7 @@
 #include <QUrl>
 #include <QUrlQuery>
 
+#pragma region Reading the yt-dlp answer
 namespace {
 
 constexpr int timeoutMs = 60000;
@@ -96,7 +97,9 @@ PreviewInfo parsePreview(const QByteArray &json)
     }
     return info;
 }
+#pragma endregion
 
+#pragma region Choosing streams and sizes
 namespace {
 
 // The pictures yt-dlp would choose from for this format, the way Options asks for them:
@@ -247,7 +250,9 @@ QList<qint64> estimateParts(const PreviewInfo &info, Options::Format format, int
     const qint64 total = estimateSize(info, format, maxHeight);
     return total > v->bytes ? QList<qint64>{v->bytes, total - v->bytes} : QList<qint64>{};
 }
+#pragma endregion
 
+#pragma region PreviewJob
 PreviewJob::PreviewJob(QString url, bool playlist, Engine *engine, QObject *parent)
     : QObject(parent), url_(std::move(url)), playlist_(playlist), engine_(engine)
 {
@@ -313,3 +318,4 @@ void PreviewJob::finishedRun(int code, QProcess::ExitStatus status)
     }
     emit failed(d.message);
 }
+#pragma endregion

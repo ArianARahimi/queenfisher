@@ -41,6 +41,7 @@ QToolButton *action(const QString &icon, const QString &text, const QString &tip
     return b;
 }
 
+#pragma region Pick on click
 namespace {
 
 class PickOnClick : public QObject
@@ -79,7 +80,9 @@ void pickOnClick(QAbstractItemView *list)
     list->viewport()->setAttribute(Qt::WA_Hover);
     list->viewport()->installEventFilter(new PickOnClick(list));
 }
+#pragma endregion
 
+#pragma region List rows
 namespace {
 
 constexpr int dividerRole = Qt::UserRole + 100;
@@ -150,6 +153,7 @@ QIcon formatIcon(bool audio)
     note.addPixmap(Theme::recolour(":/icons/audio.png", Theme::accent, true), QIcon::Selected);   // lime when picked
     return note;
 }
+#pragma endregion
 
 QString shortPath(const QString &path)
 {
@@ -164,7 +168,6 @@ QString sizeText(double bytes)
     if (bytes >= 1e6) return QString::number(bytes / 1e6, 'f', 1) + " MB";
     return QString::number(bytes / 1e3, 'f', 0) + " KB";
 }
-
 }
 
 Banner::Banner(QWidget *parent) : QFrame(parent)

@@ -42,6 +42,7 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
+#pragma region Building the page
 namespace {
 
 enum Column { Name, Format, Size, Status, Progress, Speed, Time };
@@ -424,7 +425,9 @@ QWidget *DownloadPage::buildDownloads()
     refreshButtons();
     return box;
 }
+#pragma endregion
 
+#pragma region Link and preview
 QString DownloadPage::folder() const { return folder_->toolTip(); }
 
 void DownloadPage::pasteLink()
@@ -723,7 +726,9 @@ void DownloadPage::showQuality()
     qualityInfo_->setText(parts.join("  ·  "));
     qualityInfo_->setVisible(!parts.isEmpty());
 }
+#pragma endregion
 
+#pragma region Downloads
 // Unfinished downloads wait here, out of the download folder. Pieces left by a crash are
 // cleared after a day; younger ones may belong to another Queenfisher still downloading.
 QString DownloadPage::partialFolder()
@@ -991,3 +996,4 @@ void DownloadPage::reportActivity()
     }
     emit activityChanged(downloading, waiting, speed);
 }
+#pragma endregion

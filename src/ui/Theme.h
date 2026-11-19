@@ -41,5 +41,4 @@ QPixmap recolour(const QString &file, const QColor &colour, bool shaded);
 enum class BarState { Waiting, Running, Done, Failed };
 void drawBar(QPainter &p, const QRect &r, double fraction, BarState state);   // glossy progress bar
 void drawGloss(QPainter &p, const QRect &r, const QColor &base, int radius);  // Vista two-tone fill
-
 }

@@ -38,6 +38,7 @@ QByteArray signingKey()
 
 }
 
+#pragma region Checking for updates
 YtDlpEngine::YtDlpEngine(const QString &dataDir, QObject *parent) : Engine(parent), dir_(dataDir + "/bin")
 {
     QDir().mkpath(dir_);
@@ -149,7 +150,9 @@ void YtDlpEngine::run(Channel channel, bool force, const Done &done)
         install(channel, tag);
     });
 }
+#pragma endregion
 
+#pragma region Downloading and installing
 void YtDlpEngine::latestTag(Channel channel, const std::function<void(const QString &)> &then)
 {
     // /releases/latest redirects to /releases/tag/<tag>; no API token or JSON needed.
@@ -282,7 +285,9 @@ void YtDlpEngine::finish(bool changed, const QString &message)
         run(next.channel, true, next.done);
     }
 }
+#pragma endregion
 
+#pragma region Helpers and the stamp file
 QString YtDlpEngine::assetName()
 {
     const QString cpu = QSysInfo::currentCpuArchitecture();
@@ -339,3 +344,4 @@ void YtDlpEngine::saveStamp() const
                                           {"channel", channelName(stamp_.channel)},
                                           {"checked", double(stamp_.checked)}}).toJson());
 }
+#pragma endregion

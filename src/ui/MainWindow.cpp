@@ -35,6 +35,7 @@
 
 #include <memory>
 
+#pragma region Window and menus
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
     setWindowTitle("Queenfisher");
@@ -228,7 +229,9 @@ void MainWindow::showActivity(int downloading, int waiting, double bytesPerSecon
     if (tray_)
         tray_->setToolTip("Queenfisher\n" + text);
 }
+#pragma endregion
 
+#pragma region Tray and status
 // Tray icon: click it (or its first menu item) to show or hide the window. Minimizing, or
 // View > Minimize to Tray, puts the window there.
 void MainWindow::buildTray()
@@ -301,7 +304,9 @@ void MainWindow::showEngine()
                               .arg(colour, busy ? "Updating" : ready ? "Ready" : "No yt-dlp"));
     engineCell_->setText(ready ? "yt-dlp " + engine_->version() : QString("yt-dlp not installed"));
 }
+#pragma endregion
 
+#pragma region Queenfisher updates
 void MainWindow::checkForAppUpdate()
 {
     askedForUpdate_ = true;
@@ -346,3 +351,4 @@ void MainWindow::offerAppUpdate(const QString &version)
         updateCell_->hide();
     }
 }
+#pragma endregion

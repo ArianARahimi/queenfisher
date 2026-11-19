@@ -29,9 +29,12 @@ Options::Format Options::fromKey(const QString &key)
 bool Options::isAudioLabel(const QString &label)
 {
     const QString first = label.section(' ', 0, 0);
-    for (int f = Mp3; f < FormatCount; ++f)
-        if (first == Options{.format = Format(f)}.label())
+    Options o;
+    for (int f = Mp3; f < FormatCount; ++f) {
+        o.format = Format(f);
+        if (first == o.label())
             return true;
+    }
     return false;
 }
 
