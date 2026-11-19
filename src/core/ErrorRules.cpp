@@ -2,8 +2,6 @@
 
 #include <QRegularExpression>
 
-#include <ranges>
-
 namespace {
 
 struct Rule
@@ -77,8 +75,8 @@ Diagnosis diagnose(const QStringList &lines)
             return d;
     }
     // No error matched: a warning may still say why (missing Deno shows up as a warning first).
-    for (const QString &line : lines | std::views::reverse) {
-        const Diagnosis d = match(line);
+    for (auto it = lines.crbegin(); it != lines.crend(); ++it) {
+        const Diagnosis d = match(*it);
         if (d.problem != Problem::None && d.problem != Problem::Network)
             return d;
     }

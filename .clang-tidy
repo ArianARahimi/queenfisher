@@ -18,7 +18,6 @@ Checks: >
   modernize-use-nullptr,
   modernize-use-override,
   modernize-use-emplace,
-  modernize-loop-convert,
   readability-container-size-empty,
   readability-redundant-string-init,
   readability-misleading-indentation,
