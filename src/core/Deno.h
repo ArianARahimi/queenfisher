@@ -14,6 +14,7 @@ public:
     QString program() const;   // Queenfisher's own deno, for yt-dlp's --js-runtimes; empty = none
 
     static QString assetFor(const QString &os, const QString &cpu);   // "deno-<target>.zip", empty if none
+    static QString checksumIn(const QByteArray &sums, const QString &asset);   // public for tests
 
 protected:
     bool wanted() const override;
@@ -22,7 +23,4 @@ protected:
     QStringList programs() const override { return {exe("deno")}; }
     QString versionFlag() const override { return "--version"; }
     QString checksum(const QByteArray &sums, const QString &asset) const override;
-
-public:
-    static QString checksumIn(const QByteArray &sums, const QString &asset);   // public for tests
 };

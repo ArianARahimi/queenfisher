@@ -12,7 +12,6 @@
 #include "core/YtDlpEngine.h"
 
 #include <QAction>
-#include <algorithm>
 #include <QCheckBox>
 #include <QClipboard>
 #include <QDesktopServices>
@@ -827,7 +826,7 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
         setState(item, ok ? State::Done : stopped ? State::Stopped : State::Failed, ok ? done : message);
         if (const QFileInfo file(job->file()); ok && file.exists())
             item->setText(Size, Widgets::sizeText(double(file.size())));   // the finished file, after any conversion
-        log(ok ? done + ": " + job->file() : "Stopped: " + message, number);
+        log(ok ? done + ": " + job->file() : stopped ? message : "Failed: " + message, number);
         if (ok)
             library_->add({item->text(Name), job->options().url, job->file(), job->options().label(),
                            QFileInfo(job->file()).size(), QDateTime::currentDateTime()});

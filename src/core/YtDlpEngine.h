@@ -39,11 +39,11 @@ public:
 private:
     struct Stamp { QString version; Channel channel = Stable; qint64 checked = 0; };
 
-    void run(Channel channel, bool force, Done done);
+    void run(Channel channel, bool force, const Done &done);
     void install(Channel channel, const QString &tag);
     void finish(bool changed, const QString &message);
-    void fetch(const QUrl &url, qint64 limit, std::function<void(QNetworkReply *)> then);
-    void latestTag(Channel channel, std::function<void(const QString &tag)> then);
+    void fetch(const QUrl &url, qint64 limit, const std::function<void(QNetworkReply *)> &then);
+    void latestTag(Channel channel, const std::function<void(const QString &tag)> &then);
     void smokeTest(const QString &file, const QString &tag);
 
     QString managedPath() const;

@@ -20,7 +20,7 @@ QString pickThumbnail(const QJsonObject &o)
 {
     QString best;
     int bestScore = -1;
-    for (const QJsonValue &v : o.value("thumbnails").toArray()) {
+    for (const auto &v : o.value("thumbnails").toArray()) {
         const QJsonObject t = v.toObject();
         const QString url = t.value("url").toString();
         const QString path = QUrl(url).path().toLower();
@@ -79,7 +79,7 @@ PreviewInfo parsePreview(const QByteArray &json)
         info.thumbnail = pickThumbnail(o);
     }
     const double seconds = o.value("duration").toDouble();
-    for (const QJsonValue &v : o.value("formats").toArray()) {
+    for (const auto &v : o.value("formats").toArray()) {
         const QJsonObject f = v.toObject();
         Stream s;
         s.height = f.value("height").toInt();
@@ -106,10 +106,6 @@ bool wantedPicture(const Stream &s, Options::Format format)
     const bool h264 = format == Options::Mp4 || format == Options::Mov || format == Options::Flv;
     return h264 ? s.vcodec.startsWith("avc1") : format == Options::Webm ? s.ext == "webm" : true;
 }
-
-}
-
-namespace {
 
 // yt-dlp's own order for sound codecs: higher is better.
 int soundRank(const QString &codec)

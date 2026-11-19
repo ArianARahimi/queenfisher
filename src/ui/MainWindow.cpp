@@ -1,8 +1,8 @@
 #include "MainWindow.h"
 #include "AboutPage.h"
+#include "AppSettings.h"
 #include "DownloadPage.h"
 #include "LibraryPage.h"
-#include "AppSettings.h"
 #include "SettingsPage.h"
 #include "Theme.h"
 #include "core/AppUpdate.h"
@@ -15,24 +15,25 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QCheckBox>
+#include <QCloseEvent>
 #include <QDesktopServices>
-#include <QPushButton>
-#include <QUrl>
-#include <memory>
-#include <QHBoxLayout>
 #include <QGuiApplication>
-#include <QScreen>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QMenu>
 #include <QMenuBar>
-#include <QCloseEvent>
 #include <QMessageBox>
+#include <QPushButton>
+#include <QScreen>
 #include <QSettings>
-#include <QTimer>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QSystemTrayIcon>
 #include <QTabWidget>
+#include <QTimer>
+#include <QUrl>
+
+#include <memory>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {

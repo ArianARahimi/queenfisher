@@ -62,7 +62,7 @@ QString defaultBrowserId()
 QString launchServicesHttpsHandler(const QByteArray &json)
 {
     const QJsonArray handlers = QJsonDocument::fromJson(json).object().value("LSHandlers").toArray();
-    for (const QJsonValue &h : handlers) {
+    for (const auto &h : handlers) {
         const QJsonObject o = h.toObject();
         if (o.value("LSHandlerURLScheme").toString() == "https" && !o.value("LSHandlerRoleAll").toString().isEmpty())
             return o.value("LSHandlerRoleAll").toString();

@@ -318,7 +318,7 @@ void drawBar(QPainter &p, const QRect &r, double fraction, BarState state)
     case BarState::Done: shown = 1; colour = done; break;
     case BarState::Failed: shown = 1; colour = failed; break;
     }
-    const int width = int(inner.width() * shown + 0.5);
+    const int width = qRound(inner.width() * shown);
     if (width > 0)
         drawGloss(p, QRect(inner.topLeft(), QSize(width, inner.height())), colour.darker(120), 1);
 

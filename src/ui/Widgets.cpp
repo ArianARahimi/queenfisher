@@ -154,7 +154,8 @@ QIcon formatIcon(bool audio)
 QString shortPath(const QString &path)
 {
     const QString home = QDir::homePath();
-    return path.startsWith(home) ? "~" + path.mid(home.size()) : path;
+    const bool inHome = path == home || path.startsWith(home + '/');   // not /home/arian2
+    return inHome ? "~" + path.mid(home.size()) : path;
 }
 
 QString sizeText(double bytes)

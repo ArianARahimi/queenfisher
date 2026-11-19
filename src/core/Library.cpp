@@ -51,7 +51,7 @@ void Library::load()
     QFile f(file_);
     if (!f.open(QIODevice::ReadOnly))
         return;
-    for (const QJsonValue &v : QJsonDocument::fromJson(f.readAll()).array()) {
+    for (const auto &v : QJsonDocument::fromJson(f.readAll()).array()) {
         const QJsonObject o = v.toObject();
         entries_.append({o["title"].toString(), o["url"].toString(), o["file"].toString(), o["format"].toString(),
                          qint64(o["bytes"].toDouble()), QDateTime::fromString(o["finished"].toString(), Qt::ISODate)});

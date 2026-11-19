@@ -108,7 +108,7 @@ void YtDlpEngine::repair(Done done)
     });
 }
 
-void YtDlpEngine::run(Channel channel, bool force, Done done)
+void YtDlpEngine::run(Channel channel, bool force, const Done &done)
 {
     if (busy_) {
         if (force)
@@ -150,7 +150,7 @@ void YtDlpEngine::run(Channel channel, bool force, Done done)
     });
 }
 
-void YtDlpEngine::latestTag(Channel channel, std::function<void(const QString &)> then)
+void YtDlpEngine::latestTag(Channel channel, const std::function<void(const QString &)> &then)
 {
     // /releases/latest redirects to /releases/tag/<tag>; no API token or JSON needed.
     QNetworkRequest req(QUrl("https://github.com/" + repo(channel) + "/releases/latest"));
@@ -167,7 +167,7 @@ void YtDlpEngine::latestTag(Channel channel, std::function<void(const QString &)
     });
 }
 
-void YtDlpEngine::fetch(const QUrl &url, qint64 limit, std::function<void(QNetworkReply *)> then)
+void YtDlpEngine::fetch(const QUrl &url, qint64 limit, const std::function<void(QNetworkReply *)> &then)
 {
     QNetworkRequest req(url);
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
@@ -237,13 +237,19 @@ void YtDlpEngine::smokeTest(const QString &file, const QString &tag)
     auto *p = new QProcess(this);
     ChildProcess::ownGroup(*p);
     QTimer::singleShot(60000, p, [p] { ChildProcess::stop(*p, true); });
+    const auto giveUp = [this, p, file](const QString &why) {
+        p->deleteLater();
+        QFile::remove(file);
+        loadStamp();   // back to the channel of the copy still in use
+        finish(false, why);
+    };
+    // A file that can't run at all (removed by antivirus, no exec rights) never sends finished.
+    connect(p, &QProcess::errorOccurred, this, [giveUp, tag](QProcess::ProcessError e) {
+        if (e == QProcess::FailedToStart)
+            giveUp("The new yt-dlp " + tag + " couldn't start, keeping the old one");
+    });
     connect(p, &QProcess::finished, this, [=, this](int code, QProcess::ExitStatus status) {
         p->deleteLater();
-        const auto giveUp = [this, file](const QString &why) {
-            QFile::remove(file);
-            loadStamp();   // back to the channel of the copy still in use
-            finish(false, why);
-        };
         const QString said = QString::fromUtf8(p->readAllStandardOutput()).trimmed();
         if (status != QProcess::NormalExit || code != 0 || said != tag)
             return giveUp("The new yt-dlp " + tag + " didn't start properly, keeping the old one");

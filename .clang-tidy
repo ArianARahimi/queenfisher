@@ -1,0 +1,31 @@
+---
+# Real bugs and slow code, not style.
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-signed-bitwise,
+  -bugprone-throwing-static-initialization,
+  -bugprone-implicit-widening-of-multiplication-result,
+  clang-analyzer-*,
+  -clang-analyzer-cplusplus.NewDeleteLeaks,
+  performance-*,
+  -performance-enum-size,
+  misc-redundant-expression,
+  misc-unused-using-decls,
+  misc-misplaced-const,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-emplace,
+  modernize-loop-convert,
+  readability-container-size-empty,
+  readability-redundant-string-init,
+  readability-misleading-indentation,
+  readability-duplicate-include
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*/src/.*'
+ExcludeHeaderFilterRegex: '.*_autogen/.*'
+# GCC-only flag from Qt's CMake config.
+RemovedArgs: ['-mno-direct-extern-access']
+...

@@ -223,7 +223,7 @@ void DownloadJob::handleProgress(const QString &fields)
     };
     smooth(speed_, number(f[3]));
     smooth(eta_, number(f[4]));
-    emit progress(fraction, tracker_.knownBytes(), speed_, eta_ < 0 ? -1 : int(eta_ + 0.5));
+    emit progress(fraction, tracker_.knownBytes(), speed_, eta_ < 0 ? -1 : qRound(eta_));
 }
 
 // Each fix is tried at most once: the browser's sign-in, then a newer (or nightly) yt-dlp.

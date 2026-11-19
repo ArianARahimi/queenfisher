@@ -1,0 +1,37 @@
+---
+# The style the code already has; only changed lines are held to it.
+BasedOnStyle: WebKit
+ColumnLimit: 140
+IndentWidth: 4
+AccessModifierOffset: -4
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterStruct: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterControlStatement: Never
+  BeforeElse: false
+  SplitEmptyFunction: false
+BreakBeforeBinaryOperators: NonAssignment
+BreakConstructorInitializers: BeforeColon
+AllowShortFunctionsOnASingleLine: All
+AllowShortRecordOnASingleLine: Always
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+AllowShortCaseLabelsOnASingleLine: true
+AlignTrailingComments:
+  Kind: Leave
+SpacesBeforeTrailingComments: 1
+NamespaceIndentation: None
+FixNamespaceComments: false
+IndentCaseLabels: false
+PointerAlignment: Right
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+Cpp11BracedListStyle: true
+SpaceBeforeCpp11BracedList: false
+AlignOperands: Align
+ReflowComments: false
+...
