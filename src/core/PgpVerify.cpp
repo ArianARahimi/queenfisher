@@ -14,7 +14,11 @@ namespace Pgp {
 namespace {
 
 #pragma region Packets and keys
-struct Packet { int tag; QByteArray body; };
+struct Packet
+{
+    int tag = 0;
+    QByteArray body;
+};
 struct Key { QByteArray n, e, fingerprint; };   // fingerprint as 20 raw bytes
 
 // Reads the body of an ASCII-armoured block; binary input is returned unchanged.
