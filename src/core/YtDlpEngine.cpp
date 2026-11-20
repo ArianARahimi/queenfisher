@@ -11,7 +11,6 @@
 #include <QNetworkReply>
 #include <QProcess>
 #include <QRegularExpression>
-#include <QStandardPaths>
 #include <QSysInfo>
 #include <QTimer>
 
@@ -54,17 +53,16 @@ QString YtDlpEngine::managedPath() const
 #endif
 }
 
-// Queenfisher's own copy first; a system copy only until that exists.
-QString YtDlpEngine::path() const
-{
-    return QFile::exists(managedPath()) ? managedPath() : QStandardPaths::findExecutable("yt-dlp");
-}
+// Only Queenfisher's own, signature-checked copy: one found on the computer is never run.
+QString YtDlpEngine::path() const { return QFile::exists(managedPath()) ? managedPath() : QString(); }
 
 QString YtDlpEngine::version() const
 {
-    if (QFile::exists(managedPath()) && !stamp_.version.isEmpty())
-        return QString("%1 (%2)").arg(stamp_.version, channelName(stamp_.channel));
-    return path().isEmpty() ? QString() : QString("system copy");
+    if (path().isEmpty())
+        return {};
+    if (stamp_.version.isEmpty())
+        return "own copy";
+    return QString("%1 (%2)").arg(stamp_.version, channelName(stamp_.channel));
 }
 
 void YtDlpEngine::checkDaily()
