@@ -88,7 +88,7 @@ private:
     Engine *engine_;
     QString cookies_;
     QString deno_;
-    bool browserSignIn_ = true;
+    bool browserSignIn_ = false;
     QProcess process_;
     QTimer timeout_;   // restarted for each attempt
 };

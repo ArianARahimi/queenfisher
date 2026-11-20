@@ -237,7 +237,7 @@ void DownloadJob::recover()
     const Diagnosis d = diagnose(problems_);
 
     if (d.problem == Problem::SignIn && options_.cookies.isEmpty() && !options_.browserSignIn)
-        emit logLine("The site wants a sign-in. Browser sign-in is turned off in Settings.");
+        emit logLine("The site wants a sign-in. Browser sign-in is off; it can be turned on in Settings.");
     else if (d.problem == Problem::SignIn && options_.cookies.isEmpty()) {
         options_.cookies = defaultBrowserCookies();
         if (!options_.cookies.isEmpty()) {

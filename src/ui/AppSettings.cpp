@@ -39,7 +39,7 @@ void AppSettings::setExisting(Existing e)
     save("existing", e == Existing::Keep ? "keep" : e == Existing::Replace ? "replace" : "ask");
 }
 
-bool AppSettings::browserSignIn() const { return QSettings().value("browserSignIn", true).toBool(); }
+bool AppSettings::browserSignIn() const { return QSettings().value("browserSignIn", false).toBool(); }
 void AppSettings::setBrowserSignIn(bool on) { save("browserSignIn", on); }
 
 bool AppSettings::minimizeToTray() const { return QSettings().value("minimizeToTray", true).toBool(); }
