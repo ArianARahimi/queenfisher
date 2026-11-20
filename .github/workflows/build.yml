@@ -200,3 +200,21 @@ jobs:
           EOF
           } > "$RUNNER_TEMP/notes.md"
           gh release create "$tag" * --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Queenfisher $v" --notes-file "$RUNNER_TEMP/notes.md"
+
+      # A release made with github.token starts no other workflows, so the website is told
+      # here. SITE_DEPLOY_TOKEN may only run composersoftware.net's workflows.
+      - name: Redeploy composersoftware.net
+        if: github.event_name == 'push' && startsWith(github.event.head_commit.message, 'Release v')
+        env:
+          TOKEN: ${{ secrets.SITE_DEPLOY_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::SITE_DEPLOY_TOKEN isn't set: the website updates on its daily run instead."
+            exit 0
+          fi
+          curl -fsS -X POST -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/ArianARahimi/composersoftware-site/actions/workflows/deploy.yml/dispatches \
+            -d '{"ref":"main"}'
+          echo "Website deploy started."
