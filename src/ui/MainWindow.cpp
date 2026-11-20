@@ -14,7 +14,6 @@
 
 #include <QActionGroup>
 #include <QApplication>
-#include <QCheckBox>
 #include <QCloseEvent>
 #include <QDesktopServices>
 #include <QGuiApplication>
@@ -330,7 +329,7 @@ void MainWindow::appUpdateChecked(bool ok)
         offerAppUpdate(version);
 }
 
-// Open Download Page or Not Now; "don't show again" keeps quiet about this version only.
+// Open Download Page, Remind Me Later or Skip This Version (quiet until the next one).
 void MainWindow::offerAppUpdate(const QString &version)
 {
     QMessageBox box(this);
@@ -338,15 +337,16 @@ void MainWindow::offerAppUpdate(const QString &version)
     box.setIcon(QMessageBox::Information);
     box.setText(QString("Queenfisher %1 is out. You have %2.").arg(version, QApplication::applicationVersion()));
     box.setInformativeText("Get it from the download page. Your settings and Library stay as they are.");
-    QPushButton *open = box.addButton("Open Download Page", QMessageBox::AcceptRole);
-    box.addButton("Not Now", QMessageBox::RejectRole);
+    // One role for all three keeps them in this order on every platform.
+    QPushButton *open = box.addButton("Open Download Page", QMessageBox::ActionRole);
+    QPushButton *later = box.addButton("Remind Me Later", QMessageBox::ActionRole);
+    QPushButton *skip = box.addButton("Skip This Version", QMessageBox::ActionRole);
     box.setDefaultButton(open);
-    auto *quiet = new QCheckBox("Don't show this again until the next version");
-    box.setCheckBox(quiet);
+    box.setEscapeButton(later);
     box.exec();
     if (box.clickedButton() == open) {
         QDesktopServices::openUrl(QUrl(AppUpdate::downloadPage));
-    } else if (quiet->isChecked()) {
+    } else if (box.clickedButton() == skip) {
         AppSettings::get().setSkippedVersion(version);
         updateCell_->hide();
     }
