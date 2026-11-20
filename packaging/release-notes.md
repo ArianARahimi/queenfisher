@@ -1,12 +1,9 @@
 ## What's new
 
-The first release of Queenfisher.
-
-- Paste a link, pick a format and a quality, click Download. Downloads run one after another.
-- 14 formats: MP4, MKV, WebM, MOV, AVI, FLV and GIF for video; MP3, WAV, FLAC, OGG, M4A, ALAC and the site's original sound.
-- YouTube previews show up almost at once, with the length, the qualities the video really has and the file size.
-- Optional subtitles, whole playlists and skipping sponsor segments.
-- Keeps its own yt-dlp up to date and checks the developers' signature before using a new one.
-- Windows: one .exe, nothing to install. It fetches ffmpeg by itself the first time.
-- Fetches Deno, which YouTube needs for its better qualities, when it isn't installed.
-- Remembers your choices, keeps a searchable Library of finished downloads and sits in the tray when minimized.
+- Several downloads at once: up to 10, set in Settings.
+- New Settings tab: save folder, downloads at once, what to do when the file is already there, browser sign-in, tray and yt-dlp releases.
+- Checks once a day for a newer Queenfisher and offers the download page, with Remind Me Later and Skip This Version (the check can be turned off in Settings). Help > Check for Queenfisher Updates checks right away.
+- New Home tab, Video and Audio labels in the format list, and a sound icon for every sound format in the Library.
+- File > Open Downloads Directory, also a button on the Download tab.
+- Clearer message for an invalid link.
+- Fixes: a new yt-dlp that can't start no longer leaves the update check stuck, the log says Failed for failed downloads, and only your home folder itself shows as ~.
