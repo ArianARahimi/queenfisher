@@ -39,6 +39,7 @@ Queenfisher keeps its own copy of yt-dlp and updates it for you.
 - It checks for a new version once a day, between downloads.
 - When a download fails in a way that usually means a site changed, it updates yt-dlp and tries again. If the newest release doesn't help, it switches to yt-dlp's nightly build, which tends to get site fixes first, and goes back to the regular release once that catches up.
 - The previous copy is kept, and a new one has to start and report its version before it replaces the old one.
+- It only ever runs its own checked copy, never a yt-dlp found elsewhere on the computer. Until that copy is in place, downloads wait.
 
 ## Download
 
@@ -48,7 +49,7 @@ Get the newest version from [Releases](https://github.com/ArianARahimi/queenfish
 - **Windows:** download `Queenfisher-<version>-windows.exe` and run it. It's the whole program; nothing to install or unpack. The first time, Windows may say it protected your PC: click **More info**, then **Run anyway**.
 - **macOS:** download the `-macos.zip` (Apple Silicon) or `-macos-intel.zip` (Intel), open it and open Queenfisher. The first time, macOS blocks it: System Settings → Privacy & Security → **Open Anyway**.
 
-Queenfisher uses [ffmpeg](https://ffmpeg.org/) to join video and sound and to convert between formats. On Windows it fetches yt-dlp's own build the first time (about 90 MB, checked against the release's SHA-256 checksums) and refreshes it every month; on Linux and macOS, install ffmpeg yourself. YouTube also needs [Deno](https://deno.com/): one you have installed is used, otherwise Queenfisher fetches the official build (about 45 MB, checked the same way) and keeps it up to date.
+Queenfisher uses [ffmpeg](https://ffmpeg.org/) to join video and sound and to convert between formats. On Windows it fetches yt-dlp's own build the first time (about 90 MB); on Linux and macOS, install ffmpeg yourself. YouTube also needs [Deno](https://deno.com/): one you have installed is used, otherwise Queenfisher fetches the official build (about 45 MB). Each Queenfisher release names one exact build of each and carries its SHA-256, so a file that differs in any way is refused. Newer builds come with Queenfisher updates.
 
 ## Building
 
@@ -81,11 +82,11 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 
 ## Known issues
 
-- Fetching yt-dlp has been tested on Linux, Windows and macOS; updating it on Linux and Windows. Until Queenfisher's own copy is in place, it uses a yt-dlp installed on the computer, if there is one.
+- Fetching yt-dlp has been tested on Linux, Windows and macOS; updating it on Linux and Windows.
 - On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows. On macOS it also looks in Homebrew's and MacPorts' folders, since apps opened from the Dock or Finder don't get the Terminal's search path. That's been checked, but not yet with a real Homebrew ffmpeg.
 - Fetching Queenfisher's own Deno has been tried on Windows and macOS (Intel); on Linux (used only when no Deno is installed) it hasn't been tried yet.
 - The Mac apps aren't signed by Apple. The Intel build has been tried on macOS 26 (in a virtual machine); the Apple Silicon build hasn't been tried yet.
-- When a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. Finding the default browser works on Linux and Windows; on macOS it hasn't been tried yet, and Safari's cookies need Full Disk Access for Queenfisher (System Settings, Privacy & Security). On Windows, Chrome and Edge often lock their cookies away from other programs, so yt-dlp can't use them; Firefox-based browsers work.
+- Browser sign-in is off until you turn it on in Settings. Then, when a site asks for a sign-in, Queenfisher retries once with your default browser's cookies. Finding the default browser works on Linux and Windows; on macOS it hasn't been tried yet, and Safari's cookies need Full Disk Access for Queenfisher (System Settings, Privacy & Security). On Windows, Chrome and Edge often lock their cookies away from other programs, so yt-dlp can't use them; Firefox-based browsers work.
 - If fetching yt-dlp, ffmpeg or Deno fails (say, the network isn't up yet right after logging in), Queenfisher tries again a minute later and only then reports it. The retry hasn't been tried with a real outage yet.
 - Clicking Download before the preview is in leaves the sound part's size to a guess, so the bar can jump a little when the sound starts.
 - Checked on Linux (KDE), Windows 11 and macOS 26 (Intel, in a virtual machine). The window frame and title bar are the system's own.
