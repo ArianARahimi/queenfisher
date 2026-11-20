@@ -1,8 +1,6 @@
 #include "Deno.h"
 
-#include "YtDlpEngine.h"
-
-#include <QRegularExpression>
+#include <QHash>
 #include <QStandardPaths>
 #include <QSysInfo>
 
@@ -24,22 +22,17 @@ QString Deno::assetFor(const QString &os, const QString &cpu)
     return arch.isEmpty() || target.isEmpty() ? QString() : "deno-" + target + ".zip";
 }
 
-// Each Deno zip has its own checksum file: "hash  name" for Linux and macOS, PowerShell's
-// "Hash : HASH" (upper case) for Windows. Either way it holds the one hash.
-QString Deno::checksumIn(const QByteArray &sums, const QString &asset)
+// The pinned release's SHA-256 per build, checked against GitHub's own record of each file.
+QString Deno::pinnedSha256(const QString &asset)
 {
-    if (const QString line = YtDlpEngine::checksumFor(sums, asset); !line.isEmpty())
-        return line;
-    static const QRegularExpression hash(R"((?<![0-9A-Fa-f])([0-9A-Fa-f]{64})(?![0-9A-Fa-f]))");
-    QStringList found;
-    for (auto it = hash.globalMatch(QString::fromLatin1(sums)); it.hasNext();)
-        found << it.next().captured(1).toLower();
-    return found.size() == 1 ? found.first() : QString();   // more than one: not a single-file list
-}
-
-QString Deno::checksum(const QByteArray &sums, const QString &asset) const
-{
-    return checksumIn(sums, asset);
+    static const QHash<QString, QString> pins = {
+        {"deno-x86_64-pc-windows-msvc.zip", "cba84b26e0df5ae7f74fc66b86a95b866872a86292ebd84fa1e959927edd93bf"},
+        {"deno-x86_64-unknown-linux-gnu.zip", "e890975bc2549807bbcc0b584ffafda72cc7c93349dd99c80483dd784f6c4609"},
+        {"deno-aarch64-unknown-linux-gnu.zip", "d49596c20b9788cf8f5d8ddf644103d4bde56ed239753f0bdb92ba9361d51905"},
+        {"deno-x86_64-apple-darwin.zip", "4b2f5edd2639b7470f034238b321d7002d8dfb4726d8558f52c17afac370eb2c"},
+        {"deno-aarch64-apple-darwin.zip", "9f0bf660393da2eaff044cdc7444cb08c73f235849b61d224d825a194ce7c98e"},
+    };
+    return pins.value(asset);
 }
 
 bool Deno::wanted() const
@@ -56,12 +49,11 @@ bool Deno::source(Source *s) const
 #else
     const QString os = "linux";
 #endif
-    s->asset = assetFor(os, QSysInfo::currentCpuArchitecture());
-    if (s->asset.isEmpty())
+    const QString asset = assetFor(os, QSysInfo::currentCpuArchitecture());
+    s->sha256 = pinnedSha256(asset);
+    if (s->sha256.isEmpty())
         return false;
-    const QString latest = "https://github.com/denoland/deno/releases/latest/download/";
-    s->sums = QUrl(latest + s->asset + ".sha256sum");
-    s->zip = QUrl(latest + s->asset);
+    s->zip = QUrl("https://github.com/denoland/deno/releases/download/" + QString(version) + "/" + asset);
     s->limit = 300LL << 20;   // the zip is about 45 MB
     return true;
 }

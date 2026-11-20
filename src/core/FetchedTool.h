@@ -7,9 +7,10 @@
 #include <QStringList>
 #include <QUrl>
 
-// A helper program Queenfisher fetches itself when the computer doesn't have it: a zip and
-// its SHA-256 from GitHub, unpacked off the window's thread, tried out, and only then put in
-// place. Fetched again after 30 days; the old copy keeps working until the new one does.
+// A helper program Queenfisher fetches itself when the computer doesn't have it: one pinned
+// zip from GitHub, checked against the SHA-256 built into Queenfisher, unpacked off the
+// window's thread, tried out, and only then put in place. Fetched again when a newer
+// Queenfisher pins a different build; the old copy keeps working until the new one does.
 class FetchedTool : public QObject
 {
     Q_OBJECT
@@ -23,6 +24,7 @@ public:
     // The part that doesn't need the network, public for tests: checks the zip's SHA-256,
     // unpacks it with `unzipper` (bsdtar, tar, unzip or python3) and keeps only what's needed.
     bool install(const QString &zip, const QString &expectedSha256, const QString &unzipper, QString *why);
+    bool installed(const QString &sha256) const;   // the copy in place came from this zip
     static QString exe(const QString &name);   // "deno.exe" on Windows, "deno" elsewhere
     static QString unzipper();                 // what this computer can unpack a zip with; empty if nothing
 
@@ -33,10 +35,9 @@ signals:
 
 protected:
     struct Source {
-        QUrl sums;      // checksum list naming the asset
         QUrl zip;
-        QString asset;  // the zip's name in that list
-        qint64 limit;   // refuse downloads bigger than this
+        QString sha256;   // pinned: a zip with any other hash is refused
+        qint64 limit;     // refuse downloads bigger than this
     };
     FetchedTool(const QString &dir, const QString &name, const QString &size, QObject *parent);
     virtual bool wanted() const = 0;                  // should Queenfisher fetch it on this computer
@@ -44,12 +45,10 @@ protected:
     virtual bool keep(const QFileInfo &f) const = 0;  // files from the zip worth keeping
     virtual QStringList programs() const = 0;         // must be there and run
     virtual QString versionFlag() const = 0;          // "-version" or "--version"
-    virtual QString checksum(const QByteArray &sums, const QString &asset) const;   // the asset's SHA-256 in lower case
 
 private:
-    void download(const Source &s, const QString &expected);
+    void download(const Source &s);
     void finish(bool ok, const QString &message);
-    bool stale() const;
 
     QString dir_, name_, size_;
     bool busy_ = false;

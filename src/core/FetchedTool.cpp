@@ -1,5 +1,4 @@
 #include "FetchedTool.h"
-#include "YtDlpEngine.h"
 
 #include <QCryptographicHash>
 #include <QDateTime>
@@ -20,8 +19,7 @@ namespace {
 
 constexpr qint64 retrySoonMs = 60 * 1000;               // after the first failure (often the network still waking up)
 constexpr qint64 retryMs = 10 * 60 * 1000;              // after failing again
-constexpr qint64 refreshMs = 30LL * 24 * 3600 * 1000;   // fetched again after this long
-const char *stampName = ".fetched";                      // its date is when the copy was put in place
+const char *stampName = ".fetched";                      // holds the SHA-256 of the zip the copy came from
 
 QNetworkRequest request(const QUrl &url, int timeout)
 {
@@ -78,10 +76,10 @@ QString FetchedTool::location() const
     return dir_;
 }
 
-bool FetchedTool::stale() const
+bool FetchedTool::installed(const QString &sha256) const
 {
-    const QFileInfo stamp(dir_ + "/" + stampName);
-    return !stamp.exists() || stamp.lastModified().msecsTo(QDateTime::currentDateTime()) > refreshMs;
+    QFile stamp(dir_ + "/" + stampName);
+    return stamp.open(QIODevice::ReadOnly) && stamp.read(64) == sha256.toLatin1();
 }
 #pragma endregion
 
@@ -127,7 +125,7 @@ bool FetchedTool::install(const QString &zip, const QString &expectedSha256, con
             return fail("The " + name_ + " download doesn't work: " + program);
     }
     QFile stamp(fresh + "/" + stampName);
-    if (!stamp.open(QIODevice::WriteOnly))
+    if (!stamp.open(QIODevice::WriteOnly) || stamp.write(expectedSha256.toLatin1()) != 64)
         return fail("Couldn't save " + name_);
     stamp.close();
     // The old copy goes only now that the new one works; it may be in use, so it's moved
@@ -149,10 +147,13 @@ bool FetchedTool::install(const QString &zip, const QString &expectedSha256, con
 void FetchedTool::ensure()
 {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    if (busy_ || !wanted() || now - lastTry_ < (failures_ == 1 ? retrySoonMs : retryMs) || (!location().isEmpty() && !stale()))
+    if (busy_ || !wanted() || now - lastTry_ < (failures_ == 1 ? retrySoonMs : retryMs))
         return;
     Source s;
-    if (!source(&s) || unzipper().isEmpty()) {
+    const bool known = source(&s);
+    if (known && !location().isEmpty() && installed(s.sha256))
+        return;
+    if (!known || unzipper().isEmpty()) {
         if (location().isEmpty() && lastError_.isEmpty()) {
             lastError_ = "Queenfisher can't fetch " + name_ + " for this computer";
             emit readyChanged();
@@ -165,23 +166,10 @@ void FetchedTool::ensure()
     emit readyChanged();
     emit statusChanged(first ? "Getting " + name_ + " (" + size_ + ", once)..." : "Updating " + name_ + "...");
     emit logLine("Fetching " + name_ + " from " + s.zip.toString());
-
-    QNetworkReply *sums = net_.get(request(s.sums, 60000));
-    connect(sums, &QNetworkReply::finished, this, [this, sums, s] {
-        sums->deleteLater();
-        const QString expected = sums->error() ? QString() : checksum(sums->read(1 << 20), s.asset);
-        if (expected.isEmpty())
-            return finish(false, "Couldn't get " + name_ + "'s checksums");
-        download(s, expected);
-    });
+    download(s);
 }
 
-QString FetchedTool::checksum(const QByteArray &sums, const QString &asset) const
-{
-    return YtDlpEngine::checksumFor(sums, asset);   // "hash  name" lines, as sha256sum writes them
-}
-
-void FetchedTool::download(const Source &s, const QString &expected)
+void FetchedTool::download(const Source &s)
 {
     // Straight to a file, hashed after: the zip is too big to hold in memory for long.
     auto *file = new QTemporaryFile(QDir::tempPath() + "/queenfisher-" + name_.toLower() + "-XXXXXX.zip", this);
@@ -195,7 +183,7 @@ void FetchedTool::download(const Source &s, const QString &expected)
         if (got > limit || total > limit)
             zip->abort();   // never fill the disk because a server misbehaves
     });
-    connect(zip, &QNetworkReply::finished, this, [this, zip, file, expected] {
+    connect(zip, &QNetworkReply::finished, this, [this, zip, file, expected = s.sha256] {
         zip->deleteLater();
         file->write(zip->readAll());
         file->close();

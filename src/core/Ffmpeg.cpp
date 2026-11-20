@@ -18,10 +18,10 @@ bool Ffmpeg::wanted() const
 
 bool Ffmpeg::source(Source *s) const
 {
-    const QString release = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/";
-    s->asset = "ffmpeg-master-latest-win64-gpl-shared.zip";
-    s->sums = QUrl(release + "checksums.sha256");
-    s->zip = QUrl(release + s->asset);
+    // A month-end build: yt-dlp keeps those for years, daily ones only for about two weeks.
+    s->zip = QUrl("https://github.com/yt-dlp/FFmpeg-Builds/releases/download/autobuild-2026-10-31-18-18/"
+                  "ffmpeg-N-128251-g6d1bfd7609-win64-gpl-shared.zip");
+    s->sha256 = "de0839788c3f9a649dfb49f6f800a58532c5055ad9af7a75c0aa02043b880591";
     s->limit = 400LL << 20;   // the zip is about 90 MB
     return true;
 }
