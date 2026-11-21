@@ -13,9 +13,25 @@ constexpr FormatInfo formats[Options::FormatCount] = {
 const QString gifArgs = "VideoConvertor:-an -vf \"fps=10,scale='min(480,iw)':-2:flags=lanczos,split[a][b];"
                         "[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle\" -loop 0";
 
+// Streams whose codecs match, or whose codec the site doesn't name (the output gate checks those).
+QString onlyCodecs(const char *video, const char *audio)
+{
+    return QString("bv[vcodec~=?'%1']+ba[acodec~=?'%2']/b[vcodec~=?'%1'][acodec~=?'%2']").arg(video, audio);
+}
 }
 
 QString Options::name(Format f) { return formats[f].name; }
+
+QString Options::streamFilter(Format f)
+{
+    switch (f) {
+    case Mp4: return onlyCodecs("^(avc|h264|hev|hvc|av01|vp0?9)", "^(mp4a|aac|opus|mp3|ac-?3|ec-?3)");
+    case Webm: return onlyCodecs("^(vp0?8|vp0?9|av01)", "^(opus|vorbis)");
+    case Mov: return onlyCodecs("^(avc|h264|hev|hvc)", "^(mp4a|aac|mp3|ac-?3)");
+    case Flv: return onlyCodecs("^(avc|h264)", "^(mp4a|aac|mp3)");
+    default: return {};   // MKV holds anything; the rest are converted by ffmpeg
+    }
+}
 QString Options::key(Format f) { return formats[f].key; }
 
 Options::Format Options::fromKey(const QString &key)
@@ -50,21 +66,31 @@ QStringList ytDlpArgs(const Options &o)
 {
     QStringList a = {
         "--ignore-config",   // a user's own yt-dlp config must not change what Queenfisher does
-        "--newline", "--color", "never",
-        "--progress", "--progress-template",
+        "--newline",
+        "--color",
+        "never",
+        "--progress",
+        "--progress-template",
         "download:" + progressMarker
             + "%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|"
               "%(progress.speed)s|%(progress.eta)s|%(progress.fragment_index)s|%(progress.fragment_count)s|"
-              "%(info.title)s",
-        "-P", o.folder,
+              "%(info.title)j",   // JSON: a title can't start a line of its own
+        // Each finished file's real path; --print would silence the log without --no-quiet.
+        "--print",
+        "after_move:" + fileMarker + "%(filepath)j",
+        "--no-quiet",
+        "-P",
+        o.folder,
         // Unfinished pieces stay out of the download folder, so download watchers (like
         // vt-quarantine) only ever see the finished file arrive.
-        "-P", "temp:" + (o.tempFolder.isEmpty() ? o.folder : o.tempFolder),
+        "-P",
+        "temp:" + (o.tempFolder.isEmpty() ? o.folder : o.tempFolder),
         // The picture's height is in the name ("... [id] 1080p.mp4"; none for sound), so another
         // quality is another file instead of yt-dlp skipping it as already downloaded.
         // ALAC files end in .m4a too, so they're marked to stay apart from M4A ones.
-        "-o", QString(o.playlist ? "%(playlist_index)03d - " : "") + "%(title)s [%(id)s]%(height& {}p|)s"
-                  + (o.format == Options::Alac ? " ALAC" : "") + ".%(ext)s",
+        "-o",
+        QString(o.playlist ? "%(playlist_index)03d - " : "") + "%(title)s [%(id)s]%(height& {}p|)s"
+            + (o.format == Options::Alac ? " ALAC" : "") + ".%(ext)s",
         o.playlist ? "--yes-playlist" : "--no-playlist",
     };
 
@@ -74,16 +100,15 @@ QStringList ytDlpArgs(const Options &o)
     const QString res = o.maxHeight ? QString("res:%1").arg(o.maxHeight) : QString("res");
     switch (o.format) {
     case Options::Mp4:   // H.264 so it plays everywhere (on YouTube that tops out at 1080p)
-        a << "-S" << "vcodec:h264," + res + ",acodec:aac,ext:mp4:m4a" << "--merge-output-format" << "mp4";
+        a << "-S" << "vcodec:h264," + res + ",acodec:aac,ext:mp4:m4a" << "--merge-output-format" << "mp4"
+          << "--remux-video" << "mp4";   // a single-file stream is repacked too, not left as it came
         break;
     case Options::Mkv:
         if (o.maxHeight)
             a << "-S" << QString("res:%1").arg(o.maxHeight);
-        a << "--merge-output-format" << "mkv";
+        a << "--merge-output-format" << "mkv" << "--remux-video" << "mkv";
         break;
-    case Options::Webm:
-        a << "-S" << "ext:webm:webm," + res << "--merge-output-format" << "webm";
-        break;
+    case Options::Webm: a << "-S" << "ext:webm:webm," + res << "--merge-output-format" << "webm" << "--remux-video" << "webm"; break;
     case Options::Mov:   // the MP4 picture and sound, repacked: nothing is re-encoded
     case Options::Flv:
         a << "-S" << "vcodec:h264," + res + ",acodec:aac,ext:mp4:m4a" << "--remux-video" << Options::key(o.format);
@@ -114,6 +139,9 @@ QStringList ytDlpArgs(const Options &o)
     case Options::FormatCount:
         break;
     }
+
+    if (const QString only = Options::streamFilter(o.format); !only.isEmpty())
+        a << "-f" << only;   // streams that can't become this format are never downloaded
 
     if (o.subtitles && Options::takesSubtitles(o.format))
         a << "--write-subs" << "--embed-subs" << "--sub-langs" << "en.*,en";

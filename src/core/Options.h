@@ -16,6 +16,7 @@ struct Options
     static QString key(Format f);                   // for settings: "mp4", "original"...
     static Format fromKey(const QString &key);      // unknown: MP4
     static bool isAudioLabel(const QString &label); // a label() of a sound-only download: "FLAC", "Audio"
+    static QString streamFilter(Format f);          // -f that only takes streams this format can hold; empty = any
 
     QString url;
     QString folder;
@@ -38,6 +39,8 @@ struct Options
 
 // Progress lines start with this marker so they can be told apart from yt-dlp's own output.
 inline const QString progressMarker = "QFP|";
+// yt-dlp prints this, then the finished file's path as a JSON string, once the file is in place.
+inline const QString fileMarker = "QFF|";
 
 // Arguments are passed one by one, never through a shell or config file.
 QStringList ytDlpArgs(const Options &o);

@@ -21,6 +21,7 @@ qt_add_executable(queenfisher
     src/core/FetchedTool.cpp src/core/FetchedTool.h
     src/core/Deno.cpp src/core/Deno.h
     src/core/Options.cpp src/core/Options.h
+    src/core/OutputGate.cpp src/core/OutputGate.h
     src/core/PgpVerify.cpp src/core/PgpVerify.h
     src/core/PreviewJob.cpp src/core/PreviewJob.h
     src/core/ProgressTracker.cpp src/core/ProgressTracker.h

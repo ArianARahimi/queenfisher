@@ -25,6 +25,7 @@ Finished downloads stay in the **Library** tab, where you can search them, open 
 - Extras: English subtitles, whole playlists, and skipping sponsor segments (SponsorBlock).
 - Downloading the same video again asks whether to keep the file you have or overwrite it. Another quality is saved as its own file.
 - Unfinished pieces stay out of your download folder, so only the finished file appears there.
+- You only get the format you picked. Streams that can't become it aren't downloaded, and every finished file is checked with ffprobe: one that isn't the right container and codecs is deleted, and the download shows as failed.
 - Sits in the system tray when minimized, with download progress on hover.
 
 | Library | Sound formats |

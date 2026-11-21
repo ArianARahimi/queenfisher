@@ -2,14 +2,20 @@
 #include "ChildProcess.h"
 #include "Cookies.h"
 #include "Engine.h"
+#include "OutputGate.h"
 
 #include <QDir>
 #include <QFileInfo>
 #include <QHash>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QPointer>
 #include <QRegularExpression>
 #include <QSet>
+#include <QThread>
 #include <QTimer>
+
+#include <memory>
 
 #pragma region Starting, stopping and cleanup
 namespace {
@@ -23,6 +29,14 @@ QString stemOf(const QString &path)
     return id > 0 ? name.left(id + 1) : info.completeBaseName();
 }
 
+// A JSON string as yt-dlp prints it with the j conversion; empty if it isn't one.
+QString jsonText(const QString &quoted) { return QJsonDocument::fromJson(("[" + quoted + "]").toUtf8()).array().at(0).toString(); }
+
+bool sameFolder(const QString &path, const QString &folder)
+{
+    const QString canonical = QFileInfo(folder).canonicalFilePath();
+    return !canonical.isEmpty() && QFileInfo(QFileInfo(path).absolutePath()).canonicalFilePath() == canonical;
+}
 }
 
 DownloadJob::DownloadJob(Options options, Engine *engine, QObject *parent)
@@ -49,7 +63,7 @@ DownloadJob::DownloadJob(Options options, Engine *engine, QObject *parent)
             if (d.problem == Problem::NoFfmpeg)
                 emit finished(false, d.message);
             else
-                emit finished(true, "Done");
+                checkOutputs();
         }
         else
             recover();
@@ -58,6 +72,12 @@ DownloadJob::DownloadJob(Options options, Engine *engine, QObject *parent)
 
 DownloadJob::~DownloadJob()
 {
+    if (gate_) {   // removed while its files were being checked
+        gate_->wait();
+        delete gate_;
+    }
+    for (QProcess *p : findChildren<QProcess *>(Qt::FindDirectChildrenOnly))
+        ChildProcess::stopAndWait(*p);   // the stream check, if it's still asking
     if (process_.state() != QProcess::NotRunning) {
         disconnect(&process_, nullptr, this, nullptr);   // no signals from a half-destroyed job
         stopAll(true);
@@ -75,6 +95,7 @@ void DownloadJob::start()
     }
     problems_.clear();
     file_.clear();
+    outputs_.clear();
     if (!startedAt_.isValid())
         startedAt_ = QDateTime::currentDateTime().addSecs(-2);   // a little slack for coarse file times
     tracker_.reset();
@@ -91,6 +112,8 @@ void DownloadJob::cancel()
     if (cancelled_)
         return;
     cancelled_ = true;
+    if (gate_)
+        return;   // the check finishes first, then cleans up
     if (process_.state() == QProcess::NotRunning) {   // between attempts, e.g. while yt-dlp updates
         discardPartial();
         emit finished(false, "Stopped");
@@ -147,6 +170,14 @@ void DownloadJob::handleLine(const QString &line)
         handleProgress(line.mid(progressMarker.size()));
         return;
     }
+    if (line.startsWith(fileMarker)) {
+        const QString path = jsonText(line.mid(fileMarker.size()));
+        if (sameFolder(path, options_.folder) && !outputs_.contains(path))
+            outputs_.append(file_ = path);
+        else
+            emit logLine("Ignored a finished file outside the download folder: " + path);
+        return;
+    }
     emit logLine(line);
     trackLine(line);
     if (line.startsWith("ERROR:") || line.startsWith("WARNING:"))
@@ -177,29 +208,64 @@ void DownloadJob::trackLine(const QString &line)
         tracker_.setPartCount(int(m.captured(1).count('+')) + 1);
     else if (line.startsWith("[download] Destination: ")) {
         sidecar_ = sidecar.match(line).hasMatch();   // subtitles and thumbnails aren't parts of the video
-        created_.append(line.mid(24));
+        if (inOurFolders(line.mid(24)))
+            created_.append(line.mid(24));
         if (!sidecar_) {
             downloaded_ = true;
             tracker_.startPart();
-            file_ = line.mid(24);
         }
     }
     else if (line.startsWith("[download] ") && line.endsWith(" has already been downloaded")) {
         tracker_.finishPart();
         skipped_ = true;
-        file_ = line.mid(11).chopped(28);
     }
 
-    // Later steps rename the file: merged, converted to audio, or remuxed.
+    // Later steps make new files: merged, converted, remuxed, moved out of the temp folder.
     static const QRegularExpression merged(R"re(^\[Merger\] Merging formats into "(.+)"$)re");
     static const QRegularExpression moved(R"re(^\[(ExtractAudio|VideoRemuxer|VideoConvertor)\] .*Destination: (.+)$)re");
-    static const QRegularExpression home(R"re(^\[MoveFiles\] Moving file ".+" to "(.+)"$)re");   // out of the temp folder
+    static const QRegularExpression home(R"re(^\[MoveFiles\] Moving file ".+" to "(.+)"$)re");
+    QString made;
     if (const auto m = merged.match(line); m.hasMatch())
-        created_.append(file_ = m.captured(1));
+        made = m.captured(1);
     else if (const auto m = moved.match(line); m.hasMatch())
-        created_.append(file_ = m.captured(2));
+        made = m.captured(2);
     else if (const auto m = home.match(line); m.hasMatch())
-        created_.append(file_ = m.captured(1));
+        made = m.captured(1);
+    if (!made.isEmpty() && inOurFolders(made))
+        created_.append(made);
+}
+
+// yt-dlp without the strict filter and without downloading: true if the link has any stream.
+void DownloadJob::anyStreams(const std::function<void(bool)> &then)
+{
+    auto *p = new QProcess(this);
+    ChildProcess::ownGroup(*p);
+    QStringList args = {
+        "--ignore-config", "--simulate", "-f", "bv*+ba/b", "--print", "id", options_.playlist ? "--yes-playlist" : "--no-playlist"};
+    if (!options_.cookies.isEmpty())
+        args << "--cookies-from-browser" << options_.cookies;
+    if (!options_.deno.isEmpty())
+        args << "--js-runtimes" << "deno:" + options_.deno;
+    args << "--" << options_.url;
+    QTimer::singleShot(60000, p, [p] { ChildProcess::stop(*p, true); });
+    connect(p, &QProcess::finished, this, [p, then](int code, QProcess::ExitStatus status) {
+        p->deleteLater();
+        then(status == QProcess::NormalExit && code == 0);
+    });
+    connect(p, &QProcess::errorOccurred, this, [p, then](QProcess::ProcessError e) {
+        if (e == QProcess::FailedToStart) {
+            p->deleteLater();
+            then(false);
+        }
+    });
+    emit stage("Checking the site");
+    p->start(engine_->path(), args);
+}
+
+// Log lines can carry text from the site, so a path there counts only inside our two folders.
+bool DownloadJob::inOurFolders(const QString &path) const
+{
+    return sameFolder(path, options_.folder) || sameFolder(path, options_.tempFolder);
 }
 
 // downloaded|total|estimate|speed|eta|fragment|fragments|title, missing numbers come as "NA".
@@ -208,8 +274,8 @@ void DownloadJob::handleProgress(const QString &fields)
     const QStringList f = fields.split('|');
     if (f.size() < 8)
         return;
-    const QString title = f.mid(7).join('|');
-    if (title != title_ && title != "NA") {
+    const QString title = jsonText(f.mid(7).join('|'));
+    if (title != title_ && !title.isEmpty()) {
         title_ = title;
         emit titleKnown(title);
     }
@@ -250,6 +316,30 @@ void DownloadJob::recover()
         emit logLine("The site wants a sign-in, but Queenfisher couldn't find your default browser's cookies.");
     }
 
+    // Nothing to download with a strict stream filter: either no stream fits this format (no update
+    // changes that), or the site changed and offers none at all (the fixes below).
+    if (!checkedStreams_ && !Options::streamFilter(options_.format).isEmpty()
+        && problems_.join('\n').contains("requested format is not available", Qt::CaseInsensitive)) {
+        checkedStreams_ = true;
+        QPointer<DownloadJob> self(this);
+        anyStreams([self](bool any) {
+            if (!self || self->cancelled_)
+                return;
+            if (!any)
+                return self->recover();
+            emit self->finished(
+                false, "The site has no streams that can become " + Options::name(self->options_.format) + ", so nothing was downloaded");
+        });
+        return;
+    }
+
+    // ffmpeg couldn't make the picked format from what came down: a retry would fail the same way.
+    if (problems_.join('\n').contains("conversion failed", Qt::CaseInsensitive)) {
+        discardPartial();
+        emit finished(false, "It couldn't be turned into " + Options::name(options_.format) + ", so nothing was saved");
+        return;
+    }
+
     // A refused download (HTTP 403) is often a one-off on YouTube: one plain retry before
     // deciding yt-dlp needs updating, which could switch it to nightly for nothing.
     if (d.problem == Problem::Outdated && !triedAgain_ && problems_.join('\n').contains("HTTP Error 403")) {
@@ -280,5 +370,70 @@ void DownloadJob::recover()
         emit finished(false, "Sign in to the site in your browser, then retry");
     else
         emit finished(false, d.message);
+}
+#pragma endregion
+
+#pragma region Checking the finished files
+// The output gate: every finished file must be the picked format, or it's deleted. Runs on a
+// thread of its own (ffprobe takes a moment per file; a playlist has many).
+void DownloadJob::checkOutputs()
+{
+    if (outputs_.isEmpty()) {
+        emit finished(false, "yt-dlp didn't report a finished file");
+        return;
+    }
+    const QString ffprobe = OutputGate::ffprobe(options_.ffmpeg);
+    if (ffprobe.isEmpty()) {
+        emit finished(false, "ffprobe is missing, so the file couldn't be checked");
+        return;
+    }
+    const QStringList files = outputs_;
+    auto problems = std::make_shared<QStringList>();
+    gate_ = QThread::create([files, problems, ffprobe, format = options_.format] {
+        for (const QString &file : files)
+            problems->append(OutputGate::problem(file, format, ffprobe));
+    });
+    connect(gate_, &QThread::finished, this, [this, files, problems] {
+        gate_->deleteLater();
+        gate_ = nullptr;
+        outputsChecked(files, *problems);
+    });
+    emit stage("Checking");
+    gate_->start();
+}
+
+void DownloadJob::outputsChecked(const QStringList &files, const QStringList &problems)
+{
+    if (cancelled_) {   // Stop was pressed while checking
+        discardPartial();
+        emit finished(false, "Stopped");
+        return;
+    }
+    QString first;
+    int bad = 0;
+    for (qsizetype i = 0; i < files.size(); ++i) {
+        if (problems[i].isEmpty())
+            continue;
+        ++bad;
+        const QFileInfo f(files[i]);
+        if (first.isEmpty())
+            first = problems[i];
+        if (files[i] == file_)
+            file_.clear();
+        // Only what this download wrote: a file that was already there stays, even if it fails.
+        if (f.lastModified() < startedAt_)
+            emit logLine(f.fileName() + ": " + problems[i] + " (it was there before, so it stays)");
+        else if (QFile::remove(files[i]))
+            emit logLine("Deleted " + f.fileName() + ": " + problems[i]);
+        else
+            emit logLine("Couldn't delete " + f.fileName() + ": " + problems[i]);
+    }
+    if (bad == 0)
+        emit finished(true, "Done");
+    else if (files.size() == 1)
+        emit finished(false, first.left(1).toUpper() + first.mid(1) + ", so it was deleted");
+    else
+        emit finished(
+            false, QString("%1 of %2 files weren't %3 and were deleted").arg(bad).arg(files.size()).arg(Options::name(options_.format)));
 }
 #pragma endregion
