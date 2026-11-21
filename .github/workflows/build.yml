@@ -60,7 +60,10 @@ jobs:
     steps:
       - name: Install build tools
         run: |
-          echo 'Server = https://archive.archlinux.org/repos/2026/11/16/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+          # Arch's European copy of the archive first, the main archive if it's down.
+          # pacman checks Arch's signature on every package either way.
+          echo 'Server = https://europe.archive.pkgbuild.com/repos/2026/11/16/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+          echo 'Server = https://archive.archlinux.org/repos/2026/11/16/$repo/os/$arch' >> /etc/pacman.d/mirrorlist
           pacman -Syyuu --noconfirm --needed mingw-w64-gcc qt6-base cmake ninja perl git
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
