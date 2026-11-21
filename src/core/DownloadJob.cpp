@@ -244,7 +244,7 @@ void DownloadJob::anyStreams(const std::function<void(bool)> &then)
 {
     auto *p = new QProcess(this);
     ChildProcess::ownGroup(*p);
-    QStringList args = {"--ignore-config", "--encoding", "utf-8", "--simulate", "-f", "bv*+ba/b", "--print", "id",
+    QStringList args = {"--ignore-config", "--no-plugin-dirs", "--encoding", "utf-8", "--simulate", "-f", "bv*+ba/b", "--print", "id",
         options_.playlist ? "--yes-playlist" : "--no-playlist"};
     if (!options_.cookies.isEmpty())
         args << "--cookies-from-browser" << options_.cookies;
