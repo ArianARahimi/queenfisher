@@ -14,6 +14,7 @@ public:
     explicit SingleInstance(const QString &name = defaultName(), QObject *parent = nullptr);
     bool alreadyRunning() const { return alreadyRunning_; }   // true: that one was asked to show
     static QString defaultName();   // per user; a socket in the private runtime folder on Linux and macOS
+    static QString userKey();       // random, kept in this user's settings; part of the Windows name
 
 signals:
     void showRequested();

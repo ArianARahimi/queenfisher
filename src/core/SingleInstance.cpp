@@ -2,7 +2,10 @@
 
 #include <QLocalServer>
 #include <QLocalSocket>
+#include <QRegularExpression>
+#include <QSettings>
 #include <QStandardPaths>
+#include <QUuid>
 
 #include <memory>
 
@@ -30,10 +33,25 @@ SingleInstance::SingleInstance(const QString &name, QObject *parent) : QObject(p
 QString SingleInstance::defaultName()
 {
 #ifdef Q_OS_WIN
-    return "Queenfisher-" + qEnvironmentVariable("USERNAME");
+    // Pipe names are shared by all accounts: with a key no other account can read, none can
+    // take the name first and make every launch think Queenfisher is already running.
+    return "Queenfisher-" + qEnvironmentVariable("USERNAME") + "-" + userKey();
 #else
     return QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation) + "/queenfisher-instance";
 #endif
+}
+
+QString SingleInstance::userKey()
+{
+    QSettings settings;   // the registry under this user on Windows
+    QString key = settings.value("instanceKey").toString();
+    static const QRegularExpression valid("^[0-9a-f]{32}$");
+    if (!valid.match(key).hasMatch()) {
+        key = QUuid::createUuid().toString(QUuid::Id128);
+        settings.setValue("instanceKey", key);
+        settings.sync();
+    }
+    return key;
 }
 
 bool SingleInstance::askRunning() const
