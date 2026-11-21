@@ -1,4 +1,7 @@
 #include "Cookies.h"
+#include "ChildProcess.h"
+#include "ErrorRules.h"
+#include "PrivateFolder.h"
 
 #include <QDir>
 #include <QFileInfo>
@@ -7,7 +10,11 @@
 #include <QJsonObject>
 #include <QProcess>
 #include <QSettings>
+#include <QStandardPaths>
+#include <QTimer>
+#include <QUrl>
 
+#pragma region Default browser
 namespace {
 
 // Where each Firefox-style browser keeps profiles.ini: Linux (from home), Windows (from
@@ -115,3 +122,86 @@ QString defaultBrowserCookies()
 {
     return cookiesFor(defaultBrowserId());
 }
+#pragma endregion
+
+#pragma region Cookies for one site
+QString siteOf(const QString &url)
+{
+    const QString host = QUrl(url.trimmed()).host().toLower();
+    return host.startsWith("www.") ? host.mid(4) : host;
+}
+
+QByteArray cookiesForSite(const QByteArray &cookiesTxt, const QString &site)
+{
+    const QString wanted = site.toLower();
+    QByteArray out = "# Netscape HTTP Cookie File\n";
+    for (QByteArray line : cookiesTxt.split('\n')) {
+        line.replace('\r', "");
+        const bool httpOnly = line.startsWith("#HttpOnly_");   // a cookie line, not a comment
+        const qsizetype tab = line.indexOf('\t');
+        if (tab < 0 || (line.startsWith('#') && !httpOnly))
+            continue;
+        QString domain = QString::fromUtf8(line.left(tab)).toLower().mid(httpOnly ? 10 : 0);
+        if (domain.startsWith('.'))
+            domain = domain.mid(1);
+        if (domain.contains('.') && (domain == wanted || domain.endsWith("." + wanted) || wanted.endsWith("." + domain)))
+            out += line + "\n";
+    }
+    return out;
+}
+
+CookieExport::CookieExport(QString ytDlp, QString browser, QString site, QObject *parent)
+    : QObject(parent), ytDlp_(std::move(ytDlp)), browser_(std::move(browser)), site_(std::move(site))
+{
+    ChildProcess::ownGroup(process_);
+    connect(&process_, &QProcess::finished, this, &CookieExport::filter);   // exits 2: no link given
+    connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError e) {
+        if (e == QProcess::FailedToStart)
+            fail("Couldn't start yt-dlp to read your browser's sign-in");
+    });
+}
+
+CookieExport::~CookieExport()
+{
+    disconnect(&process_, nullptr, this, nullptr);
+    ChildProcess::stopAndWait(process_);
+}
+
+// yt-dlp reads the browser and saves what it read with --cookies, even without a link.
+void CookieExport::start()
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/cookies";
+    all_.setFileTemplate(dir + "/all-XXXXXX.txt");
+    mine_.setFileTemplate(dir + "/site-XXXXXX.txt");
+    if (!makePrivateFolder(dir) || !all_.open())
+        return fail("Couldn't make a private place for the sign-in");
+    all_.close();
+    process_.start(ytDlp_, {"--ignore-config", "--no-plugin-dirs", "--cookies-from-browser", browser_, "--cookies", all_.fileName()});
+    QTimer::singleShot(60000, this, [this] { ChildProcess::stop(process_, true); });
+}
+
+void CookieExport::filter()
+{
+    const Diagnosis d = diagnose(problemLines(process_.readAllStandardError()));
+    QByteArray all;
+    if (all_.open()) {
+        all = all_.readAll();
+        all_.close();
+    }
+    all_.remove();   // every site's sign-ins: gone as soon as this site's are out
+    const QByteArray mine = cookiesForSite(all, site_);
+    if (mine.count('\n') < 2)
+        return fail(d.problem == Problem::BrowserCookies ? d.message : "Your browser has no sign-in for " + site_);
+    if (!mine_.open() || mine_.write(mine) != mine.size())
+        return fail("Couldn't save the sign-in for " + site_);
+    mine_.close();
+    done_ = true;
+    emit finished(true, {});
+}
+
+void CookieExport::fail(const QString &why)
+{
+    all_.remove();
+    emit finished(false, why);
+}
+#pragma endregion

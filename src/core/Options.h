@@ -29,7 +29,8 @@ struct Options
     bool overwrite = false;   // replace a file that's already there instead of keeping it
     QList<qint64> expectedParts;   // the preview's picture and sound sizes, for the bar; not for yt-dlp
     bool browserSignIn = false;    // may use the default browser's sign-in when a site asks for one
-    QString cookies;     // --cookies-from-browser value, only set after a site asks for a sign-in
+    bool needsSignIn = false;      // the site asked for one already (in the preview)
+    QString cookies;     // this site's cookies file (CookieExport), only once a sign-in was needed
     QString deno;        // Queenfisher's own Deno for YouTube; empty = yt-dlp finds an installed one
     QString ffmpeg;      // folder with Queenfisher's own ffmpeg (Windows); empty = yt-dlp finds one
 

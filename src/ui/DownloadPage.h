@@ -138,6 +138,6 @@ private:
     PreviewInfo lastPreview_;   // the current link's, for the quality line
     bool previewPending_ = false;   // a link is in but its qualities aren't known yet
     int wantedQuality_ = 0;         // the row the user picked; shown lower when the video lacks it
-    QString signInUrl_, signInCookies_;   // a preview needed a sign-in: reuse it for that link
+    QString signInUrl_;   // a preview needed a sign-in: the download of that link asks for it up front
     QSet<QString> declinedSites_;          // said Not now to this run: not asked again until restart
 };

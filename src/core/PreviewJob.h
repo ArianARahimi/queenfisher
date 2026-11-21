@@ -9,6 +9,7 @@
 #include <QStringList>
 #include <QTimer>
 
+class CookieExport;
 class Engine;
 class QUrl;
 
@@ -76,7 +77,7 @@ public:
     ~PreviewJob() override;
     void start();
     QString url() const { return url_; }
-    QString cookies() const { return cookies_; }   // set when the sign-in was needed
+    QString cookies() const { return cookies_; }   // this site's cookies file, once a sign-in was needed
     void setDeno(const QString &program) { deno_ = program; }   // Queenfisher's own, if any
     void setBrowserSignIn(bool on) { browserSignIn_ = on; }      // off: never the browser's cookies
 
@@ -93,6 +94,7 @@ private:
     bool playlist_;
     Engine *engine_;
     QString cookies_;
+    CookieExport *export_ = nullptr;   // owns the file cookies_ names
     QString deno_;
     bool browserSignIn_ = false;
     QProcess process_;

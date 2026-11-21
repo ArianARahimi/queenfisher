@@ -1,7 +1,7 @@
 #include "AppSettings.h"
+#include "core/Cookies.h"
 
 #include <QSettings>
-#include <QUrl>
 #include <algorithm>
 
 AppSettings &AppSettings::get()
@@ -48,11 +48,7 @@ void AppSettings::setBrowserSignIn(bool on)
     save("browserSignIn", on);
 }
 
-QString AppSettings::siteOf(const QString &url)
-{
-    const QString host = QUrl(url.trimmed()).host().toLower();
-    return host.startsWith("www.") ? host.mid(4) : host;
-}
+QString AppSettings::siteOf(const QString &url) { return ::siteOf(url); }
 
 // A site allowed covers its subdomains too: youtube.com covers m.youtube.com.
 bool AppSettings::signInAllowed(const QString &url) const

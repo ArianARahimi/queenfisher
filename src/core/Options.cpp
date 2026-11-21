@@ -154,7 +154,7 @@ QStringList ytDlpArgs(const Options &o)
     if (o.overwrite)
         a << "--force-overwrites";
     if (!o.cookies.isEmpty())
-        a << "--cookies-from-browser" << o.cookies;
+        a << "--cookies" << o.cookies;
     if (!o.ffmpeg.isEmpty())
         a << "--ffmpeg-location" << o.ffmpeg;
     if (!o.deno.isEmpty())

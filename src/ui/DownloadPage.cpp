@@ -612,7 +612,6 @@ void DownloadPage::startPreview()
     connect(preview_, &PreviewJob::ready, this, [this, job = preview_.data()](const PreviewInfo &info) {
         if (!job->cookies().isEmpty()) {
             signInUrl_ = job->url();
-            signInCookies_ = job->cookies();
             banner_->setNotice("This site wanted a sign-in, so Queenfisher is using your browser's.");
         }
         job->deleteLater();
@@ -808,8 +807,7 @@ Options DownloadPage::currentOptions() const
         o.expectedParts = estimateParts(lastPreview_, o.format, o.maxHeight);
     o.overwrite = AppSettings::get().existing() == AppSettings::Existing::Replace;
     o.browserSignIn = AppSettings::get().signInAllowed(o.url);
-    if (o.browserSignIn && o.url == signInUrl_)
-        o.cookies = signInCookies_;   // the preview already found a sign-in is needed
+    o.needsSignIn = o.browserSignIn && o.url == signInUrl_;   // the preview already found one is needed
     if (ffmpeg_)
         o.ffmpeg = ffmpeg_->location();
     if (deno_)
@@ -862,6 +860,7 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
                 return;
             Options retry = job->options();
             retry.browserSignIn = true;
+            retry.needsSignIn = true;
             addJob(item, retry);
             startNext();
         });

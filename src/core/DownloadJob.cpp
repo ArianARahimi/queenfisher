@@ -42,6 +42,10 @@ bool sameFolder(const QString &path, const QString &folder)
 DownloadJob::DownloadJob(Options options, Engine *engine, QObject *parent)
     : QObject(parent), options_(std::move(options)), engine_(engine)
 {
+    if (!options_.cookies.isEmpty()) {   // a retry: that file goes with the job it came from
+        options_.cookies.clear();
+        options_.needsSignIn = true;
+    }
     ChildProcess::ownGroup(process_);
     connect(&process_, &QProcess::readyReadStandardOutput, this, [this] { readOutput(QProcess::StandardOutput); });
     connect(&process_, &QProcess::readyReadStandardError, this, [this] { readOutput(QProcess::StandardError); });
@@ -93,6 +97,8 @@ void DownloadJob::start()
         emit finished(false, "yt-dlp isn't available yet");
         return;
     }
+    if (options_.needsSignIn && options_.browserSignIn && options_.cookies.isEmpty() && !signInTried_)
+        return exportCookies();
     problems_.clear();
     lastLine_.clear();
     file_.clear();
@@ -247,7 +253,7 @@ void DownloadJob::anyStreams(const std::function<void(bool)> &then)
     QStringList args = {"--ignore-config", "--no-plugin-dirs", "--encoding", "utf-8", "--simulate", "-f", "bv*+ba/b", "--print", "id",
         options_.playlist ? "--yes-playlist" : "--no-playlist"};
     if (!options_.cookies.isEmpty())
-        args << "--cookies-from-browser" << options_.cookies;
+        args << "--cookies" << options_.cookies;
     if (!options_.deno.isEmpty())
         args << "--js-runtimes" << "deno:" + options_.deno;
     args << "--" << options_.url;
@@ -301,6 +307,30 @@ void DownloadJob::handleProgress(const QString &fields)
 #pragma endregion
 
 #pragma region Recovering from failures
+// Only this site's cookies, in a file of the job's own (see CookieExport); asked for once.
+void DownloadJob::exportCookies()
+{
+    signInTried_ = true;
+    const QString browser = defaultBrowserCookies();
+    const QString site = siteOf(options_.url);
+    if (browser.isEmpty()) {
+        emit logLine("The site wants a sign-in, but Queenfisher couldn't find your default browser's cookies.");
+        return start();   // without; if the site insists, the failure says so
+    }
+    emit stage("Signing in");
+    export_ = new CookieExport(engine_->path(), browser, site, this);
+    connect(export_, &CookieExport::finished, this, [this, site](bool ok, const QString &why) {
+        if (cancelled_)
+            return;   // Stop was pressed meanwhile and has already finished the job
+        if (!ok)
+            return emit finished(false, why);
+        options_.cookies = export_->file();
+        emit logLine("Using your browser's sign-in for " + site + " only.");
+        start();
+    });
+    export_->start();
+}
+
 // Each fix is tried at most once: the browser's sign-in, then a newer (or nightly) yt-dlp.
 void DownloadJob::recover()
 {
@@ -309,16 +339,11 @@ void DownloadJob::recover()
     if (d.problem == Problem::SignIn && options_.cookies.isEmpty() && !options_.browserSignIn) {
         emit logLine("The site wants a sign-in, and browser sign-in isn't allowed for it.");
         emit signInWanted();
-    } else if (d.problem == Problem::SignIn && options_.cookies.isEmpty()) {
-        options_.cookies = defaultBrowserCookies();
-        if (!options_.cookies.isEmpty()) {
-            emit logLine("The site wants a sign-in. Trying again with your browser's sign-in ("
-                         + options_.cookies.section(':', 0, 0) + ").");
-            emit stage("Signing in");
-            start();
-            return;
-        }
-        emit logLine("The site wants a sign-in, but Queenfisher couldn't find your default browser's cookies.");
+    } else if (d.problem == Problem::SignIn && options_.cookies.isEmpty() && !signInTried_) {
+        emit logLine("The site wants a sign-in. Trying again with your browser's sign-in.");
+        options_.needsSignIn = true;
+        start();
+        return;
     }
 
     // Nothing to download with a strict stream filter: either no stream fits this format (no update

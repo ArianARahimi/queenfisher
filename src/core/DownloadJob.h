@@ -11,6 +11,7 @@
 
 #include <functional>
 
+class CookieExport;
 class QThread;
 
 // Runs yt-dlp for one link and reports progress, log lines and the result.
@@ -46,6 +47,7 @@ private:
     void handleProgress(const QString &fields);
     void trackLine(const QString &line);
     void recover();
+    void exportCookies();
     void anyStreams(const std::function<void(bool)> &then);   // does the site have any at all?
     void checkOutputs();   // the output gate, off the window's thread
     void outputsChecked(const QStringList &files, const QStringList &problems);
@@ -74,4 +76,6 @@ private:
     bool checkedStreams_ = false;   // asked once whether a strict filter or the site left nothing
     bool triedAgain_ = false;   // one plain retry after a refused (403) download
     bool cancelled_ = false;
+    bool signInTried_ = false;    // the browser's sign-in was asked for once already
+    CookieExport *export_ = nullptr;   // owns the file options_.cookies names
 };

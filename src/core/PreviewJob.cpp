@@ -304,7 +304,7 @@ void PreviewJob::start()
     QStringList args = {"--ignore-config", "--no-plugin-dirs", "--encoding", "utf-8", "--color", "never", "--skip-download", "-J"};
     args << (playlist_ ? QStringList{"--yes-playlist", "--flat-playlist"} : QStringList{"--no-playlist"});
     if (!cookies_.isEmpty())
-        args << "--cookies-from-browser" << cookies_;
+        args << "--cookies" << cookies_;
     if (!deno_.isEmpty())
         args << "--js-runtimes" << "deno:" + deno_;
     args << "--" << url_;
@@ -330,11 +330,17 @@ void PreviewJob::finishedRun(int code, QProcess::ExitStatus status)
     for (const QString &line : problems)
         emit logLine("Preview: " + line);
     const Diagnosis d = diagnose(problems);
-    if (d.problem == Problem::SignIn && cookies_.isEmpty() && browserSignIn_) {
-        cookies_ = defaultBrowserCookies();
-        if (!cookies_.isEmpty()) {
-            emit logLine("Preview: the site wants a sign-in, trying with your browser's sign-in.");
-            start();
+    if (d.problem == Problem::SignIn && cookies_.isEmpty() && browserSignIn_ && !export_) {
+        if (const QString browser = defaultBrowserCookies(); !browser.isEmpty()) {
+            emit logLine("Preview: the site wants a sign-in, trying with your browser's sign-in for " + siteOf(url_) + ".");
+            export_ = new CookieExport(engine_->path(), browser, siteOf(url_), this);
+            connect(export_, &CookieExport::finished, this, [this](bool ok, const QString &why) {
+                if (!ok)
+                    return emit failed(why);
+                cookies_ = export_->file();
+                start();
+            });
+            export_->start();
             return;
         }
     }
