@@ -174,6 +174,7 @@ Banner::Banner(QWidget *parent) : QFrame(parent)
 {
     setObjectName("banner");
     text_ = new QLabel;
+    text_->setTextFormat(Qt::PlainText);   // notices can quote error text from sites
     text_->setWordWrap(true);
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(6, 3, 6, 3);

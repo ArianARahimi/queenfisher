@@ -266,13 +266,16 @@ QWidget *DownloadPage::buildTop()
     banner_ = new Banner;
 
     thumbnail_ = new Thumbnail;
+    // Titles and channel names come from the site: plain text, so markup in them shows as typed.
     title_ = new QLabel;
+    title_->setTextFormat(Qt::PlainText);
     title_->setWordWrap(true);
     QFont big = title_->font();
     big.setPointSizeF(big.pointSizeF() * 1.3);
     big.setBold(true);
     title_->setFont(big);
     meta_ = new QLabel;
+    meta_->setTextFormat(Qt::PlainText);
     meta_->setObjectName("meta");
     meta_->setWordWrap(true);
 

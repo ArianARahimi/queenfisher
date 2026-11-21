@@ -202,8 +202,10 @@ void MainWindow::buildStatusBar()
     engineLight_ = new QLabel;
     engineLight_->setObjectName("cell");
     activity_ = new QLabel;
+    activity_->setTextFormat(Qt::PlainText);   // status lines can quote network errors
     activity_->setObjectName("cell");
     engineCell_ = new QLabel;
+    engineCell_->setTextFormat(Qt::PlainText);
     engineCell_->setObjectName("cell");
 
     statusBar()->setSizeGripEnabled(true);
