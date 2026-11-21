@@ -20,6 +20,7 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = nullptr);
+    void bringBack();   // Queenfisher was launched again: show this window, out of the tray if needed
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -37,6 +38,7 @@ private:
     void askToContinue(const QString &title, const QString &message);
     void buildTray();
     void toggleWindow();
+    void showWindow();
     void updateShowHide();   // the tray menu says what clicking it will do
     void checkForAppUpdate();                  // Help menu, Settings tab: always says what it found
     void appUpdateChecked(bool ok);
@@ -57,4 +59,5 @@ private:
     QSystemTrayIcon *tray_ = nullptr;
     QAction *toTray_ = nullptr;     // View > Minimize to Tray
     QAction *showHide_ = nullptr;   // the tray menu's first item
+    bool busy_ = false;             // something is downloading, converting or waiting
 };

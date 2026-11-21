@@ -225,6 +225,7 @@ void MainWindow::showActivity(int downloading, int waiting, double bytesPerSecon
     if (waiting)
         text += QString("  ·  %1 waiting").arg(waiting);
     activity_->setText(text);
+    busy_ = downloading + waiting > 0;
     if (tray_)
         tray_->setToolTip("Queenfisher\n" + text);
 }
@@ -261,9 +262,23 @@ void MainWindow::toggleWindow()
         hide();
         return;
     }
+    showWindow();
+}
+
+void MainWindow::showWindow()
+{
     showNormal();
     raise();
     activateWindow();
+}
+
+void MainWindow::bringBack()
+{
+    showWindow();
+    if (!busy_)
+        return;
+    tabs_->setCurrentWidget(downloads_);
+    downloads_->notify("Queenfisher is already open, and its downloads are still running.");
 }
 
 void MainWindow::updateShowHide()

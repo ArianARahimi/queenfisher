@@ -459,6 +459,8 @@ void DownloadPage::log(const QString &line, int number)
                                  : QString("%1  %2").arg(time, line));
 }
 
+void DownloadPage::notify(const QString &text) { banner_->setNotice(text); }
+
 // The notice bar: yt-dlp or ffmpeg being fetched (their own messages), or yt-dlp missing.
 // Missing tools get a popup when the window opens instead (MainWindow).
 bool DownloadPage::toolsBusy() const

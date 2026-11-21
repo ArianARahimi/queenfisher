@@ -51,6 +51,7 @@ public:
     void chooseFolder();
     void openFolder();
     void log(const QString &line, int number = 0);
+    void notify(const QString &text);   // the banner above the downloads
     // How many downloads run side by side; the rest wait their turn. Kept in AppSettings.
     int downloadsAtOnce() const;
     void setDownloadsAtOnce(int n);

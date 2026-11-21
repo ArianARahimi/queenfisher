@@ -28,6 +28,7 @@ qt_add_executable(queenfisher
     src/core/Tools.cpp src/core/Tools.h
     src/core/YtDlpEngine.cpp src/core/YtDlpEngine.h
     src/core/Library.cpp src/core/Library.h
+    src/core/SingleInstance.cpp src/core/SingleInstance.h
     src/ui/DownloadPage.cpp src/ui/DownloadPage.h
     src/ui/AboutPage.cpp src/ui/AboutPage.h
     src/core/AppUpdate.cpp src/core/AppUpdate.h

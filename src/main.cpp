@@ -1,4 +1,5 @@
 // Queenfisher - free media downloader. GPL-3.0-or-later.
+#include "core/SingleInstance.h"
 #include "ui/MainWindow.h"
 #include "ui/Theme.h"
 
@@ -32,10 +33,15 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName("Queenfisher");
     QApplication::setApplicationVersion(QUEENFISHER_VERSION);
 
+    SingleInstance instance;
+    if (instance.alreadyRunning())
+        return 0;   // the open Queenfisher shows its window instead
+
     QNetworkProxyFactory::setUseSystemConfiguration(true);   // honour the system or environment proxy
     Theme::apply(app);
 
     MainWindow window;
+    QObject::connect(&instance, &SingleInstance::showRequested, &window, &MainWindow::bringBack);
     window.show();
     return QApplication::exec();
 }
