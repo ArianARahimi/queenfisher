@@ -17,8 +17,7 @@ concurrency:
   group: build-${{ github.ref }}
 
 env:
-  QT_VERSION: "6.8.3"
-  AQT_VERSION: "3.3.0"
+  QT_VERSION: "6.8.3"   # aqtinstall itself is pinned by hash in .github/aqt-requirements.txt
 
 jobs:
   linux:
@@ -36,7 +35,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends ninja-build libssl-dev libgl1-mesa-dev \
             libxkbcommon-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 \
             libxcb-shape0 libegl1 libpulse0
-          pip install "aqtinstall==$AQT_VERSION"
+          pip install --require-hashes -r .github/aqt-requirements.txt
           python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 -O "$RUNNER_TEMP/Qt"
           echo "$RUNNER_TEMP/Qt/$QT_VERSION/gcc_64/bin" >> "$GITHUB_PATH"
           echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/Qt/$QT_VERSION/gcc_64" >> "$GITHUB_ENV"
@@ -101,7 +100,7 @@ jobs:
       - name: Install build tools
         run: |
           brew install ninja openssl@3
-          pip3 install --break-system-packages "aqtinstall==$AQT_VERSION"
+          pip3 install --break-system-packages --require-hashes -r .github/aqt-requirements.txt
           python3 -m aqt install-qt mac desktop "$QT_VERSION" clang_64 -O "$RUNNER_TEMP/Qt"
 
       - name: Build and package
