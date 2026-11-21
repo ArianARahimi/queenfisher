@@ -227,12 +227,12 @@ void YtDlpEngine::run(Channel channel, bool force, const Done &done, Asked asked
             saveStamp();
             return finish(false, "yt-dlp " + tag + " is the newest " + channelName(channel));
         }
-        // An older release is still validly signed, so only the version says it's stale.
+        // An older release is still validly signed, so the version and the signature's date say it's stale.
         if (installed && asked != Switch && isDowngrade(tag, stamp_.version))
             return finish(false, "Refused yt-dlp " + tag + ": older than the " + stamp_.version + " in use");
         if (installed && asked == Auto && isRolledBack(tag, stamp_.skip))
             return finish(false, "Staying on yt-dlp " + stamp_.version + ": " + stamp_.skip + " was rolled back");
-        install(channel, tag);
+        install(channel, tag, installed && asked != Switch && channel == stamp_.channel);
     });
 }
 #pragma endregion
@@ -272,7 +272,7 @@ void YtDlpEngine::fetch(const QUrl &url, qint64 limit, const std::function<void(
     });
 }
 
-void YtDlpEngine::install(Channel channel, const QString &tag)
+void YtDlpEngine::install(Channel channel, const QString &tag, bool sameChannel)
 {
     const QString base = "https://github.com/" + repo(channel) + "/releases/download/" + tag + "/";
     emit logLine(QString("Fetching yt-dlp %1 (%2)").arg(tag, channelName(channel)));
@@ -287,6 +287,9 @@ void YtDlpEngine::install(Channel channel, const QString &tag)
             const Pgp::Result check = Pgp::verifyDetached(sums_, sig->readAll(), signingKey(), fingerprint);
             if (!check.ok)
                 return finish(false, "Refused yt-dlp " + tag + ": " + check.why);
+            // Replayed: an older signed release offered again under a newer-looking tag.
+            if (sameChannel && isOlderSignature(check.created, stamp_.signedAt))
+                return finish(false, "Refused yt-dlp " + tag + ": signed before the copy in use");
             emit logLine("Signature by the yt-dlp developers checked");
 
             const QString expected = checksumFor(sums_, assetName());
@@ -307,7 +310,7 @@ void YtDlpEngine::install(Channel channel, const QString &tag)
                 out.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner | QFile::ReadGroup
                                    | QFile::ExeGroup | QFile::ReadOther | QFile::ExeOther);
                 stamp_.channel = channel;   // only saved once the new copy is in place
-                smokeTest(fresh, tag);
+                smokeTest(fresh, tag, check.created);
             });
         });
     });
@@ -320,7 +323,7 @@ YtDlpEngine::~YtDlpEngine()
 }
 
 // The new copy has to start and report the expected version before it replaces the old one.
-void YtDlpEngine::smokeTest(const QString &file, const QString &tag)
+void YtDlpEngine::smokeTest(const QString &file, const QString &tag, qint64 signedAt)
 {
     auto *p = new QProcess(this);
     ChildProcess::ownGroup(*p);
@@ -359,6 +362,7 @@ void YtDlpEngine::smokeTest(const QString &file, const QString &tag)
         if (compareVersions(tag, stamp_.skip) >= 0)
             stamp_.skip.clear();   // at or past the version rolled back from
         stamp_.version = tag;
+        stamp_.signedAt = signedAt;
         stamp_.checked = QDateTime::currentMSecsSinceEpoch();
         saveStamp();
         finish(true, QString("yt-dlp %1 (%2) installed").arg(tag, channelName(stamp_.channel)));
@@ -427,6 +431,8 @@ bool YtDlpEngine::isDowngrade(const QString &tag, const QString &installed)
     return !installed.isEmpty() && compareVersions(tag, installed, 3) < 0;
 }
 
+bool YtDlpEngine::isOlderSignature(qint64 created, qint64 inUse) { return inUse > 0 && created < inUse; }
+
 bool YtDlpEngine::isRolledBack(const QString &tag, const QString &skip) { return !skip.isEmpty() && compareVersions(tag, skip) <= 0; }
 
 QString YtDlpEngine::fileHash(const QString &file)
@@ -444,6 +450,7 @@ void YtDlpEngine::loadStamp()
     stamp_.channel = o.value("channel").toString() == "nightly" ? Nightly : Stable;
     stamp_.checked = qint64(o.value("checked").toDouble());
     stamp_.skip = o.value("skip").toString();
+    stamp_.signedAt = qint64(o.value("signed").toDouble());
     stamp_.known.clear();
     static const QRegularExpression sha(R"(^[0-9a-f]{64}$)");
     for (const auto &v : o.value("known").toArray()) {
@@ -469,8 +476,9 @@ void YtDlpEngine::saveStamp() const
         known.append(QJsonObject{{"sha256", hash}, {"version", version}});
     QFile f(managedPath() + ".json");
     if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        f.write(QJsonDocument(QJsonObject{{"version", stamp_.version}, {"channel", channelName(stamp_.channel)},
-                                  {"checked", double(stamp_.checked)}, {"known", known}, {"skip", stamp_.skip}})
+        f.write(QJsonDocument(
+            QJsonObject{{"version", stamp_.version}, {"channel", channelName(stamp_.channel)}, {"checked", double(stamp_.checked)},
+                {"known", known}, {"skip", stamp_.skip}, {"signed", double(stamp_.signedAt)}})
                 .toJson());
 }
 #pragma endregion

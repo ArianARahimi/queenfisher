@@ -46,6 +46,7 @@ public:
     static int compareVersions(const QString &a, const QString &b, int parts = 99);
     static bool isDowngrade(const QString &tag, const QString &installed);   // older by date
     static bool isRolledBack(const QString &tag, const QString &skip);       // skip it or older
+    static bool isOlderSignature(qint64 created, qint64 inUse);              // signed before the copy in use
     static QString fileHash(const QString &file);                            // SHA-256 hex, empty if unreadable
 
 private:
@@ -58,17 +59,18 @@ private:
         qint64 checked = 0;
         Known known;    // every copy this Queenfisher checked and put in place
         QString skip;   // rolled back from this version by hand: not installed again automatically
+        qint64 signedAt = 0; // when the copy put in place last was signed, seconds since 1970
     };
 
     void run(Channel channel, bool force, const Done &done, Asked asked = Auto);
     void offerNightly(const Done &done, const QString &message);
     void recognize();   // the file in place changed: adopt it if it's a known copy, else refuse it
     void remember(const QString &hash, const QString &version);
-    void install(Channel channel, const QString &tag);
+    void install(Channel channel, const QString &tag, bool sameChannel);
     void finish(bool changed, const QString &message);
     void fetch(const QUrl &url, qint64 limit, const std::function<void(QNetworkReply *)> &then);
     void latestTag(Channel channel, const std::function<void(const QString &tag)> &then);
-    void smokeTest(const QString &file, const QString &tag);
+    void smokeTest(const QString &file, const QString &tag, qint64 signedAt);
 
     QString managedPath() const;
     void loadStamp();

@@ -1,6 +1,7 @@
 #include "PgpVerify.h"
 
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QList>
 
 #include <openssl/core_names.h>
@@ -115,6 +116,34 @@ bool readKey(const Packet &p, Key &key)
     key.fingerprint = QCryptographicHash::hash(framed, QCryptographicHash::Sha1);
     return true;
 }
+// The signature's own dates from its hashed subpackets: made at (type 2), expires after (type 3,
+// seconds; 0 = never). False if the area is malformed.
+bool readTimes(const QByteArray &area, qint64 &created, qint64 &expiresAfter)
+{
+    qsizetype i = 0;
+    const auto byte = [&](qsizetype at) { return quint32(quint8(area.at(at))); };
+    const auto be32 = [&](qsizetype at) { return byte(at) << 24 | byte(at + 1) << 16 | byte(at + 2) << 8 | byte(at + 3); };
+    while (i < area.size()) {
+        quint32 len = byte(i++);
+        if (len >= 192 && len < 255) {
+            if (i >= area.size())
+                return false;
+            len = ((len - 192) << 8) + byte(i++) + 192;
+        } else if (len == 255) {
+            if (i + 4 > area.size())
+                return false;
+            len = be32(i);
+            i += 4;
+        }
+        if (len == 0 || len > quint64(area.size() - i))
+            return false;
+        const int type = int(byte(i) & 0x7f);
+        if ((type == 2 || type == 3) && len == 5)
+            (type == 2 ? created : expiresAfter) = be32(i + 1);
+        i += len;
+    }
+    return true;
+}
 #pragma endregion
 
 #pragma region RSA
@@ -202,6 +231,15 @@ Result verifyDetached(const QByteArray &data, const QByteArray &signature, const
     at += 2 + hashedLen;
     if (at + 2 > s.size())
         return {false, "The signature file is malformed"};
+    // Dates count only from the hashed part, which the signature covers.
+    qint64 created = 0, expiresAfter = 0;
+    if (!readTimes(s.mid(6, hashedLen), created, expiresAfter) || created == 0)
+        return {false, "The signature doesn't say when it was made"};
+    const qint64 now = QDateTime::currentSecsSinceEpoch();
+    if (created > now + 24 * 3600)   // a day of slack for wrong clocks
+        return {false, "The signature is dated in the future"};
+    if (expiresAfter > 0 && created + expiresAfter < now)
+        return {false, "The signature has expired"};
     const QByteArray hashedPart = s.left(at);   // version .. end of hashed subpackets
     const int unhashedLen = quint8(s[at]) << 8 | quint8(s[at + 1]);
     at += 2 + unhashedLen;
@@ -226,7 +264,7 @@ Result verifyDetached(const QByteArray &data, const QByteArray &signature, const
 
     for (const Key &k : keys)
         if (rsaVerify(k, md, digest, sigMpi))
-            return {true, {}};
+            return {true, {}, created};
     return {false, "The file doesn't match its signature"};
 }
 #pragma endregion
