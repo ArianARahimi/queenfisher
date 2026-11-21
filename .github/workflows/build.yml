@@ -18,6 +18,9 @@ concurrency:
 
 env:
   QT_VERSION: "6.8.3"   # aqtinstall itself is pinned by hash in .github/aqt-requirements.txt
+  # macOS builds OpenSSL from the same pinned source as packaging/windows/build-static.sh.
+  OPENSSL_VERSION: "3.5.9"
+  OPENSSL_SHA256: "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a"
 
 jobs:
   linux:
@@ -67,7 +70,9 @@ jobs:
         with:
           persist-credentials: false
 
+      # A release builds Qt and OpenSSL fresh from their pinned sources, never from the cache.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        if: ${{ !(github.event_name == 'push' && startsWith(github.event.head_commit.message, 'Release v')) }}
         with:
           path: build/static/prefix
           key: static-qt-${{ hashFiles('packaging/windows/build-static.sh') }}
@@ -83,7 +88,7 @@ jobs:
           retention-days: 30
 
   macos:
-    # One build per Mac kind: Homebrew's OpenSSL is single-architecture, so no universal app.
+    # One build per Mac kind: OpenSSL is built for one architecture at a time, so no universal app.
     strategy:
       fail-fast: false
       matrix:
@@ -105,11 +110,28 @@ jobs:
 
       - name: Install build tools
         run: |
-          brew install ninja openssl@3
+          brew install ninja
           # Its own environment, so no other Python's packages are in the way.
           python3 -m venv "$RUNNER_TEMP/aqt"
           "$RUNNER_TEMP/aqt/bin/pip" install --only-binary :all: --require-hashes -r .github/aqt-requirements.txt
           "$RUNNER_TEMP/aqt/bin/python" -m aqt install-qt mac desktop "$QT_VERSION" clang_64 -O "$RUNNER_TEMP/Qt"
+
+      # Static, from the pinned source: Homebrew's OpenSSL moves to new versions on its own.
+      - name: OpenSSL
+        env:
+          ARCH: ${{ matrix.arch }}
+          MACOSX_DEPLOYMENT_TARGET: "12.0"   # Qt 6.8's oldest macOS
+        run: |
+          src="$RUNNER_TEMP/openssl-src"
+          curl -fL --retry 3 -o "$RUNNER_TEMP/openssl.tar.gz" \
+            "https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VERSION/openssl-$OPENSSL_VERSION.tar.gz"
+          echo "$OPENSSL_SHA256  $RUNNER_TEMP/openssl.tar.gz" | shasum -a 256 -c -
+          mkdir -p "$src"
+          tar -xzf "$RUNNER_TEMP/openssl.tar.gz" -C "$src" --strip-components=1
+          cd "$src"
+          ./Configure "darwin64-$ARCH" no-shared no-tests no-docs no-apps --prefix="$RUNNER_TEMP/openssl" --libdir=lib
+          make -j"$(sysctl -n hw.ncpu)" build_libs
+          make install_dev
 
       - name: Build and package
         env:
@@ -119,7 +141,7 @@ jobs:
           qt="$RUNNER_TEMP/Qt/$QT_VERSION/macos"
           version=$(sed -n 's/^project(Queenfisher VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="$ARCH" \
-            -DCMAKE_PREFIX_PATH="$qt" -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)"
+            -DCMAKE_PREFIX_PATH="$qt" -DOPENSSL_ROOT_DIR="$RUNNER_TEMP/openssl" -DOPENSSL_USE_STATIC_LIBS=ON
           cmake --build build
           mv build/queenfisher.app build/Queenfisher.app
           "$qt/bin/macdeployqt" build/Queenfisher.app
