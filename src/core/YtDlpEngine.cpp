@@ -6,6 +6,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkReply>
@@ -42,6 +43,14 @@ YtDlpEngine::YtDlpEngine(const QString &dataDir, QObject *parent) : Engine(paren
 {
     QDir().mkpath(dir_);
     loadStamp();
+    recognize();
+    // A copy by hand is looked at once it has been quiet for a moment, not halfway through.
+    settle_.setSingleShot(true);
+    settle_.setInterval(2000);
+    connect(&settle_, &QTimer::timeout, this, &YtDlpEngine::recognize);
+    connect(&watcher_, &QFileSystemWatcher::directoryChanged, &settle_, qOverload<>(&QTimer::start));
+    connect(&watcher_, &QFileSystemWatcher::fileChanged, &settle_, qOverload<>(&QTimer::start));
+    watcher_.addPath(dir_);
 }
 
 QString YtDlpEngine::managedPath() const
@@ -53,8 +62,51 @@ QString YtDlpEngine::managedPath() const
 #endif
 }
 
-// Only Queenfisher's own, signature-checked copy: one found on the computer is never run.
-QString YtDlpEngine::path() const { return QFile::exists(managedPath()) ? managedPath() : QString(); }
+// Only a copy Queenfisher signature-checked itself: one found on the computer is never run.
+QString YtDlpEngine::path() const { return trusted_ && QFile::exists(managedPath()) ? managedPath() : QString(); }
+
+void YtDlpEngine::recognize()
+{
+    const QString file = managedPath();
+    if (QFile::exists(file) && !watcher_.files().contains(file))
+        watcher_.addPath(file);   // a copy over it changes the file, not the folder
+    const QString hash = QFile::exists(file) ? fileHash(file) : QString();
+    const auto known = std::find_if(stamp_.known.cbegin(), stamp_.known.cend(), [&](const auto &k) { return k.first == hash; });
+    const bool wasTrusted = std::exchange(trusted_, !hash.isEmpty() && known != stamp_.known.cend());
+    if (!trusted_) {
+        if (!hash.isEmpty() && wasTrusted)
+            emit logLine("The yt-dlp in Queenfisher's folder isn't a copy it checked, so it won't be used");
+        if (wasTrusted)
+            emit readyChanged();
+        return;
+    }
+    QString version = known->second;
+    if (version.isEmpty()) {   // kept from before versions were noted: ask it
+        QProcess p;
+        p.start(file, {"--version"});
+        version = p.waitForFinished(30000) ? QString::fromUtf8(p.readAllStandardOutput()).trimmed() : QString();
+        remember(hash, version);
+    }
+    if (version != stamp_.version && !version.isEmpty()) {
+        // Put back by hand: the version it replaced isn't brought back by the next automatic check.
+        if (!stamp_.version.isEmpty() && compareVersions(version, stamp_.version) < 0)
+            stamp_.skip = stamp_.version;
+        emit logLine("Using yt-dlp " + version + ", the copy now in Queenfisher's folder");
+        stamp_.version = version;
+        stamp_.channel = version.count('.') > 2 ? Nightly : Stable;   // nightlies carry a time too
+        saveStamp();
+    }
+    emit readyChanged();
+}
+
+void YtDlpEngine::remember(const QString &hash, const QString &version)
+{
+    stamp_.known.removeIf([&](const auto &k) { return k.first == hash; });
+    stamp_.known.append({hash, version});
+    while (stamp_.known.size() > 10)
+        stamp_.known.removeFirst();
+    saveStamp();
+}
 
 QString YtDlpEngine::version() const
 {
@@ -68,7 +120,7 @@ QString YtDlpEngine::version() const
 void YtDlpEngine::checkDaily()
 {
     const auto quiet = [](bool, const QString &) {};
-    if (!QFile::exists(managedPath()) || stamp_.channel == Stable) {
+    if (path().isEmpty() || stamp_.channel == Stable) {
         run(Stable, false, quiet);
         return;
     }
@@ -84,18 +136,18 @@ void YtDlpEngine::checkDaily()
 
 void YtDlpEngine::updateNow()
 {
-    run(QFile::exists(managedPath()) ? stamp_.channel : Stable, true, [](bool, const QString &) {});
+    run(path().isEmpty() ? Stable : stamp_.channel, true, [](bool, const QString &) { }, Update);
 }
 
 void YtDlpEngine::switchChannel(Channel channel)
 {
-    run(channel, true, [](bool, const QString &) { }, true);   // the user's pick may be an older stable
+    run(channel, true, [](bool, const QString &) { }, Switch);   // the user's pick may be an older stable
 }
 
 // Update the current channel; if that changes nothing, try nightly, which gets site fixes first.
 void YtDlpEngine::repair(Done done)
 {
-    if (!QFile::exists(managedPath())) {
+    if (path().isEmpty()) {
         run(Stable, true, done);
         return;
     }
@@ -107,16 +159,16 @@ void YtDlpEngine::repair(Done done)
     });
 }
 
-void YtDlpEngine::run(Channel channel, bool force, const Done &done, bool userSwitch)
+void YtDlpEngine::run(Channel channel, bool force, const Done &done, Asked asked)
 {
     if (busy_) {
         if (force)
-            queued_.append({channel, done, userSwitch});   // asked for on purpose: its own turn after this one
+            queued_.append({channel, done, asked});   // asked for on purpose: its own turn after this one
         else
             waiting_.append(done);             // automatic checks share the one running
         return;
     }
-    const bool installed = QFile::exists(managedPath());
+    const bool installed = !path().isEmpty();
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
     if (!force && installed && stamp_.channel == channel && now - stamp_.checked < dayMs) {
         done(false, "yt-dlp was checked today");
@@ -137,7 +189,7 @@ void YtDlpEngine::run(Channel channel, bool force, const Done &done, bool userSw
     emit readyChanged();
     emit statusChanged(installed ? "Checking for a newer yt-dlp..." : "Getting yt-dlp...");
 
-    latestTag(channel, [this, channel, installed, userSwitch](const QString &tag) {
+    latestTag(channel, [this, channel, installed, asked](const QString &tag) {
         if (tag.isEmpty())
             return finish(false, "Couldn't reach GitHub to check yt-dlp");
         if (installed && tag == stamp_.version && channel == stamp_.channel) {
@@ -146,8 +198,10 @@ void YtDlpEngine::run(Channel channel, bool force, const Done &done, bool userSw
             return finish(false, "yt-dlp " + tag + " is the newest " + channelName(channel));
         }
         // An older release is still validly signed, so only the version says it's stale.
-        if (installed && !userSwitch && isDowngrade(tag, stamp_.version))
+        if (installed && asked != Switch && isDowngrade(tag, stamp_.version))
             return finish(false, "Refused yt-dlp " + tag + ": older than the " + stamp_.version + " in use");
+        if (installed && asked == Auto && isRolledBack(tag, stamp_.skip))
+            return finish(false, "Staying on yt-dlp " + stamp_.version + ": " + stamp_.skip + " was rolled back");
         install(channel, tag);
     });
 }
@@ -258,13 +312,22 @@ void YtDlpEngine::smokeTest(const QString &file, const QString &tag)
         if (status != QProcess::NormalExit || code != 0 || said != tag)
             return giveUp("The new yt-dlp " + tag + " didn't start properly, keeping the old one");
         const QString current = managedPath(), previous = managedPath() + ".previous";
-        QFile::remove(previous);
-        if (QFile::exists(current) && !QFile::rename(current, previous))
+        const QString hash = fileHash(file);
+        if (hash.isEmpty())
+            return giveUp("Couldn't read the new yt-dlp " + tag + ", keeping the old one");
+        // The copy in use becomes the one to roll back to, unless it's not one Queenfisher checked.
+        if (trusted_)
+            QFile::remove(previous);
+        if (QFile::exists(current) && !(trusted_ ? QFile::rename(current, previous) : QFile::remove(current)))
             return giveUp("Couldn't replace yt-dlp (is it running?)");
         if (!QFile::rename(file, current)) {
             QFile::rename(previous, current);
             return giveUp("Couldn't put the new yt-dlp in place");
         }
+        remember(hash, tag);
+        trusted_ = true;
+        if (compareVersions(tag, stamp_.skip) >= 0)
+            stamp_.skip.clear();   // at or past the version rolled back from
         stamp_.version = tag;
         stamp_.checked = QDateTime::currentMSecsSinceEpoch();
         saveStamp();
@@ -283,7 +346,7 @@ void YtDlpEngine::finish(bool changed, const QString &message)
         done(changed, message);
     while (!busy_ && !queued_.isEmpty()) {   // a waiting callback may have started a run already
         const Request next = queued_.takeFirst();
-        run(next.channel, true, next.done, next.userSwitch);
+        run(next.channel, true, next.done, next.asked);
     }
 }
 #pragma endregion
@@ -334,6 +397,15 @@ bool YtDlpEngine::isDowngrade(const QString &tag, const QString &installed)
     return !installed.isEmpty() && compareVersions(tag, installed, 3) < 0;
 }
 
+bool YtDlpEngine::isRolledBack(const QString &tag, const QString &skip) { return !skip.isEmpty() && compareVersions(tag, skip) <= 0; }
+
+QString YtDlpEngine::fileHash(const QString &file)
+{
+    QFile f(file);
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    return f.open(QIODevice::ReadOnly) && hash.addData(&f) ? QString::fromLatin1(hash.result().toHex()) : QString();
+}
+
 void YtDlpEngine::loadStamp()
 {
     QFile f(managedPath() + ".json");
@@ -341,14 +413,34 @@ void YtDlpEngine::loadStamp()
     stamp_.version = o.value("version").toString();
     stamp_.channel = o.value("channel").toString() == "nightly" ? Nightly : Stable;
     stamp_.checked = qint64(o.value("checked").toDouble());
+    stamp_.skip = o.value("skip").toString();
+    stamp_.known.clear();
+    static const QRegularExpression sha(R"(^[0-9a-f]{64}$)");
+    for (const auto &v : o.value("known").toArray()) {
+        const QJsonObject k = v.toObject();
+        if (sha.match(k.value("sha256").toString()).hasMatch())
+            stamp_.known.append({k.value("sha256").toString(), k.value("version").toString()});
+    }
+    if (!o.contains("known") && !stamp_.version.isEmpty()) {
+        // A stamp from before copies were noted: both files there were put in place by Queenfisher.
+        if (const QString h = fileHash(managedPath()); !h.isEmpty())
+            stamp_.known.append({h, stamp_.version});
+        if (const QString h = fileHash(managedPath() + ".previous"); !h.isEmpty())
+            stamp_.known.prepend({h, QString()});
+        if (!stamp_.known.isEmpty())
+            saveStamp();
+    }
 }
 
 void YtDlpEngine::saveStamp() const
 {
+    QJsonArray known;
+    for (const auto &[hash, version] : stamp_.known)
+        known.append(QJsonObject{{"sha256", hash}, {"version", version}});
     QFile f(managedPath() + ".json");
     if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        f.write(QJsonDocument(QJsonObject{{"version", stamp_.version},
-                                          {"channel", channelName(stamp_.channel)},
-                                          {"checked", double(stamp_.checked)}}).toJson());
+        f.write(QJsonDocument(QJsonObject{{"version", stamp_.version}, {"channel", channelName(stamp_.channel)},
+                                  {"checked", double(stamp_.checked)}, {"known", known}, {"skip", stamp_.skip}})
+                .toJson());
 }
 #pragma endregion

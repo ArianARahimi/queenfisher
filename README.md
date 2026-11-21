@@ -40,6 +40,8 @@ Queenfisher keeps its own copy of yt-dlp and updates it for you.
 - It checks for a new version once a day, between downloads.
 - When a download fails in a way that usually means a site changed, it updates yt-dlp and tries again. If the newest release doesn't help, it switches to yt-dlp's nightly build, which tends to get site fixes first, and goes back to the regular release once that catches up.
 - The previous copy is kept, and a new one has to start and report its version before it replaces the old one.
+- If a new yt-dlp breaks something, you can go back to the previous one by hand: close Queenfisher, then in its `bin` folder copy `yt-dlp.previous` over `yt-dlp` (`yt-dlp.exe.previous` over `yt-dlp.exe` on Windows). Queenfisher uses that copy and doesn't reinstall the version you left until a newer one comes out; **Check for yt-dlp Updates** installs the newest anyway. The `bin` folder is in `~/.local/share/Queenfisher/Queenfisher` on Linux, `%LOCALAPPDATA%\Queenfisher\Queenfisher` on Windows and `~/Library/Application Support/Queenfisher/Queenfisher` on macOS.
+- A file put there that Queenfisher didn't check itself is never run; it fetches a checked copy instead.
 - It only ever runs its own checked copy, never a yt-dlp found elsewhere on the computer. Until that copy is in place, downloads wait.
 
 ## Download
@@ -83,7 +85,7 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 
 ## Known issues
 
-- Fetching yt-dlp has been tested on Linux, Windows and macOS; updating it on Linux and Windows.
+- Fetching yt-dlp has been tested on Linux, Windows and macOS; updating it on Linux and Windows. Going back to the previous yt-dlp by hand has been tested on Linux only.
 - On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows. On macOS it also looks in Homebrew's and MacPorts' folders, since apps opened from the Dock or Finder don't get the Terminal's search path. That's been checked, but not yet with a real Homebrew ffmpeg.
 - Fetching Queenfisher's own Deno has been tried on Windows and macOS (Intel); on Linux (used only when no Deno is installed) it hasn't been tried yet.
 - The Mac apps aren't signed by Apple. The Intel build has been tried on macOS 26 (in a virtual machine); the Apple Silicon build hasn't been tried yet.

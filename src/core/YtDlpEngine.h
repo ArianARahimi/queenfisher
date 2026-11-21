@@ -3,14 +3,19 @@
 #include "Engine.h"
 
 #include <QByteArray>
+#include <QFileSystemWatcher>
 #include <QList>
 #include <QNetworkAccessManager>
+#include <QPair>
+#include <QTimer>
 
 class QNetworkReply;
 
 // Queenfisher's own copy of yt-dlp, fetched from yt-dlp's GitHub releases.
 // Every file is checked against the release checksums, and the checksums against
 // the yt-dlp developers' signature, before it replaces the copy in use.
+// A copy put back by hand (yt-dlp.previous over yt-dlp, to roll back) is used if it's one
+// Queenfisher checked before; the version rolled back from isn't installed again by itself.
 class YtDlpEngine : public Engine
 {
     Q_OBJECT
@@ -36,11 +41,24 @@ public:
     static QString checksumFor(const QByteArray &sums, const QString &asset);
     static int compareVersions(const QString &a, const QString &b, int parts = 99);
     static bool isDowngrade(const QString &tag, const QString &installed);   // older by date
+    static bool isRolledBack(const QString &tag, const QString &skip);       // skip it or older
+    static QString fileHash(const QString &file);                            // SHA-256 hex, empty if unreadable
 
 private:
-    struct Stamp { QString version; Channel channel = Stable; qint64 checked = 0; };
+    enum Asked { Auto, Update, Switch };   // Update skips nothing; Switch may also go back a version
+    using Known = QList<QPair<QString, QString>>;   // SHA-256 -> version, oldest first
+    struct Stamp
+    {
+        QString version;
+        Channel channel = Stable;
+        qint64 checked = 0;
+        Known known;    // every copy this Queenfisher checked and put in place
+        QString skip;   // rolled back from this version by hand: not installed again automatically
+    };
 
-    void run(Channel channel, bool force, const Done &done, bool userSwitch = false);
+    void run(Channel channel, bool force, const Done &done, Asked asked = Auto);
+    void recognize();   // the file in place changed: adopt it if it's a known copy, else refuse it
+    void remember(const QString &hash, const QString &version);
     void install(Channel channel, const QString &tag);
     void finish(bool changed, const QString &message);
     void fetch(const QUrl &url, qint64 limit, const std::function<void(QNetworkReply *)> &then);
@@ -53,13 +71,16 @@ private:
 
     QString dir_;
     Stamp stamp_;
+    bool trusted_ = false;   // the file in place is a known copy
+    QFileSystemWatcher watcher_;
+    QTimer settle_;          // waits for a copy by hand to finish before looking at it
     bool busy_ = false;
     qint64 lastTry_ = 0;   // when the last check started, ms since epoch
     struct Request
     {
         Channel channel = Stable;
         Done done;
-        bool userSwitch = false;
+        Asked asked = Auto;
     };
     QList<Done> waiting_;     // callers sharing the run in progress
     QList<Request> queued_;   // runs asked for on purpose while busy, each after the last
