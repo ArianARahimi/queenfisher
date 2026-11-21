@@ -567,8 +567,8 @@ void DownloadPage::quickPicture(const QString &id, QStringList sizes)
         reply->deleteLater();
         if (youTubeId(link_->text()) != id || thumbnail_->hasPicture())
             return;   // the link changed, or a picture is already up
-        QPixmap pixmap;
-        if (!reply->error() && pixmap.loadFromData(reply->readAll())) {
+        const QPixmap pixmap = reply->error() ? QPixmap() : Thumbnail::decode(reply->readAll());
+        if (!pixmap.isNull()) {
             thumbnail_->setPicture(pixmap);
             quickPictureId_ = id;
         } else {
@@ -657,8 +657,8 @@ void DownloadPage::showPreview(const PreviewInfo &info)
         reply->deleteLater();
         if (link_->text().trimmed() != url)
             return;   // the link changed while the picture loaded
-        QPixmap picture;
-        if (reply->error() || !picture.loadFromData(reply->readAll()))
+        const QPixmap picture = reply->error() ? QPixmap() : Thumbnail::decode(reply->readAll());
+        if (picture.isNull())
             thumbnail_->setHint("No picture");
         else
             thumbnail_->setPicture(picture, badge);

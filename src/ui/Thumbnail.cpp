@@ -8,6 +8,16 @@ Thumbnail::Thumbnail(QWidget *parent) : QWidget(parent)
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 
+QPixmap Thumbnail::decode(const QByteArray &data)
+{
+    // By content, not the URL's ending: other decoders never see bytes from a site.
+    const char *format = data.startsWith("\xFF\xD8\xFF") ? "JPG" : data.startsWith("\x89PNG\r\n\x1A\n") ? "PNG" : nullptr;
+    QPixmap picture;
+    if (format)
+        picture.loadFromData(data, format);
+    return picture;
+}
+
 void Thumbnail::setPicture(const QPixmap &picture, const QString &badge)
 {
     original_ = picture;

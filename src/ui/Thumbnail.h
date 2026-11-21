@@ -11,6 +11,8 @@ class Thumbnail : public QWidget
 
 public:
     explicit Thumbnail(QWidget *parent = nullptr);
+    // A site's picture, decoded only if it really is a JPEG or PNG; null otherwise.
+    static QPixmap decode(const QByteArray &data);
     void setPicture(const QPixmap &picture, const QString &badge = {});
     void setHint(const QString &hint);   // shown when there's no picture
     void setBadge(const QString &badge);   // the length, once it's known

@@ -4,6 +4,7 @@
 #include "Engine.h"
 #include "ErrorRules.h"
 
+#include <QHostAddress>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -16,6 +17,26 @@ namespace {
 
 constexpr int timeoutMs = 60000;
 
+// A site's thumbnail address must not reach this computer or its network (written-out
+// addresses only: a public name that resolves to a private address isn't caught here).
+bool publicHost(const QUrl &url)
+{
+    const QString host = url.host().toLower();
+    if (host == "localhost" || host.endsWith(".localhost") || host.endsWith(".local"))
+        return false;
+    const QHostAddress address(host);
+    if (address.isNull())
+        return true;   // a name
+    static const char *privateNets[] = {"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12",
+        "192.168.0.0/16", "::/128", "::1/128", "fc00::/7", "fe80::/10"};
+    bool ok = false;
+    const QHostAddress v4(address.toIPv4Address(&ok));   // also ::ffff:a.b.c.d
+    for (const char *net : privateNets)
+        if (address.isInSubnet(QHostAddress::parseSubnet(net)) || (ok && v4.isInSubnet(QHostAddress::parseSubnet(net))))
+            return false;
+    return true;
+}
+
 // Largest JPEG or PNG thumbnail; WebP only as a last resort, since not every Qt can show it.
 QString pickThumbnail(const QJsonObject &o)
 {
@@ -25,7 +46,8 @@ QString pickThumbnail(const QJsonObject &o)
         const QJsonObject t = v.toObject();
         const QString url = t.value("url").toString();
         const QString path = QUrl(url).path().toLower();
-        if (!url.startsWith("https://") || !(path.endsWith(".jpg") || path.endsWith(".jpeg") || path.endsWith(".png")))
+        if (!url.startsWith("https://") || !publicHost(QUrl(url))
+            || !(path.endsWith(".jpg") || path.endsWith(".jpeg") || path.endsWith(".png")))
             continue;
         const int score = t.value("width").toInt() * t.value("height").toInt() + t.value("preference").toInt();
         if (score > bestScore) {
@@ -33,8 +55,8 @@ QString pickThumbnail(const QJsonObject &o)
             bestScore = score;
         }
     }
-    if (best.isEmpty() && o.value("thumbnail").toString().startsWith("https://"))
-        best = o.value("thumbnail").toString();
+    if (const QString url = o.value("thumbnail").toString(); best.isEmpty() && url.startsWith("https://") && publicHost(QUrl(url)))
+        best = url;
     return best;
 }
 
