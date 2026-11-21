@@ -338,8 +338,10 @@ void PreviewJob::finishedRun(int code, QProcess::ExitStatus status)
             return;
         }
     }
-    if (d.problem == Problem::SignIn && !browserSignIn_)
-        return emit failed(d.message + ". Browser sign-in can be turned on in Settings");
+    if (d.problem == Problem::SignIn && !browserSignIn_) {
+        emit signInWanted();
+        return emit failed(d.message + ". It needs your browser's sign-in (Settings)");
+    }
     emit failed(d.message);
 }
 #pragma endregion

@@ -1,6 +1,7 @@
 #include "AppSettings.h"
 
 #include <QSettings>
+#include <QUrl>
 #include <algorithm>
 
 AppSettings &AppSettings::get()
@@ -40,7 +41,37 @@ void AppSettings::setExisting(Existing e)
 }
 
 bool AppSettings::browserSignIn() const { return QSettings().value("browserSignIn", false).toBool(); }
-void AppSettings::setBrowserSignIn(bool on) { save("browserSignIn", on); }
+void AppSettings::setBrowserSignIn(bool on)
+{
+    if (!on)
+        QSettings().remove("signInSites");
+    save("browserSignIn", on);
+}
+
+QString AppSettings::siteOf(const QString &url)
+{
+    const QString host = QUrl(url.trimmed()).host().toLower();
+    return host.startsWith("www.") ? host.mid(4) : host;
+}
+
+// A site allowed covers its subdomains too: youtube.com covers m.youtube.com.
+bool AppSettings::signInAllowed(const QString &url) const
+{
+    const QString site = siteOf(url);
+    if (!browserSignIn() || site.isEmpty())
+        return false;
+    const QStringList allowed = QSettings().value("signInSites").toStringList();
+    return std::any_of(allowed.cbegin(), allowed.cend(), [&](const QString &a) { return site == a || site.endsWith("." + a); });
+}
+
+void AppSettings::allowSignIn(const QString &url)
+{
+    QStringList allowed = QSettings().value("signInSites").toStringList();
+    if (const QString site = siteOf(url); !site.isEmpty() && !allowed.contains(site)) {
+        allowed << site;
+        save("signInSites", allowed);
+    }
+}
 
 bool AppSettings::minimizeToTray() const { return QSettings().value("minimizeToTray", true).toBool(); }
 void AppSettings::setMinimizeToTray(bool on) { save("minimizeToTray", on); }

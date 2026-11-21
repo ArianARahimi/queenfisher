@@ -46,6 +46,8 @@ public:
     QAction *logAction() const { return logAction_; }
     // Asked when the video is already in the folder; true replaces it. Tests swap it out.
     std::function<bool(const QString &file)> askOverwrite;
+    // Asked the first time a site wants a sign-in, with browser sign-in on; true allows it for that site.
+    std::function<bool(const QString &site)> askSignIn;
     QString folder() const;
     void pasteLink();
     void chooseFolder();
@@ -82,6 +84,7 @@ private:
     Options currentOptions() const;
     void download();
     void addJob(QTreeWidgetItem *item, const Options &o);
+    bool offerSignIn(const QString &url);   // true once the link's site may use the browser's sign-in
     void startNext();
     void removeSelected();
     void retrySelected();
@@ -136,4 +139,5 @@ private:
     bool previewPending_ = false;   // a link is in but its qualities aren't known yet
     int wantedQuality_ = 0;         // the row the user picked; shown lower when the video lacks it
     QString signInUrl_, signInCookies_;   // a preview needed a sign-in: reuse it for that link
+    QSet<QString> declinedSites_;          // said Not now to this run: not asked again until restart
 };

@@ -79,6 +79,7 @@ signals:
     void ready(const PreviewInfo &info);
     void failed(const QString &message);
     void logLine(const QString &line);
+    void signInWanted();   // the site wants a sign-in this preview wasn't allowed to use; sent before failed
 
 private:
     void finishedRun(int code, QProcess::ExitStatus status);

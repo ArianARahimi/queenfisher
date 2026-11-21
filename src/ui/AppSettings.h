@@ -19,7 +19,10 @@ public:
     Existing existing() const;
     void setExisting(Existing e);
     bool browserSignIn() const;       // use the default browser's sign-in when a site asks
-    void setBrowserSignIn(bool on);
+    void setBrowserSignIn(bool on);   // off also forgets the sites allowed
+    bool signInAllowed(const QString &url) const;   // sign-in on, and the link's site allowed
+    void allowSignIn(const QString &url);           // remember the link's site
+    static QString siteOf(const QString &url);      // host without "www."
     bool minimizeToTray() const;
     void setMinimizeToTray(bool on);
     bool updateCheck() const;         // ask GitHub once a day for a newer Queenfisher

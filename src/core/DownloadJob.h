@@ -38,6 +38,7 @@ signals:
     void progress(double fraction, qint64 bytes, double bytesPerSecond, int secondsLeft);  // fraction never drops
     void stage(const QString &text);   // "Merging", "Converting", ...
     void finished(bool ok, const QString &message);
+    void signInWanted();   // the site wants a sign-in this job wasn't allowed to use; sent before finished
 
 private:
     void readOutput(QProcess::ProcessChannel channel);

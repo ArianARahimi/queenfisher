@@ -148,6 +148,17 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg
         box.exec();
         return box.clickedButton() == replace;
     };
+    askSignIn = [this](const QString &site) {
+        QMessageBox box(QMessageBox::Question, "Browser sign-in", site + " wants a sign-in.", QMessageBox::NoButton, window());
+        box.setTextFormat(Qt::PlainText);
+        box.setInformativeText("Use your default browser's sign-in for " + site
+                               + "? Queenfisher remembers this; turning browser sign-in off in Settings forgets it.");
+        QPushButton *allow = box.addButton("Use for This Site", QMessageBox::AcceptRole);
+        box.setDefaultButton(box.addButton("Not Now", QMessageBox::RejectRole));   // Enter and Esc say no
+        box.setEscapeButton(box.defaultButton());
+        box.exec();
+        return box.clickedButton() == allow;
+    };
     engineChanged();
 }
 
@@ -590,8 +601,14 @@ void DownloadPage::startPreview()
     preview_ = new PreviewJob(url, playlist_->isChecked(), engine_, this);
     if (deno_)
         preview_->setDeno(deno_->program());
-    preview_->setBrowserSignIn(AppSettings::get().browserSignIn());
+    preview_->setBrowserSignIn(AppSettings::get().signInAllowed(url));
     connect(preview_, &PreviewJob::logLine, this, [this](const QString &line) { log(line); });
+    connect(preview_, &PreviewJob::signInWanted, this, [this, url] {
+        QTimer::singleShot(0, this, [this, url] {   // once the preview has finished failing
+            if (link_->text().trimmed() == url && offerSignIn(url))
+                startPreview();
+        });
+    });
     connect(preview_, &PreviewJob::ready, this, [this, job = preview_.data()](const PreviewInfo &info) {
         if (!job->cookies().isEmpty()) {
             signInUrl_ = job->url();
@@ -783,7 +800,7 @@ Options DownloadPage::currentOptions() const
     if (!o.playlist && lastPreview_.playlistCount < 0)
         o.expectedParts = estimateParts(lastPreview_, o.format, o.maxHeight);
     o.overwrite = AppSettings::get().existing() == AppSettings::Existing::Replace;
-    o.browserSignIn = AppSettings::get().browserSignIn();
+    o.browserSignIn = AppSettings::get().signInAllowed(o.url);
     if (o.browserSignIn && o.url == signInUrl_)
         o.cookies = signInCookies_;   // the preview already found a sign-in is needed
     if (ffmpeg_)
@@ -806,6 +823,22 @@ void DownloadPage::download()
     startNext();
 }
 
+// A site wants a sign-in it isn't allowed yet: ask once, unless browser sign-in is off.
+bool DownloadPage::offerSignIn(const QString &url)
+{
+    const QString site = AppSettings::siteOf(url);
+    if (AppSettings::get().signInAllowed(url))
+        return true;   // allowed meanwhile (another row of the same site asked)
+    if (!AppSettings::get().browserSignIn() || site.isEmpty() || declinedSites_.contains(site))
+        return false;
+    if (!askSignIn(site)) {
+        declinedSites_.insert(site);
+        return false;
+    }
+    AppSettings::get().allowSignIn(url);
+    return true;
+}
+
 void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
 {
     const int number = list_->indexOfTopLevelItem(item) + 1;
@@ -816,6 +849,16 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
     delete jobs_.take(item);
     jobs_.insert(item, job);
     connect(job, &DownloadJob::logLine, this, [this, number](const QString &line) { log(line, number); });
+    connect(job, &DownloadJob::signInWanted, this, [this, item, job] {
+        QTimer::singleShot(0, this, [this, item, job] {   // once the row shows it failed
+            if (jobs_.value(item) != job || stateOf(item) != State::Failed || !offerSignIn(job->options().url))
+                return;
+            Options retry = job->options();
+            retry.browserSignIn = true;
+            addJob(item, retry);
+            startNext();
+        });
+    });
     connect(job, &DownloadJob::titleKnown, this, [item](const QString &t) { item->setText(Name, t); });
     connect(job, &DownloadJob::stage, this, [item](const QString &s) { item->setText(Status, s + "..."); });
     connect(job, &DownloadJob::progress, this, [this, item](double fraction, qint64 total, double speed, int left) {
