@@ -15,7 +15,7 @@ namespace {
 // Codec lists: empty = any; "none" = no such streams at all; a trailing * matches a prefix.
 struct Rule
 {
-    const char *ext;         // nullptr = any
+    QStringList ext;         // allowed file extensions
     const char *container;   // a word of ffprobe's format_name; nullptr = any
     QStringList video, audio;
 };
@@ -24,20 +24,21 @@ Rule ruleFor(Options::Format f)
 {
     const QStringList any, none = {"none"};
     switch (f) {
-    case Options::Mp4: return {"mp4", "mp4", {"h264", "hevc", "av1", "vp9"}, {"aac", "opus", "mp3", "ac3", "eac3"}};
-    case Options::Mkv: return {"mkv", "matroska", any, any};
-    case Options::Webm: return {"webm", "webm", {"vp8", "vp9", "av1"}, {"opus", "vorbis"}};
-    case Options::Mov: return {"mov", "mov", {"h264", "hevc"}, {"aac", "mp3", "ac3"}};
-    case Options::Avi: return {"avi", "avi", any, any};
-    case Options::Flv: return {"flv", "flv", {"h264"}, {"aac", "mp3"}};
-    case Options::Gif: return {"gif", "gif", {"gif"}, none};
-    case Options::Mp3: return {"mp3", "mp3", none, {"mp3"}};
-    case Options::Wav: return {"wav", "wav", none, {"pcm_*"}};
-    case Options::Flac: return {"flac", "flac", none, {"flac"}};
-    case Options::Vorbis: return {"ogg", "ogg", none, {"vorbis"}};
-    case Options::M4a: return {"m4a", "m4a", none, {"aac"}};
-    case Options::Alac: return {"m4a", "m4a", none, {"alac"}};
-    case Options::AudioOriginal: return {nullptr, nullptr, none, any};
+    case Options::Mp4: return {{"mp4"}, "mp4", {"h264", "hevc", "av1", "vp9"}, {"aac", "opus", "mp3", "ac3", "eac3"}};
+    case Options::Mkv: return {{"mkv"}, "matroska", any, any};
+    case Options::Webm: return {{"webm"}, "webm", {"vp8", "vp9", "av1"}, {"opus", "vorbis"}};
+    case Options::Mov: return {{"mov"}, "mov", {"h264", "hevc"}, {"aac", "mp3", "ac3"}};
+    case Options::Avi: return {{"avi"}, "avi", any, any};
+    case Options::Flv: return {{"flv"}, "flv", {"h264"}, {"aac", "mp3"}};
+    case Options::Gif: return {{"gif"}, "gif", {"gif"}, none};
+    case Options::Mp3: return {{"mp3"}, "mp3", none, {"mp3"}};
+    case Options::Wav: return {{"wav"}, "wav", none, {"pcm_*"}};
+    case Options::Flac: return {{"flac"}, "flac", none, {"flac"}};
+    case Options::Vorbis: return {{"ogg"}, "ogg", none, {"vorbis"}};
+    case Options::M4a: return {{"m4a"}, "m4a", none, {"aac"}};
+    case Options::Alac: return {{"m4a"}, "m4a", none, {"alac"}};
+    // The site's own sound, in whichever of these yt-dlp puts it: never an unknown file type.
+    case Options::AudioOriginal: return {{"opus", "m4a", "mp3", "ogg", "flac", "wav"}, nullptr, none, any};
     case Options::FormatCount: break;
     }
     return {};
@@ -104,7 +105,7 @@ QString problem(const QString &file, Options::Format format, const QString &ffpr
     const Probe p = probe(file, ffprobe);
     if (!p.read)
         return "a file ffprobe can't read, " + wanted;
-    const bool extOk = !rule.ext || QFileInfo(file).suffix().compare(rule.ext, Qt::CaseInsensitive) == 0;
+    const bool extOk = rule.ext.contains(QFileInfo(file).suffix(), Qt::CaseInsensitive);
     const bool containerOk = !rule.container || p.containers.contains(rule.container);
     const bool audioOnly = Options::isAudio(format);
     const bool hasWhatItNeeds = audioOnly ? !p.audio.isEmpty() : !p.video.isEmpty();
