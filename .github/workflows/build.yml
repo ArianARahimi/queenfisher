@@ -35,7 +35,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends ninja-build libssl-dev libgl1-mesa-dev \
             libxkbcommon-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 \
             libxcb-shape0 libegl1 libpulse0
-          pip install --require-hashes -r .github/aqt-requirements.txt
+          pip install --only-binary :all: --require-hashes -r .github/aqt-requirements.txt
           python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 -O "$RUNNER_TEMP/Qt"
           echo "$RUNNER_TEMP/Qt/$QT_VERSION/gcc_64/bin" >> "$GITHUB_PATH"
           echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/Qt/$QT_VERSION/gcc_64" >> "$GITHUB_ENV"
@@ -97,11 +97,19 @@ jobs:
         with:
           persist-credentials: false
 
+      # A Python every pinned package has a ready-made build for: nothing is compiled, since
+      # pip fetches a compile's build tools without hashes. Homebrew's moves to new versions.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.13"
+
       - name: Install build tools
         run: |
           brew install ninja openssl@3
-          pip3 install --break-system-packages --require-hashes -r .github/aqt-requirements.txt
-          python3 -m aqt install-qt mac desktop "$QT_VERSION" clang_64 -O "$RUNNER_TEMP/Qt"
+          # Its own environment, so no other Python's packages are in the way.
+          python3 -m venv "$RUNNER_TEMP/aqt"
+          "$RUNNER_TEMP/aqt/bin/pip" install --only-binary :all: --require-hashes -r .github/aqt-requirements.txt
+          "$RUNNER_TEMP/aqt/bin/python" -m aqt install-qt mac desktop "$QT_VERSION" clang_64 -O "$RUNNER_TEMP/Qt"
 
       - name: Build and package
         env:
