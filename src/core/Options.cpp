@@ -66,6 +66,8 @@ QStringList ytDlpArgs(const Options &o)
 {
     QStringList a = {
         "--ignore-config",   // a user's own yt-dlp config must not change what Queenfisher does
+        "--encoding",
+        "utf-8",   // Windows pipes default to cp1252, which drops characters like the ｜ in file names
         "--newline",
         "--color",
         "never",

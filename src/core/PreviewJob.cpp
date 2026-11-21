@@ -279,7 +279,7 @@ void PreviewJob::start()
         emit failed("yt-dlp isn't available yet");
         return;
     }
-    QStringList args = {"--ignore-config", "--color", "never", "--skip-download", "-J"};
+    QStringList args = {"--ignore-config", "--encoding", "utf-8", "--color", "never", "--skip-download", "-J"};
     args << (playlist_ ? QStringList{"--yes-playlist", "--flat-playlist"} : QStringList{"--no-playlist"});
     if (!cookies_.isEmpty())
         args << "--cookies-from-browser" << cookies_;
