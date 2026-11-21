@@ -35,11 +35,12 @@ public:
     static QString assetName();   // release file for this computer, empty if unsupported
     static QString checksumFor(const QByteArray &sums, const QString &asset);
     static int compareVersions(const QString &a, const QString &b, int parts = 99);
+    static bool isDowngrade(const QString &tag, const QString &installed);   // older by date
 
 private:
     struct Stamp { QString version; Channel channel = Stable; qint64 checked = 0; };
 
-    void run(Channel channel, bool force, const Done &done);
+    void run(Channel channel, bool force, const Done &done, bool userSwitch = false);
     void install(Channel channel, const QString &tag);
     void finish(bool changed, const QString &message);
     void fetch(const QUrl &url, qint64 limit, const std::function<void(QNetworkReply *)> &then);
@@ -58,6 +59,7 @@ private:
     {
         Channel channel = Stable;
         Done done;
+        bool userSwitch = false;
     };
     QList<Done> waiting_;     // callers sharing the run in progress
     QList<Request> queued_;   // runs asked for on purpose while busy, each after the last

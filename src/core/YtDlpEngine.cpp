@@ -89,7 +89,7 @@ void YtDlpEngine::updateNow()
 
 void YtDlpEngine::switchChannel(Channel channel)
 {
-    run(channel, true, [](bool, const QString &) {});
+    run(channel, true, [](bool, const QString &) { }, true);   // the user's pick may be an older stable
 }
 
 // Update the current channel; if that changes nothing, try nightly, which gets site fixes first.
@@ -107,11 +107,11 @@ void YtDlpEngine::repair(Done done)
     });
 }
 
-void YtDlpEngine::run(Channel channel, bool force, const Done &done)
+void YtDlpEngine::run(Channel channel, bool force, const Done &done, bool userSwitch)
 {
     if (busy_) {
         if (force)
-            queued_.append({channel, done});   // asked for on purpose: its own turn after this one
+            queued_.append({channel, done, userSwitch});   // asked for on purpose: its own turn after this one
         else
             waiting_.append(done);             // automatic checks share the one running
         return;
@@ -137,7 +137,7 @@ void YtDlpEngine::run(Channel channel, bool force, const Done &done)
     emit readyChanged();
     emit statusChanged(installed ? "Checking for a newer yt-dlp..." : "Getting yt-dlp...");
 
-    latestTag(channel, [this, channel, installed](const QString &tag) {
+    latestTag(channel, [this, channel, installed, userSwitch](const QString &tag) {
         if (tag.isEmpty())
             return finish(false, "Couldn't reach GitHub to check yt-dlp");
         if (installed && tag == stamp_.version && channel == stamp_.channel) {
@@ -145,6 +145,9 @@ void YtDlpEngine::run(Channel channel, bool force, const Done &done)
             saveStamp();
             return finish(false, "yt-dlp " + tag + " is the newest " + channelName(channel));
         }
+        // An older release is still validly signed, so only the version says it's stale.
+        if (installed && !userSwitch && isDowngrade(tag, stamp_.version))
+            return finish(false, "Refused yt-dlp " + tag + ": older than the " + stamp_.version + " in use");
         install(channel, tag);
     });
 }
@@ -280,7 +283,7 @@ void YtDlpEngine::finish(bool changed, const QString &message)
         done(changed, message);
     while (!busy_ && !queued_.isEmpty()) {   // a waiting callback may have started a run already
         const Request next = queued_.takeFirst();
-        run(next.channel, true, next.done);
+        run(next.channel, true, next.done, next.userSwitch);
     }
 }
 #pragma endregion
@@ -323,6 +326,12 @@ int YtDlpEngine::compareVersions(const QString &a, const QString &b, int parts)
             return p < q ? -1 : 1;
     }
     return 0;
+}
+
+// Dates only: a stable release replaces a nightly from the same day.
+bool YtDlpEngine::isDowngrade(const QString &tag, const QString &installed)
+{
+    return !installed.isEmpty() && compareVersions(tag, installed, 3) < 0;
 }
 
 void YtDlpEngine::loadStamp()
