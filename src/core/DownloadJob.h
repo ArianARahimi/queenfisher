@@ -68,6 +68,7 @@ private:
     QSet<QString> finishedStems_;   // playlist videos already done: never cleaned up
     QDateTime startedAt_;
     QStringList problems_;   // ERROR and WARNING lines of the current attempt
+    QString lastLine_;       // yt-dlp can print an error twice: the log shows it once
     bool triedRepair_ = false;
     bool checkedStreams_ = false;   // asked once whether a strict filter or the site left nothing
     bool triedAgain_ = false;   // one plain retry after a refused (403) download

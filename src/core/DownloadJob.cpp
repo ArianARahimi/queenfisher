@@ -94,6 +94,7 @@ void DownloadJob::start()
         return;
     }
     problems_.clear();
+    lastLine_.clear();
     file_.clear();
     outputs_.clear();
     if (!startedAt_.isValid())
@@ -178,6 +179,9 @@ void DownloadJob::handleLine(const QString &line)
             emit logLine("Ignored a finished file outside the download folder: " + path);
         return;
     }
+    if (line == lastLine_)
+        return;
+    lastLine_ = line;
     emit logLine(line);
     trackLine(line);
     if (line.startsWith("ERROR:") || line.startsWith("WARNING:"))

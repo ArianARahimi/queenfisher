@@ -12,7 +12,10 @@ struct Rule
 };
 
 // First match wins, so specific rules go above general ones.
+// clang-format off
 const Rule rules[] = {
+    {R"(could not copy .*cookie database)",
+     Problem::BrowserCookies, "Couldn't read your browser's sign-in. Close the browser and retry"},
     {R"(sign in to confirm|sign in if you.ve been granted|use --cookies|cookies.*authentication|login required|sign in to view)",
      Problem::SignIn, "The site wants a sign-in"},
     {R"(http error 429|too many requests)",
@@ -37,6 +40,7 @@ const Rule rules[] = {
      R"(temporary failure in name resolution|getaddrinfo failed|network is unreachable|ssl)",
      Problem::Network, "Network problem, check your connection"},
 };
+// clang-format on
 
 Diagnosis match(const QString &line)
 {
@@ -52,6 +56,17 @@ Diagnosis match(const QString &line)
     return {};
 }
 
+// An unknown ERROR: line for the Status column: no "See <link> for more info" tail, cut at a word.
+QString shortError(const QString &errorLine)
+{
+    static const QRegularExpression seeLink(R"(\s*See\s+\S+\s+for more info\.?\s*$)", QRegularExpression::CaseInsensitiveOption);
+    QString text = errorLine.mid(6).trimmed().remove(seeLink).trimmed();
+    if (text.size() > 80) {
+        const qsizetype space = text.lastIndexOf(' ', 79);
+        text = text.left(space > 40 ? space : 79) + "…";
+    }
+    return text;
+}
 }
 
 QStringList problemLines(const QByteArray &output)
@@ -81,6 +96,6 @@ Diagnosis diagnose(const QStringList &lines)
             return d;
     }
     if (lastError.isEmpty())
-        return {Problem::Unknown, "Failed, see the log"};
-    return {Problem::Unknown, "Failed: " + lastError.mid(6).trimmed().left(80)};
+        return {Problem::Unknown, "yt-dlp stopped without an error, see the log"};
+    return {Problem::Unknown, shortError(lastError)};
 }
