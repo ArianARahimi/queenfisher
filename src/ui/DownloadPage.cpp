@@ -662,9 +662,16 @@ void DownloadPage::showPreview(const PreviewInfo &info)
     }
     thumbnail_->setHint("Loading picture...");
     QNetworkRequest req{QUrl(info.thumbnail)};
-    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::UserVerifiedRedirectPolicy);
     req.setTransferTimeout(20000);
     QNetworkReply *reply = net_->get(req);
+    // Each hop gets the same check as the address itself: a public link can redirect inwards.
+    connect(reply, &QNetworkReply::redirected, reply, [reply](const QUrl &to) {
+        if (to.scheme() == "https" && publicHost(to))
+            emit reply->redirectAllowed();
+        else
+            reply->abort();
+    });
     connect(reply, &QNetworkReply::downloadProgress, reply, [reply](qint64 got, qint64 total) {
         if (got > (8 << 20) || total > (8 << 20))
             reply->abort();   // a thumbnail is never this big

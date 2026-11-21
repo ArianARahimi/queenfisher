@@ -36,6 +36,10 @@ public:
     void switchChannel(Channel channel);
     Channel channel() const { return stamp_.channel; }   // of the copy installed
 
+    // Asked when a newer stable yt-dlp didn't fix a download: true = try nightly. Asked once
+    // per run; unset or declined, repair stays on the current channel.
+    std::function<bool()> askNightly;
+
     // Pure helpers, public for tests.
     static QString assetName();   // release file for this computer, empty if unsupported
     static QString checksumFor(const QByteArray &sums, const QString &asset);
@@ -57,6 +61,7 @@ private:
     };
 
     void run(Channel channel, bool force, const Done &done, Asked asked = Auto);
+    void offerNightly(const Done &done, const QString &message);
     void recognize();   // the file in place changed: adopt it if it's a known copy, else refuse it
     void remember(const QString &hash, const QString &version);
     void install(Channel channel, const QString &tag);
@@ -83,6 +88,8 @@ private:
         Asked asked = Auto;
     };
     QList<Done> waiting_;     // callers sharing the run in progress
+    QList<Done> nightlyAsked_; // repairs waiting for the answer about nightly
+    int nightlyAnswer_ = -1; // -1 not asked yet this run, 0 no, 1 yes
     QList<Request> queued_;   // runs asked for on purpose while busy, each after the last
     QNetworkAccessManager net_;
     QByteArray sums_;

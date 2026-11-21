@@ -24,6 +24,7 @@ qt_add_executable(queenfisher
     src/core/OutputGate.cpp src/core/OutputGate.h
     src/core/PgpVerify.cpp src/core/PgpVerify.h
     src/core/PreviewJob.cpp src/core/PreviewJob.h
+    src/core/PrivateFolder.cpp src/core/PrivateFolder.h
     src/core/ProgressTracker.cpp src/core/ProgressTracker.h
     src/core/Tools.cpp src/core/Tools.h
     src/core/YtDlpEngine.cpp src/core/YtDlpEngine.h

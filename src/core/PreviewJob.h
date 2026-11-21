@@ -10,6 +10,7 @@
 #include <QTimer>
 
 class Engine;
+class QUrl;
 
 // One of the video's streams, as yt-dlp lists them: picture, sound, or both.
 struct Stream
@@ -56,6 +57,10 @@ QList<qint64> estimateParts(const PreviewInfo &info, Options::Format format, int
 // empty for anything else. Lets the picture and title come straight from YouTube while yt-dlp
 // works out the rest.
 QString youTubeId(const QString &link);
+
+// False for this computer or its network, written out (localhost, 192.168.x.x...); checked
+// for a thumbnail's address and each redirect it takes.
+bool publicHost(const QUrl &url);
 
 // Reads yt-dlp's JSON for one video or playlist; empty title means it couldn't.
 PreviewInfo parsePreview(const QByteArray &json);

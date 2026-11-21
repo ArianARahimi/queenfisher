@@ -1,5 +1,6 @@
 #include "ChildProcess.h"
 
+#include <QDir>
 #include <QProcess>
 
 #ifdef Q_OS_UNIX
@@ -28,9 +29,12 @@ void stop(QProcess &p, bool hard)
 #else
     // Windows has no signals for console programs; taskkill /T ends the process and its children.
     Q_UNUSED(hard);
-    QProcess::execute("taskkill", {"/T", "/F", "/PID", QString::number(pid)});
+    QProcess::execute(taskkill(), {"/T", "/F", "/PID", QString::number(pid)});
 #endif
 }
+
+// By full path: a bare name could run a taskkill.exe left next to Queenfisher (say, in Downloads).
+QString taskkill() { return QDir(qEnvironmentVariable("SystemRoot", "C:/Windows")).filePath("System32/taskkill.exe"); }
 
 void stopAndWait(QProcess &p)
 {

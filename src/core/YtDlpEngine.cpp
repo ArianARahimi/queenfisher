@@ -144,7 +144,8 @@ void YtDlpEngine::switchChannel(Channel channel)
     run(channel, true, [](bool, const QString &) { }, Switch);   // the user's pick may be an older stable
 }
 
-// Update the current channel; if that changes nothing, try nightly, which gets site fixes first.
+// Update the current channel; if that changes nothing, offer nightly, which gets site fixes first.
+// Only the user switches: the failure that led here can quote text from the site.
 void YtDlpEngine::repair(Done done)
 {
     if (path().isEmpty()) {
@@ -155,7 +156,36 @@ void YtDlpEngine::repair(Done done)
         if (changed || stamp_.channel == Nightly)
             done(changed, message);
         else
-            run(Nightly, true, done);
+            offerNightly(done, message);
+    });
+}
+
+// Downloads failing together share one question and one nightly install.
+void YtDlpEngine::offerNightly(const Done &done, const QString &message)
+{
+    if (!askNightly || nightlyAnswer_ == 0) {
+        done(false, message);
+        return;
+    }
+    if (nightlyAnswer_ == 1) {
+        run(Nightly, true, done);
+        return;
+    }
+    nightlyAsked_.append(done);
+    if (nightlyAsked_.size() > 1)
+        return;   // already asking
+    QTimer::singleShot(0, this, [this, message] {   // not from inside a network reply
+        const bool yes = askNightly();
+        const QList<Done> waiting = std::exchange(nightlyAsked_, {});
+        nightlyAnswer_ = yes ? 1 : 0;
+        const Done all = [waiting](bool changed, const QString &m) {
+            for (const Done &d : waiting)
+                d(changed, m);
+        };
+        if (yes)
+            run(Nightly, true, all);
+        else
+            all(false, message);
     });
 }
 

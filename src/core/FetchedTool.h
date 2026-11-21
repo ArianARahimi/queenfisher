@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QFileInfo>
+#include <QFileSystemWatcher>
 #include <QNetworkAccessManager>
 #include <QObject>
 #include <QString>
@@ -16,7 +17,7 @@ class FetchedTool : public QObject
     Q_OBJECT
 
 public:
-    QString location() const;   // folder holding the programs; empty until they're there
+    QString location() const;   // folder holding the checked programs; empty until they're there
     bool busy() const { return busy_; }
     QString lastError() const { return lastError_; }   // why it's missing; empty while a copy works
     void ensure();              // fetch if wanted and missing or old; call when idle
@@ -25,6 +26,7 @@ public:
     // unpacks it with `unzipper` (bsdtar, tar, unzip or python3) and keeps only what's needed.
     bool install(const QString &zip, const QString &expectedSha256, const QString &unzipper, QString *why);
     bool installed(const QString &sha256) const;   // the copy in place came from this zip
+    bool intact() const;   // every file in place is one install() checked, and nothing else is there
     static QString exe(const QString &name);   // "deno.exe" on Windows, "deno" elsewhere
     static QString unzipper();                 // what this computer can unpack a zip with; empty if nothing
 
@@ -49,8 +51,11 @@ protected:
 private:
     void download(const Source &s);
     void finish(bool ok, const QString &message);
+    void watch() const;   // a change to the folder or its files means checking it again
 
     QString dir_, name_, size_;
+    mutable int intact_ = -1;   // last intact() answer; -1 = not checked since the folder changed
+    mutable QFileSystemWatcher watcher_;
     bool busy_ = false;
     QString lastError_;
     qint64 lastTry_ = 0;

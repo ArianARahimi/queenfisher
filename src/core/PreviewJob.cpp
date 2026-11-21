@@ -13,10 +13,6 @@
 #include <QUrlQuery>
 
 #pragma region Reading the yt-dlp answer
-namespace {
-
-constexpr int timeoutMs = 60000;
-
 // A site's thumbnail address must not reach this computer or its network (written-out
 // addresses only: a public name that resolves to a private address isn't caught here).
 bool publicHost(const QUrl &url)
@@ -36,6 +32,10 @@ bool publicHost(const QUrl &url)
             return false;
     return true;
 }
+
+namespace {
+
+constexpr int timeoutMs = 60000;
 
 // Largest JPEG or PNG thumbnail; WebP only as a last resort, since not every Qt can show it.
 QString pickThumbnail(const QJsonObject &o)

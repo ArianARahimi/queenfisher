@@ -50,6 +50,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     engine_ = new YtDlpEngine(data, this);
     library_ = new Library(data + "/library.json", this);
 
+    engine_->askNightly = [this] {
+        QMessageBox box(QMessageBox::Question, "yt-dlp nightly", "A newer yt-dlp didn't fix this download.", QMessageBox::NoButton, this);
+        box.setInformativeText("Try yt-dlp's nightly build? It gets site fixes first and is checked the same way. "
+                               "Queenfisher goes back to the regular release once that catches up.");
+        QPushButton *yes = box.addButton("Try Nightly", QMessageBox::AcceptRole);
+        box.setDefaultButton(box.addButton("Not Now", QMessageBox::RejectRole));   // Enter and Esc say no
+        box.setEscapeButton(box.defaultButton());
+        box.exec();
+        return box.clickedButton() == yes;
+    };
     ffmpeg_ = new Ffmpeg(data, this);
     deno_ = new Deno(data, this);
     downloads_ = new DownloadPage(engine_, library_, ffmpeg_, deno_);

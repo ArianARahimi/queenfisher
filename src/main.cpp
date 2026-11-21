@@ -1,10 +1,14 @@
 // Queenfisher - free media downloader. GPL-3.0-or-later.
+#include "core/PrivateFolder.h"
 #include "core/SingleInstance.h"
 #include "ui/MainWindow.h"
 #include "ui/Theme.h"
 
 #include <QApplication>
+#include <QFileInfo>
 #include <QNetworkProxyFactory>
+#include <QSettings>
+#include <QStandardPaths>
 #include <QStringList>
 
 namespace {
@@ -23,6 +27,15 @@ void addPackageManagerPaths()
 #endif
 }
 
+// History, partial downloads and settings (sign-in sites) for this user's eyes only.
+void keepFoldersPrivate()
+{
+    makePrivateFolder(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation));
+    makePrivateFolder(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)   // macOS keeps settings in its own private Preferences
+    makePrivateFolder(QFileInfo(QSettings().fileName()).absolutePath());
+#endif
+}
 }
 
 int main(int argc, char *argv[])
@@ -32,6 +45,7 @@ int main(int argc, char *argv[])
     QApplication::setApplicationName("Queenfisher");
     QApplication::setOrganizationName("Queenfisher");
     QApplication::setApplicationVersion(QUEENFISHER_VERSION);
+    keepFoldersPrivate();
 
     SingleInstance instance;
     if (instance.alreadyRunning())
