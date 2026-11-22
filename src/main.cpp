@@ -1,5 +1,4 @@
 // Queenfisher - free media downloader. GPL-3.0-or-later.
-#include "core/Cookies.h"
 #include "core/PrivateFolder.h"
 #include "core/SingleInstance.h"
 #include "ui/MainWindow.h"
@@ -51,7 +50,6 @@ int main(int argc, char *argv[])
     SingleInstance instance;
     if (instance.alreadyRunning())
         return 0;   // the open Queenfisher shows its window instead
-    removeLeftoverCookies();   // from a run that was killed mid sign-in
 
     QNetworkProxyFactory::setUseSystemConfiguration(true);   // honour the system or environment proxy
     Theme::apply(app);

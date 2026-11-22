@@ -188,11 +188,13 @@ namespace {
 QString cookieFolder() { return QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/cookies"; }
 }
 
-void removeLeftoverCookies()
+int removeLeftoverCookies()
 {
     QDir dir(cookieFolder());
+    int removed = 0;
     for (const QString &name : dir.entryList({"all-*.txt", "site-*.txt"}, QDir::Files | QDir::Hidden))
-        dir.remove(name);
+        removed += dir.remove(name) ? 1 : 0;
+    return removed;
 }
 
 CookieExport::CookieExport(QString ytDlp, QString browser, QString site, QObject *parent)

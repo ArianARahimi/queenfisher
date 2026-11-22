@@ -4,8 +4,9 @@
 #include "Theme.h"
 #include "Thumbnail.h"
 #include "Widgets.h"
-#include "core/DownloadJob.h"
+#include "core/Cookies.h"
 #include "core/Deno.h"
+#include "core/DownloadJob.h"
 #include "core/Ffmpeg.h"
 #include "core/Library.h"
 #include "core/PreviewJob.h"
@@ -139,6 +140,8 @@ DownloadPage::DownloadPage(YtDlpEngine *engine, Library *library, Ffmpeg *ffmpeg
 
     linkChanged({});
     restoreSettings();
+    if (const int left = removeLeftoverCookies())   // made once, after the single-instance check
+        log(QString("Deleted %1 sign-in %2 left by an earlier run.").arg(left).arg(left == 1 ? "file" : "files"));
     askOverwrite = [this](const QString &file) {
         QMessageBox box(QMessageBox::Question, "Already downloaded",
                         QString("\"%1\" is already in %2.").arg(QFileInfo(file).fileName(), Widgets::shortPath(QFileInfo(file).path())),
