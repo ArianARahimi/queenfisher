@@ -915,15 +915,24 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
         refreshButtons();
         startNext();
         if (ok && job->alreadyHad() && !job->options().overwrite   // asked once the job is done with
-            && AppSettings::get().existing() == AppSettings::Existing::Ask)
+            && AppSettings::get().existing() == AppSettings::Existing::Ask) {
+            item->setData(Progress, ProgressDelegate::stateRole, int(Theme::BarState::Waiting));   // no full bar while asking
             QTimer::singleShot(0, this, [this, item, job] {
-                if (jobs_.value(item) != job || !askOverwrite(job->file()))
-                    return;   // the row went or was redone meanwhile, or the user keeps the file
+                if (jobs_.value(item) != job)
+                    return;   // the row went or was redone meanwhile
+                const bool replace = askOverwrite(job->file());
+                if (jobs_.value(item) != job)
+                    return;   // ...or while asking
+                if (!replace) {
+                    item->setData(Progress, ProgressDelegate::stateRole, int(Theme::BarState::Done));   // kept
+                    return;
+                }
                 Options again = job->options();
                 again.overwrite = true;
                 addJob(item, again);
                 startNext();
             });
+        }
     });
 }
 
