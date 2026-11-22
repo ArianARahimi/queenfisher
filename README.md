@@ -54,6 +54,20 @@ Get the newest version from [Releases](https://github.com/ArianARahimi/queenfish
 
 Queenfisher uses [ffmpeg](https://ffmpeg.org/) to join video and sound and to convert between formats. On Windows it fetches yt-dlp's own build the first time (about 90 MB); on Linux and macOS, install ffmpeg yourself. YouTube also needs [Deno](https://deno.com/): one you have installed is used, otherwise Queenfisher fetches the official build (about 45 MB). Each Queenfisher release names one exact build of each and carries its SHA-256, so a file that differs in any way is refused. Newer builds come with Queenfisher updates.
 
+## Privacy
+
+Queenfisher sends nothing about you anywhere. No ads, no accounts, no tracking. It only connects to:
+
+- the sites whose links you paste
+- YouTube's picture and title service, for YouTube previews
+- GitHub, to fetch and update yt-dlp, Deno (when it isn't installed) and ffmpeg on Windows
+- GitHub, once a day, to see if there's a newer Queenfisher (Settings: **Check for new versions once a day**)
+- SponsorBlock, only if you turn on skipping sponsor segments
+
+Browser sign-in is off until you turn it on in Settings (**Use my browser's sign-in when a site asks for one**). Then, the first time a site asks you to sign in, Queenfisher asks whether to use your default browser's cookies for that site. yt-dlp gets that site's cookies only, in a private file deleted after the download, and they go only to that site.
+
+Your history, settings and partial downloads stay on your computer, in your own user folders.
+
 ## Building
 
 Needs Qt 6.5 or newer, OpenSSL 3, CMake and a C++20 compiler.
