@@ -63,13 +63,22 @@ jobs:
     steps:
       - name: Install build tools
         run: |
+          # Arch's own mirror if the archive is down; the version check below keeps the pin.
           echo 'Server = https://archive.archlinux.org/repos/2026/11/16/$repo/os/$arch' > /etc/pacman.d/mirrorlist
-          # The archive goes down for a while at times: retry for about half an hour.
+          echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' >> /etc/pacman.d/mirrorlist
           for wait in 60 120 240 480 960 0; do
-            pacman -Syyuu --noconfirm --needed mingw-w64-gcc qt6-base cmake ninja perl git && exit 0
+            pacman -Syyuu --noconfirm --needed mingw-w64-gcc qt6-base cmake ninja perl git && break
             [ "$wait" -eq 0 ] && exit 1
-            echo "Arch archive unavailable, retrying in ${wait}s"
+            echo "Arch packages unavailable, retrying in ${wait}s"
             sleep "$wait"
+          done
+          # The MinGW and host Qt the build is tested with, whichever server they came from.
+          for want in mingw-w64-gcc=16.2.0 qt6-base=6.12.0; do
+            got=$(pacman -Q "${want%=*}" | cut -d' ' -f2)
+            case "$got" in
+              "${want#*=}"-*) ;;
+              *) echo "${want%=*} is $got, expected ${want#*=}"; exit 1 ;;
+            esac
           done
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
