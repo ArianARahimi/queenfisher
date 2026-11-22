@@ -46,6 +46,14 @@ DownloadJob::DownloadJob(Options options, Engine *engine, QObject *parent)
         options_.cookies.clear();
         options_.needsSignIn = true;
     }
+    // The sign-in file goes as soon as the job is done, not when its row is removed.
+    connect(this, &DownloadJob::finished, this, [this] {
+        if (!export_)
+            return;
+        std::exchange(export_, nullptr)->deleteLater();   // may be inside its own signal
+        options_.cookies.clear();
+        options_.needsSignIn = true;   // a retry signs in again
+    });
     ChildProcess::ownGroup(process_);
     connect(&process_, &QProcess::readyReadStandardOutput, this, [this] { readOutput(QProcess::StandardOutput); });
     connect(&process_, &QProcess::readyReadStandardError, this, [this] { readOutput(QProcess::StandardError); });
