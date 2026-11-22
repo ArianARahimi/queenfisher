@@ -20,6 +20,7 @@ public:
     QString location() const;   // folder holding the checked programs; empty until they're there
     bool busy() const { return busy_; }
     QString lastError() const { return lastError_; }   // why it's missing; empty while a copy works
+    bool failing() const { return failures_ > 0; }      // the last try failed, reported or not: try again
     void ensure();              // fetch if wanted and missing or old; call when idle
 
     // The part that doesn't need the network, public for tests: checks the zip's SHA-256,

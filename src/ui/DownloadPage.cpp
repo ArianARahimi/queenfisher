@@ -693,7 +693,8 @@ void DownloadPage::showNotice()
     if (toolsBusy())
         return;   // they show their own progress
     const bool noYtDlp = engine_->version().isEmpty();
-    const bool fetchFailed = (ffmpeg_ && !ffmpeg_->lastError().isEmpty()) || (deno_ && !deno_->lastError().isEmpty());
+    // A first failure isn't shown yet, but it's retried all the same.
+    const bool fetchFailed = (ffmpeg_ && ffmpeg_->failing()) || (deno_ && deno_->failing());
     banner_->setNotice(noYtDlp ? QString("yt-dlp isn't available yet. Check your connection; Queenfisher will try again.")
                                : QString());
     if (noYtDlp || fetchFailed)
