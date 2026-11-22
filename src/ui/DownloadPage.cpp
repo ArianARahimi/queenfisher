@@ -23,15 +23,16 @@
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QHostInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QPlainTextEdit>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
 #include <QSignalBlocker>
@@ -660,22 +661,42 @@ void DownloadPage::showPreview(const PreviewInfo &info)
         return;
     }
     thumbnail_->setHint("Loading picture...");
-    QNetworkRequest req{QUrl(info.thumbnail)};
+    const QUrl address(info.thumbnail);
+    const QString url = link_->text().trimmed();
+    // A name is looked up first: a public-looking one can still point at this computer.
+    QHostInfo::lookupHost(address.host(), this, [this, address, url, badge](const QHostInfo &host) {
+        if (link_->text().trimmed() != url)
+            return;   // the link changed meanwhile
+        if (publicAddresses(host.addresses()))
+            loadThumbnail(address, url, badge);
+        else
+            thumbnail_->setHint("No picture");
+    });
+}
+
+void DownloadPage::loadThumbnail(const QUrl &address, const QString &url, const QString &badge)
+{
+    QNetworkRequest req(address);
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::UserVerifiedRedirectPolicy);
     req.setTransferTimeout(20000);
     QNetworkReply *reply = net_->get(req);
-    // Each hop gets the same check as the address itself: a public link can redirect inwards.
+    // Each hop gets the same checks as the address itself: a public link can redirect inwards.
     connect(reply, &QNetworkReply::redirected, reply, [reply](const QUrl &to) {
-        if (to.scheme() == "https" && publicHost(to))
-            emit reply->redirectAllowed();
-        else
+        if (to.scheme() != "https" || !publicHost(to)) {
             reply->abort();
+            return;
+        }
+        QHostInfo::lookupHost(to.host(), reply, [reply](const QHostInfo &host) {
+            if (publicAddresses(host.addresses()))
+                emit reply->redirectAllowed();
+            else
+                reply->abort();
+        });
     });
     connect(reply, &QNetworkReply::downloadProgress, reply, [reply](qint64 got, qint64 total) {
         if (got > (8 << 20) || total > (8 << 20))
             reply->abort();   // a thumbnail is never this big
     });
-    const QString url = link_->text().trimmed();
     connect(reply, &QNetworkReply::finished, this, [this, reply, url, badge] {
         reply->deleteLater();
         if (link_->text().trimmed() != url)

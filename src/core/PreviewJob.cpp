@@ -4,6 +4,8 @@
 #include "Engine.h"
 #include "ErrorRules.h"
 
+#include <algorithm>
+
 #include <QHostAddress>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -13,24 +15,36 @@
 #include <QUrlQuery>
 
 #pragma region Reading the yt-dlp answer
-// A site's thumbnail address must not reach this computer or its network (written-out
-// addresses only: a public name that resolves to a private address isn't caught here).
-bool publicHost(const QUrl &url)
+namespace {
+
+bool privateAddress(const QHostAddress &address)
 {
-    const QString host = url.host().toLower();
-    if (host == "localhost" || host.endsWith(".localhost") || host.endsWith(".local"))
-        return false;
-    const QHostAddress address(host);
-    if (address.isNull())
-        return true;   // a name
     static const char *privateNets[] = {"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12",
         "192.168.0.0/16", "::/128", "::1/128", "fc00::/7", "fe80::/10"};
     bool ok = false;
     const QHostAddress v4(address.toIPv4Address(&ok));   // also ::ffff:a.b.c.d
     for (const char *net : privateNets)
         if (address.isInSubnet(QHostAddress::parseSubnet(net)) || (ok && v4.isInSubnet(QHostAddress::parseSubnet(net))))
-            return false;
-    return true;
+            return true;
+    return false;
+}
+
+}
+
+// A site's thumbnail address must not reach this computer or its network. Names pass here;
+// publicAddresses() checks what they resolve to before anything is fetched.
+bool publicHost(const QUrl &url)
+{
+    const QString host = url.host().toLower();
+    if (host == "localhost" || host.endsWith(".localhost") || host.endsWith(".local"))
+        return false;
+    const QHostAddress address(host);
+    return address.isNull() || !privateAddress(address);
+}
+
+bool publicAddresses(const QList<QHostAddress> &addresses)
+{
+    return !addresses.isEmpty() && std::none_of(addresses.cbegin(), addresses.cend(), privateAddress);
 }
 
 namespace {

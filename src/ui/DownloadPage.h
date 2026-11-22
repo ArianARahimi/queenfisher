@@ -72,6 +72,7 @@ private:
     void quickPreview(const QString &link);
     void quickPicture(const QString &id, QStringList sizes);
     void showPreview(const PreviewInfo &info);
+    void loadThumbnail(const QUrl &address, const QString &url, const QString &badge);
     void engineChanged();
     void showNotice();
     void showQuality();

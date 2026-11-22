@@ -3,6 +3,7 @@
 #include "Options.h"
 
 #include <QByteArray>
+#include <QHostAddress>
 #include <QList>
 #include <QObject>
 #include <QProcess>
@@ -62,6 +63,10 @@ QString youTubeId(const QString &link);
 // False for this computer or its network, written out (localhost, 192.168.x.x...); checked
 // for a thumbnail's address and each redirect it takes.
 bool publicHost(const QUrl &url);
+
+// A name's looked-up addresses: false if there are none or any is this computer or its network
+// (127.0.0.1.nip.io is a public name for 127.0.0.1).
+bool publicAddresses(const QList<QHostAddress> &addresses);
 
 // Reads yt-dlp's JSON for one video or playlist; empty title means it couldn't.
 PreviewInfo parsePreview(const QByteArray &json);
