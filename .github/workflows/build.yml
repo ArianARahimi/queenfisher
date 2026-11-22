@@ -64,7 +64,13 @@ jobs:
       - name: Install build tools
         run: |
           echo 'Server = https://archive.archlinux.org/repos/2026/11/16/$repo/os/$arch' > /etc/pacman.d/mirrorlist
-          pacman -Syyuu --noconfirm --needed mingw-w64-gcc qt6-base cmake ninja perl git
+          # The archive goes down for a while at times: retry for about half an hour.
+          for wait in 60 120 240 480 960 0; do
+            pacman -Syyuu --noconfirm --needed mingw-w64-gcc qt6-base cmake ninja perl git && exit 0
+            [ "$wait" -eq 0 ] && exit 1
+            echo "Arch archive unavailable, retrying in ${wait}s"
+            sleep "$wait"
+          done
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
