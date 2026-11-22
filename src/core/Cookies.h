@@ -26,7 +26,8 @@ QString launchServicesHttpsHandler(const QByteArray &json);
 // most recently, so leftovers of an old install lose to the profile in use.
 QString newestFirefoxProfile(const QString &profilesDir);
 
-// The site a link belongs to, as sign-in is allowed for it: the host without "www.".
+// The site a link belongs to, as sign-in is allowed for it: the host without "www.", short-link
+// hosts as their full site (youtu.be is youtube.com).
 QString siteOf(const QString &url);
 
 // Lines of a cookies.txt (Netscape format) for this site, its subdomains and the domains above

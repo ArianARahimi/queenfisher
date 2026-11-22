@@ -3,8 +3,11 @@
 #include "ErrorRules.h"
 #include "PrivateFolder.h"
 
+#include <algorithm>
+
 #include <QDir>
 #include <QFileInfo>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -153,8 +156,13 @@ QString defaultBrowserCookies()
 #pragma region Cookies for one site
 QString siteOf(const QString &url)
 {
-    const QString host = QUrl(url.trimmed()).host().toLower();
-    return host.startsWith("www.") ? host.mid(4) : host;
+    // Short-link hosts whose sign-in lives on the full site.
+    static const QHash<QString, QString> shortHosts = {
+        {"youtu.be", "youtube.com"}, {"redd.it", "reddit.com"}, {"fb.watch", "facebook.com"}};
+    QString host = QUrl(url.trimmed()).host().toLower();
+    if (host.startsWith("www."))
+        host = host.mid(4);
+    return shortHosts.value(host, host);
 }
 
 QByteArray cookiesForSite(const QByteArray &cookiesTxt, const QString &site)
@@ -199,7 +207,8 @@ void CookieExport::start()
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/cookies";
     all_.setFileTemplate(dir + "/all-XXXXXX.txt");
     mine_.setFileTemplate(dir + "/site-XXXXXX.txt");
-    if (!makePrivateFolder(dir) || !all_.open())
+    // yt-dlp refuses an existing file without the Netscape header and then saves nothing.
+    if (!makePrivateFolder(dir) || !all_.open() || all_.write("# Netscape HTTP Cookie File\n") < 0)
         return fail("Couldn't make a private place for the sign-in");
     all_.close();
     process_.start(ytDlp_, {"--ignore-config", "--no-plugin-dirs", "--cookies-from-browser", browser_, "--cookies", all_.fileName()});
@@ -208,7 +217,9 @@ void CookieExport::start()
 
 void CookieExport::filter()
 {
-    const Diagnosis d = diagnose(problemLines(process_.readAllStandardError()));
+    const QStringList problems = problemLines(process_.readAllStandardError());
+    const Diagnosis d = diagnose(problems);
+    const bool errored = std::any_of(problems.cbegin(), problems.cend(), [](const QString &l) { return l.startsWith("ERROR:"); });
     QByteArray all;
     if (all_.open()) {
         all = all_.readAll();
@@ -216,10 +227,14 @@ void CookieExport::filter()
     }
     all_.remove();   // every site's sign-ins: gone as soon as this site's are out
     const QByteArray mine = cookiesForSite(all, site_);
-    if (mine.count('\n') < 2)
-        return fail(d.problem == Problem::BrowserCookies
-                        ? QString("Couldn't read %1's sign-in. Close %1 and retry").arg(browserLabel(browser_))
-                        : "Your browser has no sign-in for " + site_);
+    if (mine.count('\n') < 2) {
+        const QString browser = browserLabel(browser_);
+        if (d.problem == Problem::BrowserCookies)
+            return fail(QString("Couldn't read %1's sign-in. Close %1 and retry").arg(browser));
+        if (errored)
+            return fail(QString("Couldn't read %1's sign-in: %2").arg(browser, d.message));
+        return fail("Your browser has no sign-in for " + site_);
+    }
     if (!mine_.open() || mine_.write(mine) != mine.size())
         return fail("Couldn't save the sign-in for " + site_);
     mine_.close();
