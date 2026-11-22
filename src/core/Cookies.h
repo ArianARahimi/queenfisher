@@ -34,6 +34,10 @@ QString siteOf(const QString &url);
 // it (youtube.com's for music.youtube.com); nothing for other sites.
 QByteArray cookiesForSite(const QByteArray &cookiesTxt, const QString &site);
 
+// Deletes sign-in files a killed or crashed Queenfisher left behind. Only call it while no
+// export can be running (at startup, once this is the only Queenfisher).
+void removeLeftoverCookies();
+
 // Copies the default browser's cookies for one site into a file of its own, readable by this
 // user only, so yt-dlp never holds the sign-ins of other sites. The browser's full set lives
 // only until it's filtered; the site's file is deleted with this object.

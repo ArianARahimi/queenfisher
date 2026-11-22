@@ -184,6 +184,17 @@ QByteArray cookiesForSite(const QByteArray &cookiesTxt, const QString &site)
     return out;
 }
 
+namespace {
+QString cookieFolder() { return QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/cookies"; }
+}
+
+void removeLeftoverCookies()
+{
+    QDir dir(cookieFolder());
+    for (const QString &name : dir.entryList({"all-*.txt", "site-*.txt"}, QDir::Files | QDir::Hidden))
+        dir.remove(name);
+}
+
 CookieExport::CookieExport(QString ytDlp, QString browser, QString site, QObject *parent)
     : QObject(parent), ytDlp_(std::move(ytDlp)), browser_(std::move(browser)), site_(std::move(site))
 {
@@ -204,7 +215,7 @@ CookieExport::~CookieExport()
 // yt-dlp reads the browser and saves what it read with --cookies, even without a link.
 void CookieExport::start()
 {
-    const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/cookies";
+    const QString dir = cookieFolder();
     all_.setFileTemplate(dir + "/all-XXXXXX.txt");
     mine_.setFileTemplate(dir + "/site-XXXXXX.txt");
     // yt-dlp refuses an existing file without the Netscape header and then saves nothing.
