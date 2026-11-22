@@ -318,6 +318,7 @@ void DownloadJob::exportCookies()
         return start();   // without; if the site insists, the failure says so
     }
     emit stage("Signing in");
+    emit logLine("Reading the sign-in for " + site + " from " + browserLabel(browser) + ".");
     export_ = new CookieExport(engine_->path(), browser, site, this);
     connect(export_, &CookieExport::finished, this, [this, site](bool ok, const QString &why) {
         if (cancelled_)

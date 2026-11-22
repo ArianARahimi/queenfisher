@@ -346,7 +346,8 @@ void PreviewJob::finishedRun(int code, QProcess::ExitStatus status)
     const Diagnosis d = diagnose(problems);
     if (d.problem == Problem::SignIn && cookies_.isEmpty() && browserSignIn_ && !export_) {
         if (const QString browser = defaultBrowserCookies(); !browser.isEmpty()) {
-            emit logLine("Preview: the site wants a sign-in, trying with your browser's sign-in for " + siteOf(url_) + ".");
+            emit logLine(
+                "Preview: the site wants a sign-in, trying with " + browserLabel(browser) + "'s sign-in for " + siteOf(url_) + ".");
             export_ = new CookieExport(engine_->path(), browser, siteOf(url_), this);
             connect(export_, &CookieExport::finished, this, [this](bool ok, const QString &why) {
                 if (!ok)

@@ -62,6 +62,7 @@ if(WIN32)
     set(MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/queenfisher.manifest)
     configure_file(packaging/windows/queenfisher.rc.in queenfisher.rc @ONLY)
     target_sources(queenfisher PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/queenfisher.rc)
+    target_link_libraries(queenfisher PRIVATE shlwapi)   # AssocQueryStringW: the default browser
     if(MSVC)
         target_link_options(queenfisher PRIVATE /MANIFEST:NO)   # ours is in the .rc
     endif()

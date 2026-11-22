@@ -14,25 +14,37 @@
 #include <QTimer>
 #include <QUrl>
 
+#ifdef Q_OS_WIN
+#include <windows.h>   // before shlwapi.h, which needs its types
+
+#include <shlwapi.h>
+#endif
+
 #pragma region Default browser
 namespace {
 
 // Where each Firefox-style browser keeps profiles.ini: Linux (from home), Windows (from
 // %APPDATA%), macOS (from ~/Library/Application Support). Empty for browsers yt-dlp finds
 // by itself.
-struct Browser { const char *match; const char *ytDlpName; const char *onLinux, *onWindows, *onMac; };
+struct Browser
+{
+    const char *match;
+    const char *label;
+    const char *ytDlpName;
+    const char *onLinux, *onWindows, *onMac;
+};
 const Browser browsers[] = {
-    {"waterfox", "firefox", ".waterfox", "Waterfox", "Waterfox"},
-    {"librewolf", "firefox", ".librewolf", "librewolf", "librewolf"},
-    {"floorp", "firefox", ".floorp", "Floorp", "Floorp"},
-    {"firefox", "firefox", ".mozilla/firefox", "Mozilla/Firefox", "Firefox"},
-    {"brave", "brave", "", "", ""},
-    {"vivaldi", "vivaldi", "", "", ""},
-    {"opera", "opera", "", "", ""},
-    {"edge", "edge", "", "", ""},         // Windows MSEdgeHTM, macOS com.microsoft.edgemac
-    {"chromium", "chromium", "", "", ""},
-    {"chrome", "chrome", "", "", ""},      // Windows ChromeHTML, macOS com.google.chrome
-    {"safari", "safari", "", "", ""},
+    {"waterfox", "Waterfox", "firefox", ".waterfox", "Waterfox", "Waterfox"},
+    {"librewolf", "LibreWolf", "firefox", ".librewolf", "librewolf", "librewolf"},
+    {"floorp", "Floorp", "firefox", ".floorp", "Floorp", "Floorp"},
+    {"firefox", "Firefox", "firefox", ".mozilla/firefox", "Mozilla/Firefox", "Firefox"},
+    {"brave", "Brave", "brave", "", "", ""},
+    {"vivaldi", "Vivaldi", "vivaldi", "", "", ""},
+    {"opera", "Opera", "opera", "", "", ""},
+    {"edge", "Edge", "edge", "", "", ""},         // Windows MSEdgeHTM, macOS com.microsoft.edgemac
+    {"chromium", "Chromium", "chromium", "", "", ""},
+    {"chrome", "Chrome", "chrome", "", "", ""},      // Windows ChromeHTML, macOS com.google.chrome
+    {"safari", "Safari", "safari", "", "", ""},
 };
 
 QString profilesDir(const Browser &b)
@@ -49,6 +61,11 @@ QString profilesDir(const Browser &b)
 QString defaultBrowserId()
 {
 #ifdef Q_OS_WIN
+    // Newer Windows 11 keeps the choice in UserChoiceLatest and leaves UserChoice stale, so ask the shell.
+    wchar_t progId[256];
+    DWORD size = sizeof progId / sizeof *progId;
+    if (AssocQueryStringW(ASSOCF_NONE, ASSOCSTR_PROGID, L"https", L"open", progId, &size) == S_OK)
+        return QString::fromWCharArray(progId);
     const QSettings choice(R"(HKEY_CURRENT_USER\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice)",
                            QSettings::NativeFormat);
     return choice.value("ProgId").toString();
@@ -116,6 +133,15 @@ QString cookiesFor(const QString &browserId)
         return profile.isEmpty() ? QString() : QString("%1:%2").arg(b.ytDlpName, profile);
     }
     return {};
+}
+
+QString browserLabel(const QString &cookiesValue)
+{
+    const QString value = cookiesValue.toLower();
+    for (const Browser &b : browsers)
+        if (value.contains(b.match))   // "firefox:<path>" names a fork by its folder
+            return b.label;
+    return "your browser";
 }
 
 QString defaultBrowserCookies()
@@ -191,7 +217,9 @@ void CookieExport::filter()
     all_.remove();   // every site's sign-ins: gone as soon as this site's are out
     const QByteArray mine = cookiesForSite(all, site_);
     if (mine.count('\n') < 2)
-        return fail(d.problem == Problem::BrowserCookies ? d.message : "Your browser has no sign-in for " + site_);
+        return fail(d.problem == Problem::BrowserCookies
+                        ? QString("Couldn't read %1's sign-in. Close %1 and retry").arg(browserLabel(browser_))
+                        : "Your browser has no sign-in for " + site_);
     if (!mine_.open() || mine_.write(mine) != mine.size())
         return fail("Couldn't save the sign-in for " + site_);
     mine_.close();

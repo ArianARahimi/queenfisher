@@ -15,6 +15,9 @@ QString defaultBrowserCookies();
 // browserId: what the system calls the default browser (Linux desktop file, Windows ProgId,
 // macOS bundle id), matched without regard to case.
 QString cookiesFor(const QString &browserId);
+// The browser a defaultBrowserCookies() value reads, for messages: "Edge", "Waterfox",
+// or "your browser" when it's none we know.
+QString browserLabel(const QString &cookiesValue);
 // macOS: the https handler's bundle id from LaunchServices' settings (as `plutil -convert
 // json` prints them); "com.apple.safari" when nothing else was ever chosen.
 QString launchServicesHttpsHandler(const QByteArray &json);
