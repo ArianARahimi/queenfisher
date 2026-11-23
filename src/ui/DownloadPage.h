@@ -141,4 +141,5 @@ private:
     int wantedQuality_ = 0;         // the row the user picked; shown lower when the video lacks it
     QString signInUrl_;   // a preview needed a sign-in: the download of that link asks for it up front
     QSet<QString> declinedSites_;          // said Not now to this run: not asked again until restart
+    QHash<const DownloadJob *, QString> askingSignIn_;   // failed only until the sign-in box is answered
 };

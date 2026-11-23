@@ -879,10 +879,21 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
     delete jobs_.take(item);
     jobs_.insert(item, job);
     connect(job, &DownloadJob::logLine, this, [this, number](const QString &line) { log(line, number); });
-    connect(job, &DownloadJob::signInWanted, this, [this, item, job] {
-        QTimer::singleShot(0, this, [this, item, job] {   // once the row shows it failed
-            if (jobs_.value(item) != job || stateOf(item) != State::Failed || !offerSignIn(job->options().url))
+    connect(job, &DownloadJob::signInWanted, this, [this, item, job, number] {
+        const QString url = job->options().url;
+        const QString site = AppSettings::siteOf(url);
+        if (AppSettings::get().signInAllowed(url)
+            || (AppSettings::get().browserSignIn() && !site.isEmpty() && !declinedSites_.contains(site)))
+            askingSignIn_.insert(job, {});   // finished logs a waiting line, not Failed
+        QTimer::singleShot(0, this, [this, item, job, number, url] {   // once the row shows it failed
+            const QString failure = askingSignIn_.take(job);
+            if (jobs_.value(item) != job || stateOf(item) != State::Failed)
                 return;
+            if (!offerSignIn(url)) {
+                if (!failure.isEmpty())
+                    log("Failed: " + failure, number);
+                return;
+            }
             Options retry = job->options();
             retry.browserSignIn = true;
             retry.needsSignIn = true;
@@ -910,7 +921,13 @@ void DownloadPage::addJob(QTreeWidgetItem *item, const Options &o)
         setState(item, ok ? State::Done : stopped ? State::Stopped : State::Failed, ok ? done : message);
         if (const QFileInfo file(job->file()); ok && file.exists())
             item->setText(Size, Widgets::sizeText(double(file.size())));   // the finished file, after any conversion
-        log(ok ? done + ": " + job->file() : stopped ? message : "Failed: " + message, number);
+        if (!ok && !stopped && askingSignIn_.contains(job)) {
+            askingSignIn_[job] = message;
+            if (!AppSettings::get().signInAllowed(job->options().url))
+                log("Waiting for you to allow sign-in for " + AppSettings::siteOf(job->options().url) + ".", number);
+        } else {
+            log(ok ? done + ": " + job->file() : stopped ? message : "Failed: " + message, number);
+        }
         if (ok)
             library_->add({item->text(Name), job->options().url, job->file(), job->options().label(),
                            QFileInfo(job->file()).size(), QDateTime::currentDateTime()});
