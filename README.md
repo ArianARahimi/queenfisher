@@ -1,9 +1,9 @@
 <div align="center">
   <h1>Queenfisher</h1>
   <p>Free media downloader for Windows, macOS and Linux. Paste a link, pick a quality, done.</p>
+  <a href="https://github.com/ArianARahimi/queenfisher/releases/latest/download/Queenfisher-Windows.exe"><img src="https://img.shields.io/badge/Download-Windows-1f6feb?logo=windows&logoColor=white&labelColor=333"></a>
   <a href="https://github.com/ArianARahimi/queenfisher/releases/latest/download/Queenfisher-macOS.zip"><img src="https://img.shields.io/badge/Download-macOS-1f6feb?logo=apple&logoColor=white&labelColor=333"></a>
   <a href="https://github.com/ArianARahimi/queenfisher/releases/latest/download/Queenfisher-macOS-Intel.zip"><img src="https://img.shields.io/badge/Download-macOS%20Intel-1f6feb?logo=apple&logoColor=white&labelColor=333"></a>
-  <a href="https://github.com/ArianARahimi/queenfisher/releases/latest/download/Queenfisher-Windows.exe"><img src="https://img.shields.io/badge/Download-Windows-1f6feb?logo=windows&logoColor=white&labelColor=333"></a>
   <a href="https://github.com/ArianARahimi/queenfisher/releases/latest/download/Queenfisher-Linux.AppImage"><img src="https://img.shields.io/badge/Download-Linux-1f6feb?logo=linux&logoColor=white&labelColor=333"></a>
   <br>
   <a href="https://github.com/ArianARahimi/queenfisher/releases/latest"><img src="https://img.shields.io/github/v/release/ArianARahimi/queenfisher?label=Release&color=555&labelColor=333"></a>
