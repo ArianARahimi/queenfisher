@@ -2,9 +2,16 @@
 
 Free media downloader for Windows, macOS and Linux. Paste a link, pick a quality, done.
 
-![Queenfisher downloading a few videos, with a preview of the next one](docs/screenshots/download.png)
+<a href="https://github.com/ArianARahimi/queenfisher/releases/latest/download/Queenfisher-macOS.zip"><img src="https://img.shields.io/badge/Download-macOS-1f6feb?logo=apple&logoColor=white&labelColor=333"></a>
+<a href="https://github.com/ArianARahimi/queenfisher/releases/latest/download/Queenfisher-macOS-Intel.zip"><img src="https://img.shields.io/badge/Download-macOS%20Intel-1f6feb?logo=apple&logoColor=white&labelColor=333"></a>
+<a href="https://github.com/ArianARahimi/queenfisher/releases/latest/download/Queenfisher-Windows.exe"><img src="https://img.shields.io/badge/Download-Windows-1f6feb?logo=windows&logoColor=white&labelColor=333"></a>
+<a href="https://github.com/ArianARahimi/queenfisher/releases/latest/download/Queenfisher-Linux.AppImage"><img src="https://img.shields.io/badge/Download-Linux-1f6feb?logo=linux&logoColor=white&labelColor=333"></a>
+<br>
+<a href="https://github.com/ArianARahimi/queenfisher/releases/latest"><img src="https://img.shields.io/github/v/release/ArianARahimi/queenfisher?label=Release&color=555&labelColor=333"></a>
+<a href="https://github.com/ArianARahimi/queenfisher/releases"><img src="https://img.shields.io/github/downloads/ArianARahimi/queenfisher/total?label=Downloads&color=555&labelColor=333"></a>
+<a href="LICENSE"><img src="https://img.shields.io/github/license/ArianARahimi/queenfisher?label=License&color=555&labelColor=333"></a>
 
-Queenfisher is a window around [yt-dlp](https://github.com/yt-dlp/yt-dlp), which does the actual downloading.
+![Queenfisher downloading a few videos, with a preview of the next one](docs/screenshots/download.png)
 
 - Free and open source (GPLv3)
 - No ads, no tracking, no account, nothing bundled. Once a day it asks GitHub for the newest version number (Settings can turn that off)
