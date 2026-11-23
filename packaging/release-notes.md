@@ -8,6 +8,7 @@
 ### Fixed
 
 - File names on Windows keep full-width and other non-Latin characters.
+- Browser sign-in finds your default browser on newer Windows 11 builds. Before, it could pick Edge even when Firefox was the default.
 - When a browser's cookies can't be read, Queenfisher says what to do instead of a vague error. No more doubled "Failed:" or repeated log lines.
 - If fetching ffmpeg or Deno fails (say, the network isn't up yet right after logging in), Queenfisher tries again a minute later by itself. Before, it waited for your next click.
 
