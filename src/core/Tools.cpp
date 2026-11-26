@@ -24,5 +24,6 @@ QString oldFfmpegNote(const QByteArray &versionOutput)
     const QVersionNumber v = QVersionNumber::fromString(m.captured(1));
     if (v >= oldestFixed)
         return {};
-    return "ffmpeg " + m.captured(1) + " is old: newer ones fix bugs in reading media files, updating it is safer";
+    return "ffmpeg " + m.captured(1) + " is older than " + oldestFixed.toString()
+           + ": newer ones fix bugs in reading media files, updating it is safer";
 }
