@@ -21,7 +21,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     // Queenfisher was launched again: show this window, out of the tray if needed.
-    void bringBack(const QString &activationToken);
+    void bringBack(const QByteArray &waylandToken, const QByteArray &startupId);
 
 protected:
     void closeEvent(QCloseEvent *event) override;

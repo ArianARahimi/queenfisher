@@ -56,6 +56,14 @@ file(GLOB ICONS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} resources/icons/*.png)
 qt_add_resources(queenfisher icons PREFIX "/" BASE resources FILES ${ICONS})
 qt_add_resources(queenfisher appicon PREFIX "/" BASE packaging/linux FILES packaging/linux/queenfisher.png)   # the fish, see packaging/COPYING-fish-icon.txt
 set_target_properties(queenfisher PROPERTIES WIN32_EXECUTABLE ON MACOSX_BUNDLE ON)
+# X11: bringing the open window to the front when Queenfisher is launched again.
+if(UNIX AND NOT APPLE)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(XCB REQUIRED IMPORTED_TARGET xcb)
+    target_sources(queenfisher PRIVATE src/ui/X11Activation.cpp src/ui/X11Activation.h)
+    target_compile_definitions(queenfisher PRIVATE QUEENFISHER_X11)
+    target_link_libraries(queenfisher PRIVATE PkgConfig::XCB)
+endif()
 # Windows: icon, version details and manifest inside the .exe, like any regular program.
 if(WIN32)
     set(ICON_PATH ${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/queenfisher.ico)

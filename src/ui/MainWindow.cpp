@@ -5,6 +5,9 @@
 #include "LibraryPage.h"
 #include "SettingsPage.h"
 #include "Theme.h"
+#ifdef QUEENFISHER_X11
+#include "X11Activation.h"
+#endif
 #include "core/AppUpdate.h"
 #include "core/Deno.h"
 #include "core/Ffmpeg.h"
@@ -285,12 +288,17 @@ void MainWindow::showWindow()
     activateWindow();
 }
 
-void MainWindow::bringBack(const QString &activationToken)
+void MainWindow::bringBack(const QByteArray &waylandToken, [[maybe_unused]] const QByteArray &startupId)
 {
+    const QString platform = QGuiApplication::platformName();
     // Wayland only lets a window take the front with the launcher's token; Qt reads it from here.
-    if (!activationToken.isEmpty() && QGuiApplication::platformName().startsWith("wayland"))
-        qputenv("XDG_ACTIVATION_TOKEN", activationToken.toLatin1());
+    if (!waylandToken.isEmpty() && platform.startsWith("wayland"))
+        qputenv("XDG_ACTIVATION_TOKEN", waylandToken);
     showWindow();
+#ifdef QUEENFISHER_X11
+    if (platform == "xcb")
+        X11Activation::bringToFront(windowHandle(), startupId);
+#endif
     if (!busy_)
         return;
     tabs_->setCurrentWidget(downloads_);

@@ -14,47 +14,57 @@
 #endif
 
 namespace {
-// A second launch says "show", or "show <token>" with its launcher's activation token, then a line end.
+// A second launch says "show", then " wayland=<token>" and " x11=<id>" when it has them, then a line end.
 const QByteArray showMessage = "show";
-constexpr qsizetype maxMessage = 300;
+const QByteArray waylandKey = "wayland=";
+const QByteArray x11Key = "x11=";
+constexpr qsizetype maxToken = 255;
+constexpr qsizetype maxMessage = 600;
 
+// Printable, no spaces, quotes or backslashes: safe in the message and in X11's startup notices.
 bool validToken(const QByteArray &token)
 {
-    if (token.isEmpty() || token.size() > 255)
+    if (token.isEmpty() || token.size() > maxToken)
         return false;
     for (char c : token)
-        if (c < 0x21 || c > 0x7e)
+        if (c < 0x21 || c > 0x7e || c == '"' || c == '\\')
             return false;
     return true;
 }
 
-// False when it isn't a show request; token is left empty when none was sent.
-bool parseShow(QByteArray message, QString &token)
+// False when it isn't a show request; tokens that weren't sent stay empty.
+bool parseShow(QByteArray message, LaunchTokens &tokens)
 {
     if (message.endsWith('\n'))
         message.chop(1);
-    if (message == showMessage)
-        return true;
-    if (!message.startsWith(showMessage + ' '))
+    const QList<QByteArray> words = message.split(' ');
+    if (words.first() != showMessage)
         return false;
-    const QByteArray sent = message.mid(showMessage.size() + 1);
-    if (!validToken(sent))
-        return false;
-    token = QString::fromLatin1(sent);
+    for (qsizetype i = 1; i < words.size(); ++i) {
+        const QByteArray &word = words[i];
+        QByteArray *slot = word.startsWith(waylandKey) ? &tokens.wayland : word.startsWith(x11Key) ? &tokens.x11 : nullptr;
+        if (!slot || !slot->isEmpty())
+            return false;   // unknown or repeated
+        *slot = word.mid(word.indexOf('=') + 1);
+        if (!validToken(*slot))
+            return false;
+    }
     return true;
 }
 }
 
-SingleInstance::SingleInstance(const QString &name, QObject *parent) : QObject(parent), name_(name)
+LaunchTokens LaunchTokens::fromEnvironment() { return {qgetenv("XDG_ACTIVATION_TOKEN"), qgetenv("DESKTOP_STARTUP_ID")}; }
+
+SingleInstance::SingleInstance(const QString &name, const LaunchTokens &tokens, QObject *parent) : QObject(parent), name_(name)
 {
-    if (askRunning()) {
+    if (askRunning(tokens)) {
         alreadyRunning_ = true;
         return;
     }
     if (listen())
         return;
     // Taken: another copy may have started a moment ago, or a crash left the socket behind.
-    if (askRunning()) {
+    if (askRunning(tokens)) {
         alreadyRunning_ = true;
         return;
     }
@@ -86,7 +96,7 @@ QString SingleInstance::userKey()
     return key;
 }
 
-bool SingleInstance::askRunning() const
+bool SingleInstance::askRunning(const LaunchTokens &tokens) const
 {
     QLocalSocket socket;
     socket.connectToServer(name_);
@@ -95,8 +105,12 @@ bool SingleInstance::askRunning() const
 #ifdef Q_OS_WIN
     AllowSetForegroundWindow(ASFW_ANY);   // the user launched this, so the open window may take the front
 #endif
-    const QByteArray token = qgetenv("XDG_ACTIVATION_TOKEN");
-    socket.write((validToken(token) ? showMessage + ' ' + token : showMessage) + '\n');
+    QByteArray message = showMessage;
+    if (validToken(tokens.wayland))
+        message += ' ' + waylandKey + tokens.wayland;
+    if (validToken(tokens.x11))
+        message += ' ' + x11Key + tokens.x11;
+    socket.write(message + '\n');
     const bool sent = socket.waitForBytesWritten(1000);
     socket.disconnectFromServer();
     return sent;
@@ -118,9 +132,9 @@ bool SingleInstance::listen()
                 if (*done)
                     return;
                 *done = true;
-                QString token;
-                if (parseShow(*got, token))
-                    emit showRequested(token);
+                LaunchTokens tokens;
+                if (parseShow(*got, tokens))
+                    emit showRequested(tokens.wayland, tokens.x11);
                 socket->disconnectFromServer();
             };
             connect(socket, &QLocalSocket::readyRead, this, [socket, got, finish] {

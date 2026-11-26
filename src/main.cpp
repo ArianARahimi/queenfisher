@@ -41,13 +41,14 @@ void keepFoldersPrivate()
 int main(int argc, char *argv[])
 {
     addPackageManagerPaths();
+    const LaunchTokens tokens = LaunchTokens::fromEnvironment();
     QApplication app(argc, argv);
     QApplication::setApplicationName("Queenfisher");
     QApplication::setOrganizationName("Queenfisher");
     QApplication::setApplicationVersion(QUEENFISHER_VERSION);
     keepFoldersPrivate();
 
-    SingleInstance instance;
+    SingleInstance instance(SingleInstance::defaultName(), tokens);
     if (instance.alreadyRunning())
         return 0;   // the open Queenfisher shows its window instead
 
