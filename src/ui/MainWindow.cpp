@@ -25,6 +25,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QProcess>
 #include <QPushButton>
 #include <QScreen>
 #include <QSettings>
@@ -141,6 +142,25 @@ void MainWindow::checkTools()
 #endif
     for (const MissingTool &tool : missingTools(ownFfmpeg))
         askToContinue(tool.name, tool.message);
+    if (!ownFfmpeg)
+        noteOldFfmpeg();
+}
+
+// The installed ffmpeg's version, asked in the background; an old one gets a log line.
+void MainWindow::noteOldFfmpeg()
+{
+    const QString ffmpeg = QStandardPaths::findExecutable("ffmpeg");
+    if (ffmpeg.isEmpty())
+        return;
+    auto *p = new QProcess(this);
+    connect(p, &QProcess::finished, this, [this, p] {
+        const QString note = oldFfmpegNote(p->readAllStandardOutput());
+        if (!note.isEmpty())
+            downloads_->log(note);
+        p->deleteLater();
+    });
+    connect(p, &QProcess::errorOccurred, p, &QObject::deleteLater);
+    p->start(ffmpeg, {"-hide_banner", "-version"});
 }
 
 // OK carries on without it; Cancel closes Queenfisher.

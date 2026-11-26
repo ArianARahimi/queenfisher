@@ -14,3 +14,7 @@ struct MissingTool
 
 // ownFfmpeg: Queenfisher has (or will fetch) its own ffmpeg, as on Windows.
 QList<MissingTool> missingTools(bool ownFfmpeg);
+
+// From "ffmpeg -version" output: a log line if the installed ffmpeg is older than the oldest
+// line ffmpeg still fixes, since it reads files from any site. Empty if new enough or unknown.
+QString oldFfmpegNote(const QByteArray &versionOutput);

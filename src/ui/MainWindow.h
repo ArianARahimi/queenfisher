@@ -36,6 +36,7 @@ private:
     void showActivity(int downloading, int waiting, double bytesPerSecond);
     void showEngine();
     void checkTools();
+    void noteOldFfmpeg();
     void askToContinue(const QString &title, const QString &message);
     void buildTray();
     void toggleWindow();
