@@ -9,8 +9,40 @@
 
 #include <memory>
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+
 namespace {
-const QByteArray showMessage = "show";   // the only thing a second launch may say
+// A second launch says "show", or "show <token>" with its launcher's activation token, then a line end.
+const QByteArray showMessage = "show";
+constexpr qsizetype maxMessage = 300;
+
+bool validToken(const QByteArray &token)
+{
+    if (token.isEmpty() || token.size() > 255)
+        return false;
+    for (char c : token)
+        if (c < 0x21 || c > 0x7e)
+            return false;
+    return true;
+}
+
+// False when it isn't a show request; token is left empty when none was sent.
+bool parseShow(QByteArray message, QString &token)
+{
+    if (message.endsWith('\n'))
+        message.chop(1);
+    if (message == showMessage)
+        return true;
+    if (!message.startsWith(showMessage + ' '))
+        return false;
+    const QByteArray sent = message.mid(showMessage.size() + 1);
+    if (!validToken(sent))
+        return false;
+    token = QString::fromLatin1(sent);
+    return true;
+}
 }
 
 SingleInstance::SingleInstance(const QString &name, QObject *parent) : QObject(parent), name_(name)
@@ -60,7 +92,11 @@ bool SingleInstance::askRunning() const
     socket.connectToServer(name_);
     if (!socket.waitForConnected(1000))
         return false;
-    socket.write(showMessage);
+#ifdef Q_OS_WIN
+    AllowSetForegroundWindow(ASFW_ANY);   // the user launched this, so the open window may take the front
+#endif
+    const QByteArray token = qgetenv("XDG_ACTIVATION_TOKEN");
+    socket.write((validToken(token) ? showMessage + ' ' + token : showMessage) + '\n');
     const bool sent = socket.waitForBytesWritten(1000);
     socket.disconnectFromServer();
     return sent;
@@ -77,13 +113,22 @@ bool SingleInstance::listen()
         while (QLocalSocket *socket = server_->nextPendingConnection()) {
             connect(socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater);
             auto got = std::make_shared<QByteArray>();
-            connect(socket, &QLocalSocket::readyRead, this, [this, socket, got] {
+            auto done = std::make_shared<bool>(false);
+            auto finish = [this, socket, got, done] {
+                if (*done)
+                    return;
+                *done = true;
+                QString token;
+                if (parseShow(*got, token))
+                    emit showRequested(token);
+                socket->disconnectFromServer();
+            };
+            connect(socket, &QLocalSocket::readyRead, this, [socket, got, finish] {
                 got->append(socket->readAll());
-                if (*got == showMessage)
-                    emit showRequested();
-                if (got->size() >= showMessage.size())
-                    socket->disconnectFromServer();   // said its word, or something else: done either way
+                if (got->contains('\n') || got->size() > maxMessage)
+                    finish();   // said its line, or too much: done either way
             });
+            connect(socket, &QLocalSocket::disconnected, this, finish);   // an older copy sends "show" with no line end
         }
     });
     return true;

@@ -20,7 +20,8 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = nullptr);
-    void bringBack();   // Queenfisher was launched again: show this window, out of the tray if needed
+    // Queenfisher was launched again: show this window, out of the tray if needed.
+    void bringBack(const QString &activationToken);
 
 protected:
     void closeEvent(QCloseEvent *event) override;

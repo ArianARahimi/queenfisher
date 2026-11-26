@@ -17,7 +17,8 @@ public:
     static QString userKey();       // random, kept in this user's settings; part of the Windows name
 
 signals:
-    void showRequested();
+    // activationToken: the launcher's Wayland token, so the desktop lets the window come to the front
+    void showRequested(const QString &activationToken);
 
 private:
     bool askRunning() const;

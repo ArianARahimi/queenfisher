@@ -279,13 +279,17 @@ void MainWindow::toggleWindow()
 
 void MainWindow::showWindow()
 {
-    showNormal();
+    setWindowState(windowState() & ~Qt::WindowMinimized);   // keeps it maximized if it was
+    show();
     raise();
     activateWindow();
 }
 
-void MainWindow::bringBack()
+void MainWindow::bringBack(const QString &activationToken)
 {
+    // Wayland only lets a window take the front with the launcher's token; Qt reads it from here.
+    if (!activationToken.isEmpty() && QGuiApplication::platformName().startsWith("wayland"))
+        qputenv("XDG_ACTIVATION_TOKEN", activationToken.toLatin1());
     showWindow();
     if (!busy_)
         return;
