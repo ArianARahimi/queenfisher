@@ -59,6 +59,8 @@ Get the newest version from [Releases](https://github.com/ArianARahimi/queenfish
 - **Windows:** download `Queenfisher-<version>-windows.exe` and run it. It's the whole program; nothing to install or unpack. The first time, Windows may say it protected your PC: click **More info**, then **Run anyway**.
 - **macOS:** download the `-macos.zip` (Apple Silicon) or `-macos-intel.zip` (Intel), open it and open Queenfisher. The first time, macOS blocks it: System Settings → Privacy & Security → **Open Anyway**.
 
+To check that a download was built by this repository's GitHub Actions and not changed since, use the [GitHub CLI](https://cli.github.com/): `gh attestation verify <file> --repo ArianARahimi/queenfisher`.
+
 Queenfisher uses [ffmpeg](https://ffmpeg.org/) to join video and sound and to convert between formats. On Windows it fetches yt-dlp's own build the first time (about 90 MB); on Linux and macOS, install ffmpeg yourself. YouTube also needs [Deno](https://deno.com/): one you have installed is used, otherwise Queenfisher fetches the official build (about 45 MB). Each Queenfisher release names one exact build of each and carries its SHA-256, so a file that differs in any way is refused. Newer builds come with Queenfisher updates.
 
 ## Privacy
@@ -111,6 +113,7 @@ needs a VirusTotal API key in the repository secret `VT_API_KEY`.
 - On Linux and macOS, ffmpeg must be installed; Queenfisher only fetches its own on Windows. On macOS it also looks in Homebrew's and MacPorts' folders, since apps opened from the Dock or Finder don't get the Terminal's search path. That's been checked, but not yet with a real Homebrew ffmpeg.
 - Fetching Queenfisher's own Deno has been tried on Windows and macOS (Intel); on Linux (used only when no Deno is installed) it hasn't been tried yet.
 - The Mac builds now use OpenSSL built from its pinned source instead of Homebrew's. Release builds no longer reuse the cached Windows Qt; that hasn't been through a release yet.
+- Build attestations (`gh attestation verify`) are new and haven't been through a CI run or a release yet.
 - The Mac apps aren't signed by Apple. The Intel build has been tried on macOS 26 (in a virtual machine); the Apple Silicon build hasn't been tried yet.
 - Browser sign-in is off until you turn it on in Settings. Then, the first time a site asks for a sign-in, Queenfisher asks whether to use your default browser's cookies for that site, and remembers the answer until sign-in is turned off. yt-dlp then gets that site's cookies only, never the browser's whole set. A real sign-in has been tried on Linux (Waterfox) and Windows 11 (Firefox). Finding the default browser works on Linux and Windows, including newer Windows 11 builds; on macOS it hasn't been tried yet, and Safari's cookies need Full Disk Access for Queenfisher (System Settings, Privacy & Security). On Windows, Chrome and Edge often lock their cookies away from other programs, so yt-dlp can't use them; Firefox-based browsers work.
 - If fetching yt-dlp, ffmpeg or Deno fails (say, the network isn't up yet right after logging in), Queenfisher tries again a minute later and only then reports it. Tried on Windows with Queenfisher's network blocked at startup.
