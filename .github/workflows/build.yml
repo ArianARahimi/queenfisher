@@ -21,6 +21,8 @@ env:
   # macOS builds OpenSSL from the same pinned source as packaging/windows/build-static.sh.
   OPENSSL_VERSION: "3.5.9"
   OPENSSL_SHA256: "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a"
+  NINJA_VERSION: "1.13.2"
+  NINJA_MAC_SHA256: "c99048673aa765960a99cf10c6ddb9f1fad506099ff0a0e137ad8960a88f321b"
 
 jobs:
   linux:
@@ -38,6 +40,9 @@ jobs:
           sudo apt-get install -y --no-install-recommends ninja-build libssl-dev libgl1-mesa-dev \
             libxkbcommon-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 \
             libxcb-shape0 libegl1 libpulse0 libxcb1-dev pkg-config
+          # Ubuntu's signed packages, kept current for security fixes; the versions go in the log.
+          dpkg-query -W ninja-build libssl-dev libgl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libegl1 libpulse0 libxcb1-dev pkg-config
           pip install --only-binary :all: --require-hashes -r .github/aqt-requirements.txt
           python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 -O "$RUNNER_TEMP/Qt"
           echo "$RUNNER_TEMP/Qt/$QT_VERSION/gcc_64/bin" >> "$GITHUB_PATH"
@@ -125,7 +130,13 @@ jobs:
 
       - name: Install build tools
         run: |
-          brew install ninja
+          # Ninja's own release, pinned by SHA-256 (one binary for both Mac kinds), not Homebrew's latest.
+          curl -fL --retry 3 -o "$RUNNER_TEMP/ninja-mac.zip" \
+            "https://github.com/ninja-build/ninja/releases/download/v$NINJA_VERSION/ninja-mac.zip"
+          echo "$NINJA_MAC_SHA256  $RUNNER_TEMP/ninja-mac.zip" | shasum -a 256 -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          unzip -q "$RUNNER_TEMP/ninja-mac.zip" -d "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
           # Its own environment, so no other Python's packages are in the way.
           python3 -m venv "$RUNNER_TEMP/aqt"
           "$RUNNER_TEMP/aqt/bin/pip" install --only-binary :all: --require-hashes -r .github/aqt-requirements.txt
