@@ -42,6 +42,24 @@ const Rule rules[] = {
 };
 // clang-format on
 
+// The line without the parts a site or link can word: links and the HTTP reason text.
+QString ytDlpWords(QString line)
+{
+    static const QRegularExpression link(R"(\S+://\S*)");
+    static const QRegularExpression httpReason(R"((HTTP Error \d{3}):.*)", QRegularExpression::CaseInsensitiveOption);
+    return line.remove(link).replace(httpReason, R"(\1)");
+}
+
+// The generic extractor names the page after the link, so its lines may hold any words.
+bool fromGeneric(const QString &line)
+{
+    static const QRegularExpression generic(R"(^(ERROR|WARNING): \[generic[\]:])");
+    return generic.match(line).hasMatch();
+}
+
+// Asks for the browser's cookies or a yt-dlp update: only on yt-dlp's own words.
+bool asksSomething(Problem p) { return p == Problem::SignIn || p == Problem::Outdated; }
+
 Diagnosis match(const QString &line)
 {
     static const QList<QRegularExpression> compiled = [] {
@@ -50,8 +68,10 @@ Diagnosis match(const QString &line)
             list.append(QRegularExpression(QString::fromLatin1(r.pattern), QRegularExpression::CaseInsensitiveOption));
         return list;
     }();
+    const QString text = ytDlpWords(line);
+    const bool generic = fromGeneric(line);
     for (qsizetype i = 0; i < compiled.size(); ++i)
-        if (compiled[i].match(line).hasMatch())
+        if (!(generic && asksSomething(rules[i].problem)) && compiled[i].match(text).hasMatch())
             return {rules[i].problem, QString::fromLatin1(rules[i].message)};
     return {};
 }
