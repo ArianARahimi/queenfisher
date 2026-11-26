@@ -58,6 +58,13 @@ FetchedTool::FetchedTool(const QString &dir, const QString &name, const QString 
 {
     connect(&watcher_, &QFileSystemWatcher::directoryChanged, this, [this] { intact_ = -1; });
     connect(&watcher_, &QFileSystemWatcher::fileChanged, this, [this] { intact_ = -1; });
+    // An update stopped between its two moves: the old copy comes back (and is still checked
+    // file by file before use); one left beside a working copy goes.
+    const QString old = dir_ + ".old";
+    if (QDir(old).exists() && !QDir(dir_).exists())
+        QDir().rename(old, dir_);
+    else if (QDir(old).exists())
+        QDir(old).removeRecursively();
 }
 
 void FetchedTool::watch() const
