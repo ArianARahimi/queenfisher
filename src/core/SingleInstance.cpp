@@ -103,7 +103,10 @@ bool SingleInstance::askRunning(const LaunchTokens &tokens) const
     if (!socket.waitForConnected(1000))
         return false;
 #ifdef Q_OS_WIN
-    AllowSetForegroundWindow(ASFW_ANY);   // the user launched this, so the open window may take the front
+    // The user launched this, so the open Queenfisher may take the front; no other program may.
+    ULONG server = 0;
+    if (GetNamedPipeServerProcessId(reinterpret_cast<HANDLE>(socket.socketDescriptor()), &server))
+        AllowSetForegroundWindow(server);
 #endif
     QByteArray message = showMessage;
     if (validToken(tokens.wayland))

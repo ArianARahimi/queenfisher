@@ -6,6 +6,8 @@
 #include <QString>
 #include <QTemporaryFile>
 
+class QSocketNotifier;
+
 // Value for yt-dlp's --cookies-from-browser that matches the user's default browser,
 // or empty when it can't be worked out. Firefox forks (Waterfox, LibreWolf, Floorp) aren't
 // browsers yt-dlp knows by name, so they get "firefox:<profile folder>".
@@ -39,8 +41,9 @@ QByteArray cookiesForSite(const QByteArray &cookiesTxt, const QString &site);
 int removeLeftoverCookies();
 
 // Copies the default browser's cookies for one site into a file of its own, readable by this
-// user only, so yt-dlp never holds the sign-ins of other sites. The browser's full set lives
-// only until it's filtered; the site's file is deleted with this object.
+// user only, so yt-dlp never holds the sign-ins of other sites. On Linux and macOS the browser's
+// full set only passes through a pipe, never a file; on Windows it's a file that lives only until
+// it's filtered. The site's file is deleted with this object.
 class CookieExport : public QObject
 {
     Q_OBJECT
@@ -58,9 +61,16 @@ signals:
 private:
     void filter();
     void fail(const QString &why);
+    bool openPipe(const QString &dir);   // Linux and macOS
+    void drain();                        // what yt-dlp wrote into the pipe so far
+    void closePipe();
 
     QString ytDlp_, browser_, site_;
     QProcess process_;
-    QTemporaryFile all_, mine_;
+    QTemporaryFile all_, mine_;   // all_: Windows only, which has no pipes in its file system
+    QString pipe_;
+    int readEnd_ = -1, ownWriter_ = -1;   // ownWriter_: no end of file before yt-dlp has written
+    QSocketNotifier *notifier_ = nullptr;
+    QByteArray got_;
     bool done_ = false;
 };

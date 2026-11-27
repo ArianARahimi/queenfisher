@@ -4,6 +4,7 @@
 #include "PrivateFolder.h"
 
 #include <algorithm>
+#include <utility>
 
 #include <QDir>
 #include <QFileInfo>
@@ -21,6 +22,14 @@
 #include <windows.h>   // before shlwapi.h, which needs its types
 
 #include <shlwapi.h>
+#else
+#include <QRandomGenerator>
+#include <QSocketNotifier>
+
+#include <cerrno>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 #pragma region Default browser
@@ -192,7 +201,7 @@ int removeLeftoverCookies()
 {
     QDir dir(cookieFolder());
     int removed = 0;
-    for (const QString &name : dir.entryList({"all-*.txt", "site-*.txt"}, QDir::Files | QDir::Hidden))
+    for (const QString &name : dir.entryList({"all-*.txt", "all-*.pipe", "site-*.txt"}, QDir::Files | QDir::Hidden | QDir::System))
         removed += dir.remove(name) ? 1 : 0;
     return removed;
 }
@@ -212,21 +221,89 @@ CookieExport::~CookieExport()
 {
     disconnect(&process_, nullptr, this, nullptr);
     ChildProcess::stopAndWait(process_);
+    closePipe();
 }
 
 // yt-dlp reads the browser and saves what it read with --cookies, even without a link.
 void CookieExport::start()
 {
     const QString dir = cookieFolder();
-    all_.setFileTemplate(dir + "/all-XXXXXX.txt");
     mine_.setFileTemplate(dir + "/site-XXXXXX.txt");
+    if (!makePrivateFolder(dir))
+        return fail("Couldn't make a private place for the sign-in");
+#ifdef Q_OS_WIN
+    all_.setFileTemplate(dir + "/all-XXXXXX.txt");
     // yt-dlp refuses an existing file without the Netscape header and then saves nothing.
-    if (!makePrivateFolder(dir) || !all_.open() || all_.write("# Netscape HTTP Cookie File\n") < 0)
+    if (!all_.open() || all_.write("# Netscape HTTP Cookie File\n") < 0)
         return fail("Couldn't make a private place for the sign-in");
     all_.close();
-    process_.start(ytDlp_, {"--ignore-config", "--no-plugin-dirs", "--cookies-from-browser", browser_, "--cookies", all_.fileName()});
+    const QString out = all_.fileName();
+#else
+    if (!openPipe(dir))
+        return fail("Couldn't make a private place for the sign-in");
+    const QString out = pipe_;
+#endif
+    process_.start(ytDlp_, {"--ignore-config", "--no-plugin-dirs", "--cookies-from-browser", browser_, "--cookies", out});
     QTimer::singleShot(60000, this, [this] { ChildProcess::stop(process_, true); });
 }
+
+#ifdef Q_OS_WIN
+bool CookieExport::openPipe(const QString &) { return false; }
+void CookieExport::drain() { }
+void CookieExport::closePipe() { }
+#else
+// A pipe yt-dlp can only write into: it skips reading a cookies file it can't read and just saves.
+bool CookieExport::openPipe(const QString &dir)
+{
+    for (int tries = 0; tries < 5 && pipe_.isEmpty(); ++tries) {
+        const QString path = dir + "/all-" + QString::number(QRandomGenerator::system()->generate64(), 16) + ".pipe";
+        if (mkfifo(QFile::encodeName(path).constData(), S_IRUSR | S_IWUSR) == 0)
+            pipe_ = path;
+        else if (errno != EEXIST)
+            return false;
+    }
+    if (pipe_.isEmpty())
+        return false;
+    const QByteArray name = QFile::encodeName(pipe_);
+    readEnd_ = ::open(name.constData(), O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+    ownWriter_ = ::open(name.constData(), O_WRONLY | O_NONBLOCK | O_CLOEXEC);
+    if (readEnd_ < 0 || ownWriter_ < 0 || chmod(name.constData(), S_IWUSR) != 0)
+        return false;
+    notifier_ = new QSocketNotifier(readEnd_, QSocketNotifier::Read, this);
+    connect(notifier_, &QSocketNotifier::activated, this, &CookieExport::drain);
+    return true;
+}
+
+void CookieExport::drain()
+{
+    constexpr qsizetype limit = 64 << 20;   // far more than any browser's cookies
+    char buffer[16384];
+    for (;;) {
+        const ssize_t n = ::read(readEnd_, buffer, sizeof buffer);
+        if (n < 0 && errno == EINTR)
+            continue;
+        if (n <= 0)
+            return;   // all read for now (EAGAIN), or yt-dlp is done (0)
+        got_.append(buffer, n);
+        if (got_.size() > limit) {
+            got_.clear();
+            ChildProcess::stop(process_, true);
+            return;
+        }
+    }
+}
+
+void CookieExport::closePipe()
+{
+    delete std::exchange(notifier_, nullptr);
+    for (int *fd : {&readEnd_, &ownWriter_})
+        if (*fd >= 0)
+            ::close(std::exchange(*fd, -1));
+    if (!pipe_.isEmpty())
+        QFile::remove(std::exchange(pipe_, {}));
+    got_.clear();
+}
+#endif
 
 void CookieExport::filter()
 {
@@ -234,11 +311,20 @@ void CookieExport::filter()
     const Diagnosis d = diagnose(problems);
     const bool errored = std::any_of(problems.cbegin(), problems.cend(), [](const QString &l) { return l.startsWith("ERROR:"); });
     QByteArray all;
+#ifdef Q_OS_WIN
     if (all_.open()) {
         all = all_.readAll();
         all_.close();
     }
     all_.remove();   // every site's sign-ins: gone as soon as this site's are out
+#else
+    if (ownWriter_ >= 0)
+        ::close(std::exchange(ownWriter_, -1));   // yt-dlp has exited: the rest ends in end of file
+    if (readEnd_ >= 0)
+        drain();
+    all = std::exchange(got_, {});
+    closePipe();
+#endif
     const QByteArray mine = cookiesForSite(all, site_);
     if (mine.count('\n') < 2) {
         const QString browser = browserLabel(browser_);
@@ -257,7 +343,10 @@ void CookieExport::filter()
 
 void CookieExport::fail(const QString &why)
 {
+#ifdef Q_OS_WIN
     all_.remove();
+#endif
+    closePipe();
     emit finished(false, why);
 }
 #pragma endregion
