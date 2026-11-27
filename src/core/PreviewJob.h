@@ -5,6 +5,8 @@
 #include <QByteArray>
 #include <QHostAddress>
 #include <QList>
+#include <QNetworkProxy>
+#include <QNetworkRequest>
 #include <QObject>
 #include <QProcess>
 #include <QStringList>
@@ -67,6 +69,19 @@ bool publicHost(const QUrl &url);
 // A name's looked-up addresses: false if there are none or any is this computer or its network
 // (127.0.0.1.nip.io is a public name for 127.0.0.1).
 bool publicAddresses(const QList<QHostAddress> &addresses);
+
+// Which checked addresses to try, in order: the first IPv4, then the first IPv6. IPv4 first,
+// since a network whose IPv6 silently goes nowhere would otherwise wait out the timeout.
+QList<QHostAddress> connectOrder(const QList<QHostAddress> &addresses);
+
+// A request for url that connects to this already checked address, never to what a second
+// lookup of the name says; the certificate is still checked against the name. Redirects are
+// left to the caller, so each hop gets checked and pinned the same way.
+QNetworkRequest pinnedRequest(const QUrl &url, const QHostAddress &address);
+
+// The proxy to send a pinned request through, picked by its real name: proxy rules (PAC files,
+// no_proxy) name hosts, and the pinned request only names the address.
+QNetworkProxy proxyFor(const QUrl &url);
 
 // Reads yt-dlp's JSON for one video or playlist; empty title means it couldn't.
 PreviewInfo parsePreview(const QByteArray &json);

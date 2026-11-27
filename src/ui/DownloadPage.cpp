@@ -664,46 +664,46 @@ void DownloadPage::showPreview(const PreviewInfo &info)
         return;
     }
     thumbnail_->setHint("Loading picture...");
-    const QUrl address(info.thumbnail);
-    const QString url = link_->text().trimmed();
-    // A name is looked up first: a public-looking one can still point at this computer.
-    QHostInfo::lookupHost(address.host(), this, [this, address, url, badge](const QHostInfo &host) {
+    loadThumbnail(QUrl(info.thumbnail), link_->text().trimmed(), badge);
+}
+
+// A name is looked up first, since a public-looking one can still point at this computer, and
+// the picture is fetched from the address that passed, not from a second lookup. Redirects too.
+void DownloadPage::loadThumbnail(const QUrl &address, const QString &url, const QString &badge, int hops)
+{
+    if (hops > 5 || address.scheme() != "https" || !publicHost(address)) {
+        thumbnail_->setHint("No picture");
+        return;
+    }
+    QHostInfo::lookupHost(address.host(), this, [this, address, url, badge, hops](const QHostInfo &host) {
         if (link_->text().trimmed() != url)
             return;   // the link changed meanwhile
         if (publicAddresses(host.addresses()))
-            loadThumbnail(address, url, badge);
+            fetchThumbnail(address, connectOrder(host.addresses()), url, badge, hops);
         else
             thumbnail_->setHint("No picture");
     });
 }
 
-void DownloadPage::loadThumbnail(const QUrl &address, const QString &url, const QString &badge)
+void DownloadPage::fetchThumbnail(const QUrl &address, QList<QHostAddress> tries, const QString &url, const QString &badge, int hops)
 {
-    QNetworkRequest req(address);
-    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::UserVerifiedRedirectPolicy);
-    req.setTransferTimeout(20000);
-    QNetworkReply *reply = net_->get(req);
-    // Each hop gets the same checks as the address itself: a public link can redirect inwards.
-    connect(reply, &QNetworkReply::redirected, reply, [reply](const QUrl &to) {
-        if (to.scheme() != "https" || !publicHost(to)) {
-            reply->abort();
-            return;
-        }
-        QHostInfo::lookupHost(to.host(), reply, [reply](const QHostInfo &host) {
-            if (publicAddresses(host.addresses()))
-                emit reply->redirectAllowed();
-            else
-                reply->abort();
-        });
-    });
+    // Its own manager, to route by the name: the pinned request names only the address.
+    auto *net = new QNetworkAccessManager(this);
+    net->setProxy(proxyFor(address));
+    QNetworkReply *reply = net->get(pinnedRequest(address, tries.takeFirst()));
+    connect(reply, &QNetworkReply::finished, net, &QObject::deleteLater);
     connect(reply, &QNetworkReply::downloadProgress, reply, [reply](qint64 got, qint64 total) {
         if (got > (8 << 20) || total > (8 << 20))
             reply->abort();   // a thumbnail is never this big
     });
-    connect(reply, &QNetworkReply::finished, this, [this, reply, url, badge] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, address, tries, url, badge, hops] {
         reply->deleteLater();
         if (link_->text().trimmed() != url)
             return;   // the link changed while the picture loaded
+        if (!reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).isValid() && !tries.isEmpty())
+            return fetchThumbnail(address, tries, url, badge, hops);   // no answer at all: the other kind of address
+        if (const QUrl to = reply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl(); to.isValid())
+            return loadThumbnail(address.resolved(to), url, badge, hops + 1);   // a public link can redirect inwards
         const QPixmap picture = reply->error() ? QPixmap() : Thumbnail::decode(reply->readAll());
         if (picture.isNull())
             thumbnail_->setHint("No picture");

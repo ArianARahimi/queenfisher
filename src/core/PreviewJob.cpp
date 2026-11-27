@@ -10,6 +10,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkProxyFactory>
 #include <QRegularExpression>
 #include <QUrl>
 #include <QUrlQuery>
@@ -45,6 +46,38 @@ bool publicHost(const QUrl &url)
 bool publicAddresses(const QList<QHostAddress> &addresses)
 {
     return !addresses.isEmpty() && std::none_of(addresses.cbegin(), addresses.cend(), privateAddress);
+}
+
+QList<QHostAddress> connectOrder(const QList<QHostAddress> &addresses)
+{
+    QList<QHostAddress> order;
+    for (const auto protocol : {QAbstractSocket::IPv4Protocol, QAbstractSocket::IPv6Protocol}) {
+        const auto it =
+            std::find_if(addresses.cbegin(), addresses.cend(), [protocol](const QHostAddress &a) { return a.protocol() == protocol; });
+        if (it != addresses.cend())
+            order << *it;
+    }
+    return order;
+}
+
+QNetworkRequest pinnedRequest(const QUrl &url, const QHostAddress &address)
+{
+    QUrl pinned = url;
+    pinned.setHost(address.toString());
+    QNetworkRequest req(pinned);
+    const QString host = url.host(QUrl::FullyEncoded);
+    req.setRawHeader("Host", (url.port() < 0 ? host : host + ':' + QString::number(url.port())).toLatin1());
+    req.setPeerVerifyName(url.host());   // also the name TLS asks the server for
+    req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);   // HTTP/2 would name the address, not the host
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
+    req.setTransferTimeout(20000);
+    return req;
+}
+
+QNetworkProxy proxyFor(const QUrl &url)
+{
+    const QList<QNetworkProxy> proxies = QNetworkProxyFactory::proxyForQuery(QNetworkProxyQuery(url));
+    return proxies.isEmpty() ? QNetworkProxy(QNetworkProxy::NoProxy) : proxies.first();
 }
 
 namespace {
