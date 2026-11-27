@@ -42,8 +42,8 @@ int removeLeftoverCookies();
 
 // Copies the default browser's cookies for one site into a file of its own, readable by this
 // user only, so yt-dlp never holds the sign-ins of other sites. On Linux and macOS the browser's
-// full set only passes through a pipe, never a file; on Windows it's a file that lives only until
-// it's filtered. The site's file is deleted with this object.
+// full set only passes through a pipe, never a file; on Windows (or where a pipe can't be used)
+// it's a file that lives only until it's filtered. The site's file is deleted with this object.
 class CookieExport : public QObject
 {
     Q_OBJECT
@@ -61,16 +61,20 @@ signals:
 private:
     void filter();
     void fail(const QString &why);
-    bool openPipe(const QString &dir);   // Linux and macOS
+    bool openPipe(const QString &dir);   // Linux and macOS, not as root
+    bool openFile(const QString &dir);   // otherwise
+    QByteArray takeAll();
     void drain();                        // what yt-dlp wrote into the pipe so far
+    void closeOwnWriter();
     void closePipe();
 
     QString ytDlp_, browser_, site_;
     QProcess process_;
-    QTemporaryFile all_, mine_;   // all_: Windows only, which has no pipes in its file system
+    QTemporaryFile all_, mine_;   // all_: only where a pipe can't be used (Windows has none in its file system)
     QString pipe_;
     int readEnd_ = -1, ownWriter_ = -1;   // ownWriter_: no end of file before yt-dlp has written
     QSocketNotifier *notifier_ = nullptr;
     QByteArray got_;
+    bool tooBig_ = false;
     bool done_ = false;
 };

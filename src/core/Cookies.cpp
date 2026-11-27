@@ -229,46 +229,70 @@ void CookieExport::start()
 {
     const QString dir = cookieFolder();
     mine_.setFileTemplate(dir + "/site-XXXXXX.txt");
-    if (!makePrivateFolder(dir))
+    if (!makePrivateFolder(dir) || !(openPipe(dir) || openFile(dir)))
         return fail("Couldn't make a private place for the sign-in");
-#ifdef Q_OS_WIN
+    process_.start(ytDlp_, {"--ignore-config", "--no-plugin-dirs", "--cookies-from-browser", browser_, "--cookies",
+                               pipe_.isEmpty() ? all_.fileName() : pipe_});
+    QTimer::singleShot(60000, this, [this] { ChildProcess::stop(process_, true); });
+}
+
+// Windows, or where a pipe can't be used: a file of this user's that lives only until it's filtered.
+bool CookieExport::openFile(const QString &dir)
+{
     all_.setFileTemplate(dir + "/all-XXXXXX.txt");
     // yt-dlp refuses an existing file without the Netscape header and then saves nothing.
     if (!all_.open() || all_.write("# Netscape HTTP Cookie File\n") < 0)
-        return fail("Couldn't make a private place for the sign-in");
+        return false;
     all_.close();
-    const QString out = all_.fileName();
-#else
-    if (!openPipe(dir))
-        return fail("Couldn't make a private place for the sign-in");
-    const QString out = pipe_;
-#endif
-    process_.start(ytDlp_, {"--ignore-config", "--no-plugin-dirs", "--cookies-from-browser", browser_, "--cookies", out});
-    QTimer::singleShot(60000, this, [this] { ChildProcess::stop(process_, true); });
+    return true;
+}
+
+// What yt-dlp saved, every site's; its pipe or file is gone afterwards.
+QByteArray CookieExport::takeAll()
+{
+    QByteArray all;
+    if (!pipe_.isEmpty()) {
+        closeOwnWriter();   // yt-dlp has exited: the rest ends in end of file
+        drain();
+        all = std::exchange(got_, {});
+    } else if (all_.open()) {
+        all = all_.readAll();
+        all_.close();
+    }
+    closePipe();
+    if (!all_.fileName().isEmpty())
+        all_.remove();
+    return all;
 }
 
 #ifdef Q_OS_WIN
 bool CookieExport::openPipe(const QString &) { return false; }
 void CookieExport::drain() { }
+void CookieExport::closeOwnWriter() { }
 void CookieExport::closePipe() { }
 #else
 // A pipe yt-dlp can only write into: it skips reading a cookies file it can't read and just saves.
+// Not as root, which reads it anyway and would wait on it forever.
 bool CookieExport::openPipe(const QString &dir)
 {
+    if (geteuid() == 0)
+        return false;
     for (int tries = 0; tries < 5 && pipe_.isEmpty(); ++tries) {
         const QString path = dir + "/all-" + QString::number(QRandomGenerator::system()->generate64(), 16) + ".pipe";
         if (mkfifo(QFile::encodeName(path).constData(), S_IRUSR | S_IWUSR) == 0)
             pipe_ = path;
         else if (errno != EEXIST)
-            return false;
+            return false;   // a file system without pipes
     }
     if (pipe_.isEmpty())
         return false;
     const QByteArray name = QFile::encodeName(pipe_);
     readEnd_ = ::open(name.constData(), O_RDONLY | O_NONBLOCK | O_CLOEXEC);
     ownWriter_ = ::open(name.constData(), O_WRONLY | O_NONBLOCK | O_CLOEXEC);
-    if (readEnd_ < 0 || ownWriter_ < 0 || chmod(name.constData(), S_IWUSR) != 0)
+    if (readEnd_ < 0 || ownWriter_ < 0 || chmod(name.constData(), S_IWUSR) != 0) {
+        closePipe();
         return false;
+    }
     notifier_ = new QSocketNotifier(readEnd_, QSocketNotifier::Read, this);
     connect(notifier_, &QSocketNotifier::activated, this, &CookieExport::drain);
     return true;
@@ -278,27 +302,33 @@ void CookieExport::drain()
 {
     constexpr qsizetype limit = 64 << 20;   // far more than any browser's cookies
     char buffer[16384];
-    for (;;) {
+    while (readEnd_ >= 0) {
         const ssize_t n = ::read(readEnd_, buffer, sizeof buffer);
         if (n < 0 && errno == EINTR)
             continue;
         if (n <= 0)
             return;   // all read for now (EAGAIN), or yt-dlp is done (0)
         got_.append(buffer, n);
-        if (got_.size() > limit) {
-            got_.clear();
+        if (got_.size() > limit) {   // nothing more is read: a cut-off rest must not pass for the whole
+            tooBig_ = true;
+            closePipe();
             ChildProcess::stop(process_, true);
-            return;
         }
     }
+}
+
+void CookieExport::closeOwnWriter()
+{
+    if (ownWriter_ >= 0)
+        ::close(std::exchange(ownWriter_, -1));
 }
 
 void CookieExport::closePipe()
 {
     delete std::exchange(notifier_, nullptr);
-    for (int *fd : {&readEnd_, &ownWriter_})
-        if (*fd >= 0)
-            ::close(std::exchange(*fd, -1));
+    closeOwnWriter();
+    if (readEnd_ >= 0)
+        ::close(std::exchange(readEnd_, -1));
     if (!pipe_.isEmpty())
         QFile::remove(std::exchange(pipe_, {}));
     got_.clear();
@@ -310,21 +340,9 @@ void CookieExport::filter()
     const QStringList problems = problemLines(process_.readAllStandardError());
     const Diagnosis d = diagnose(problems);
     const bool errored = std::any_of(problems.cbegin(), problems.cend(), [](const QString &l) { return l.startsWith("ERROR:"); });
-    QByteArray all;
-#ifdef Q_OS_WIN
-    if (all_.open()) {
-        all = all_.readAll();
-        all_.close();
-    }
-    all_.remove();   // every site's sign-ins: gone as soon as this site's are out
-#else
-    if (ownWriter_ >= 0)
-        ::close(std::exchange(ownWriter_, -1));   // yt-dlp has exited: the rest ends in end of file
-    if (readEnd_ >= 0)
-        drain();
-    all = std::exchange(got_, {});
-    closePipe();
-#endif
+    const QByteArray all = takeAll();   // every site's sign-ins: gone as soon as this site's are out
+    if (tooBig_)
+        return fail("Your browser's sign-ins were too much to read");
     const QByteArray mine = cookiesForSite(all, site_);
     if (mine.count('\n') < 2) {
         const QString browser = browserLabel(browser_);
@@ -343,10 +361,9 @@ void CookieExport::filter()
 
 void CookieExport::fail(const QString &why)
 {
-#ifdef Q_OS_WIN
-    all_.remove();
-#endif
     closePipe();
+    if (!all_.fileName().isEmpty())
+        all_.remove();
     emit finished(false, why);
 }
 #pragma endregion
